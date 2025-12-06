@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新对象拖拽功能测试</title>
+    <link rel="stylesheet" href="styles/theme.css">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .test-section {
+            background: var(--bg-secondary);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        h2 {
+            color: var(--accent-blue);
+            margin-top: 0;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid var(--accent-blue);
+        }
+        .test-result.pass {
+            background: var(--success-green);
+            opacity: 0.1;
+            border-left-color: var(--success-green);
+        }
+        .test-result.fail {
+            background: var(--error-red);
+            opacity: 0.15;
+            border-left-color: var(--error-red);
+        }
+        canvas {
+            border: 2px solid var(--border-color);
+            background: var(--bg-primary);
+            margin: 10px 0;
+        }
+        .drag-test {
+            background: var(--bg-tertiary);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            cursor: grab;
+            display: inline-block;
+        }
+        .drag-test:active {
+            cursor: grabbing;
+        }
+        code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+    <h1>🧪 新对象拖拽功能测试</h1>
+    
+    <div class="test-section">
+        <h2>测试场景Canvas</h2>
+        <canvas id="test-canvas" width="800" height="400"></canvas>
+        <p>
+            <button class="btn btn-primary" id="start-test-btn">开始测试</button>
+            <button class="btn" id="clear-canvas-btn">清空Canvas</button>
+        </p>
+    </div>
+    
+    <div class="test-section">
+        <h2>可拖拽测试元素</h2>
+        <div class="drag-test" draggable="true" data-type="electric-field-semicircle">
+            📐 半圆电场
+        </div>
+        <div class="drag-test" draggable="true" data-type="capacitor">
+            ⚡ 平行板电容器
+        </div>
+        <p style="color: var(--text-secondary);">💡 提示: 尝试将这些元素拖到Canvas上</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试结果</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <script type="module">
+        import { Scene } from './js/core/Scene.js';
+        import { DragDropManager } from './js/interactions/DragDropManager.js';
+        import { Renderer } from './js/core/Renderer.js';
+        
+        const canvas = document.getElementById('test-canvas');
+        const ctx = canvas.getContext('2d');
+        const resultsDiv = document.getElementById('test-results');
+        
+        let testsPassed = 0;
+        let testsFailed = 0;
+        
+        function log(message, isPass) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${isPass ? 'pass' : 'fail'}`;
+            resultDiv.innerHTML = message;
+            resultsDiv.appendChild(resultDiv);
+            
+            if (isPass) testsPassed++;
+            else testsFailed++;
+            
+            console.log(message);
+        }
+        
+        function drawCanvas() {
+            ctx.fillStyle = '#2d2d30';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制网格
+            ctx.strokeStyle = 'rgba(51, 51, 51, 0.5)';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            
+            for (let x = 0; x <= canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y <= canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        async function runTests() {
+            log('🧪 开始测试新对象拖拽功能...', true);
+            
+            try {
+                // 测试1: 创建Scene
+                log('✅ 创建Scene实例', true);
+                const scene = new Scene();
+                
+                // 测试2: 创建Renderer
+                log('✅ 创建Renderer实例', true);
+                const renderer = new Renderer();
+                renderer.init();
+                
+                // 测试3: 创建DragDropManager
+                log('✅ 创建DragDropManager实例', true);
+                const dragDropManager = new DragDropManager(scene, renderer);
+                
+                // 测试4: 测试createObject方法 - 半圆电场
+                log('✅ 测试 DragDropManager.createObject() - 半圆电场', true);
+                dragDropManager.createObject('electric-field-semicircle', 200, 100);
+                const semiField = scene.electricFields[scene.electricFields.length - 1];
+                if (semiField && semiField.type === 'semicircle-electric-field') {
+                    log('✅ 半圆电场创建成功，Type: ' + semiField.type, true);
+                } else {
+                    log('❌ 半圆电场创建失败', false);
+                }
+                
+                // 测试5: 测试createObject方法 - 平行板电容器
+                log('✅ 测试 DragDropManager.createObject() - 平行板电容器', true);
+                dragDropManager.createObject('capacitor', 400, 100);
+                const capacitor = scene.electricFields[scene.electricFields.length - 1];
+                if (capacitor && capacitor.type === 'parallel-plate-capacitor') {
+                    log('✅ 平行板电容器创建成功，Type: ' + capacitor.type, true);
+                } else {
+                    log('❌ 平行板电容器创建失败', false);
+                }
+                
+                // 测试6: 测试findObjectAt - 查找半圆电场
+                log('✅ 测试 Scene.findObjectAt() - 查找半圆电场', true);
+                const foundSemi = scene.findObjectAt(200, 100);
+                if (foundSemi && foundSemi.type === 'semicircle-electric-field') {
+                    log('✅ 成功找到半圆电场', true);
+                } else {
+                    log('❌ 未能找到半圆电场', false);
+                }
+                
+                // 测试7: 测试findObjectAt - 查找平行板电容器
+                log('✅ 测试 Scene.findObjectAt() - 查找平行板电容器', true);
+                const foundCap = scene.findObjectAt(400, 100);
+                if (foundCap && foundCap.type === 'parallel-plate-capacitor') {
+                    log('✅ 成功找到平行板电容器', true);
+                } else {
+                    log('❌ 未能找到平行板电容器', false);
+                }
+                
+                // 测试8: 测试序列化
+                log('✅ 测试序列化 - 半圆电场', true);
+                const semiData = semiField.serialize();
+                if (semiData.type === 'semicircle-electric-field') {
+                    log('✅ 半圆电场序列化成功', true);
+                } else {
+                    log('❌ 半圆电场序列化失败', false);
+                }
+                
+                // 测试9: 测试序列化 - 平行板电容器
+                log('✅ 测试序列化 - 平行板电容器', true);
+                const capData = capacitor.serialize();
+                if (capData.type === 'parallel-plate-capacitor') {
+                    log('✅ 平行板电容器序列化成功', true);
+                } else {
+                    log('❌ 平行板电容器序列化失败', false);
+                }
+                
+                // 绘制结果
+                drawCanvas();
+                
+                // 绘制对象边界（用于可视化）
+                ctx.strokeStyle = 'rgba(255, 200, 0, 0.6)';
+                ctx.lineWidth = 2;
+                
+                // 绘制半圆电场
+                if (semiField) {
+                    ctx.beginPath();
+                    ctx.arc(semiField.x, semiField.y, semiField.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(255, 200, 0, 0.1)';
+                    ctx.fill();
+                }
+                
+                // 绘制平行板电容器（两条极板 + 连接虚线）
+                if (capacitor) {
+                    const plateAngle = (capacitor.direction + 90) * Math.PI / 180;
+                    const fieldAngle = capacitor.direction * Math.PI / 180;
+                    const cosPlate = Math.cos(plateAngle);
+                    const sinPlate = Math.sin(plateAngle);
+                    const cosField = Math.cos(fieldAngle);
+                    const sinField = Math.sin(fieldAngle);
+                    const halfWidth = capacitor.width / 2;
+                    const halfDist = capacitor.plateDistance / 2;
+                    
+                    const plate1 = [
+                        { x: capacitor.x - cosPlate * halfWidth - cosField * halfDist, y: capacitor.y - sinPlate * halfWidth - sinField * halfDist },
+                        { x: capacitor.x + cosPlate * halfWidth - cosField * halfDist, y: capacitor.y + sinPlate * halfWidth - sinField * halfDist }
+                    ];
+                    const plate2 = [
+                        { x: capacitor.x - cosPlate * halfWidth + cosField * halfDist, y: capacitor.y - sinPlate * halfWidth + sinField * halfDist },
+                        { x: capacitor.x + cosPlate * halfWidth + cosField * halfDist, y: capacitor.y + sinPlate * halfWidth + sinField * halfDist }
+                    ];
+                    
+                    ctx.strokeStyle = 'rgba(100, 150, 255, 0.8)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(plate1[0].x, plate1[0].y);
+                    ctx.lineTo(plate1[1].x, plate1[1].y);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(plate2[0].x, plate2[0].y);
+                    ctx.lineTo(plate2[1].x, plate2[1].y);
+                    ctx.stroke();
+                    
+                    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(plate1[0].x, plate1[0].y);
+                    ctx.lineTo(plate2[0].x, plate2[0].y);
+                    ctx.moveTo(plate1[1].x, plate1[1].y);
+                    ctx.lineTo(plate2[1].x, plate2[1].y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
+                // 总结
+                log('', true);
+                log(`📊 测试完成: ${testsPassed}/${testsPassed + testsFailed} 通过`, testsFailed === 0);
+                
+            } catch (error) {
+                log(`❌ 测试过程中出错: ${error.message}`, false);
+                console.error(error);
+            }
+        }
+        
+        // 事件监听
+        document.getElementById('start-test-btn').addEventListener('click', runTests);
+        document.getElementById('clear-canvas-btn').addEventListener('click', drawCanvas);
+        
+        // 初始化Canvas
+        drawCanvas();
+        
+        // 自动运行测试
+        setTimeout(runTests, 500);
+    </script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题切换测试</title>
+    <link rel="stylesheet" href="styles/theme.css">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+        }
+        .color-swatch {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+        canvas {
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+    <h1>🎨 主题切换功能测试</h1>
+    
+    <button id="theme-btn" class="btn btn-primary" style="margin-bottom: 20px;">
+        切换主题 (当前: 深色 🌙)
+    </button>
+    
+    <div class="test-section">
+        <h2>当前主题信息</h2>
+        <p>主题: <strong id="theme-info">深色</strong></p>
+        <p>HTML data-theme: <strong id="html-theme">dark</strong></p>
+        <p>Body classes: <strong id="body-classes">dark-theme</strong></p>
+    </div>
+    
+    <div class="test-section">
+        <h2>颜色变量测试</h2>
+        <div>
+            <label>--bg-primary: </label>
+            <div class="color-swatch" id="color-bg-primary"></div>
+            <code id="code-bg-primary">#1e1e1e</code>
+        </div>
+        <div>
+            <label>--text-primary: </label>
+            <div class="color-swatch" id="color-text-primary"></div>
+            <code id="code-text-primary">#cccccc</code>
+        </div>
+        <div>
+            <label>--accent-blue: </label>
+            <div class="color-swatch" id="color-accent-blue"></div>
+            <code id="code-accent-blue">#0e639c</code>
+        </div>
+        <div>
+            <label>--electric-field-color: </label>
+            <div class="color-swatch" id="color-electric-field"></div>
+            <code id="code-electric-field">rgba(255, 200, 0, 0.3)</code>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Canvas网格测试</h2>
+        <canvas id="grid-canvas" width="400" height="200"></canvas>
+    </div>
+    
+    <div class="test-section">
+        <h2>Canvas箭头测试</h2>
+        <canvas id="arrow-canvas" width="400" height="200"></canvas>
+    </div>
+
+    <script type="module">
+        import { ThemeManager } from './js/utils/ThemeManager.js';
+        
+        const themeManager = new ThemeManager();
+        const themeBtn = document.getElementById('theme-btn');
+        
+        // 更新显示
+        function updateDisplay() {
+            const theme = themeManager.getCurrentTheme();
+            const isDark = theme === 'dark';
+            
+            document.getElementById('theme-info').textContent = isDark ? '深色' : '浅色';
+            document.getElementById('html-theme').textContent = theme;
+            document.getElementById('body-classes').textContent = document.body.className;
+            document.getElementById('theme-btn').textContent = 
+                `切换主题 (当前: ${isDark ? '深色 🌙' : '浅色 ☀️'})`;
+            
+            // 更新颜色变量显示
+            const style = getComputedStyle(document.documentElement);
+            const colors = {
+                'bg-primary': '--bg-primary',
+                'text-primary': '--text-primary',
+                'accent-blue': '--accent-blue',
+                'electric-field': '--electric-field-color'
+            };
+            
+            for (const [id, varName] of Object.entries(colors)) {
+                const value = style.getPropertyValue(varName).trim();
+                const swatch = document.getElementById(`color-${id}`);
+                const code = document.getElementById(`code-${id}`);
+                swatch.style.backgroundColor = value;
+                code.textContent = value;
+            }
+            
+            // 重新绘制Canvas
+            drawGridCanvas();
+            drawArrowCanvas();
+        }
+        
+        // 绘制网格Canvas
+        function drawGridCanvas() {
+            const canvas = document.getElementById('grid-canvas');
+            const ctx = canvas.getContext('2d');
+            const isDarkTheme = document.body.classList.contains('dark-theme');
+            
+            // 清空背景
+            ctx.fillStyle = isDarkTheme ? '#1e1e1e' : '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制网格
+            ctx.strokeStyle = isDarkTheme ? 'rgba(51, 51, 51, 0.5)' : 'rgba(200, 200, 200, 0.5)';
+            ctx.lineWidth = 0.5;
+            const gridSize = 20;
+            
+            for (let x = 0; x <= canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y <= canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        // 绘制箭头Canvas
+        function drawArrowCanvas() {
+            const canvas = document.getElementById('arrow-canvas');
+            const ctx = canvas.getContext('2d');
+            const isDarkTheme = document.body.classList.contains('dark-theme');
+            
+            // 清空背景
+            ctx.fillStyle = isDarkTheme ? '#1e1e1e' : '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制电场箭头
+            const color = isDarkTheme ? 'rgba(255, 200, 0, 0.6)' : 'rgba(255, 150, 0, 0.7)';
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+            
+            const x = 100, y = 100;
+            const dx = 80, dy = 0;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + dx, y + dy);
+            ctx.stroke();
+            
+            const angle = Math.atan2(dy, dx);
+            const headLen = 8;
+            
+            ctx.beginPath();
+            ctx.moveTo(x + dx, y + dy);
+            ctx.lineTo(
+                x + dx - headLen * Math.cos(angle - Math.PI / 6),
+                y + dy - headLen * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+                x + dx - headLen * Math.cos(angle + Math.PI / 6),
+                y + dy - headLen * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fill();
+            
+            // 绘制磁场点
+            const magColor = isDarkTheme ? 'rgba(100, 150, 255, 0.6)' : 'rgba(100, 150, 255, 0.7)';
+            ctx.fillStyle = magColor;
+            ctx.beginPath();
+            ctx.arc(300, 100, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // 事件监听
+        themeBtn.addEventListener('click', () => {
+            themeManager.toggle();
+            updateDisplay();
+        });
+        
+        // 初始显示
+        updateDisplay();
+    </script>
+</body>
+</html>

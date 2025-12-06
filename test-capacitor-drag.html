@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>电容器拖拽测试</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #333;
+            cursor: crosshair;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .status {
+            margin: 5px 0;
+            padding: 5px;
+            font-family: monospace;
+        }
+        .inside { color: #00aa00; }
+        .outside { color: #aa0000; }
+    </style>
+</head>
+<body>
+    <h1>平行板电容器拖拽测试</h1>
+    
+    <div class="info">
+        <h3>操作说明</h3>
+        <p>🖱️ <strong>鼠标移动</strong>: 查看光标位置是否在电容器内</p>
+        <p>🖱️ <strong>点击拖拽</strong>: 尝试拖动电容器</p>
+        <p>📍 <strong>绿色</strong> = 在电容器内，<strong>红色</strong> = 在外面</p>
+    </div>
+    
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div class="info">
+        <div id="status"></div>
+    </div>
+
+    <script type="module">
+        import { ParallelPlateCapacitor } from './js/objects/ParallelPlateCapacitor.js';
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusDiv = document.getElementById('status');
+        
+        let capacitor = new ParallelPlateCapacitor({
+            x: 400,
+            y: 300,
+            width: 200,
+            plateDistance: 80,
+            strength: 1000,
+            direction: 0,
+            polarity: 1
+        });
+        
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let mousePos = { x: 0, y: 0 };
+        let isInside = false;
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制极板
+            const plateAngle = (capacitor.direction + 90) * Math.PI / 180;
+            const cosPlate = Math.cos(plateAngle);
+            const sinPlate = Math.sin(plateAngle);
+            
+            const fieldAngle = capacitor.direction * Math.PI / 180;
+            const cosField = Math.cos(fieldAngle);
+            const sinField = Math.sin(fieldAngle);
+            
+            const halfWidth = capacitor.width / 2;
+            const halfDist = capacitor.plateDistance / 2;
+            
+            // 第一块板
+            const plate1X1 = capacitor.x - cosPlate * halfWidth - cosField * halfDist;
+            const plate1Y1 = capacitor.y - sinPlate * halfWidth - sinField * halfDist;
+            const plate1X2 = capacitor.x + cosPlate * halfWidth - cosField * halfDist;
+            const plate1Y2 = capacitor.y + sinPlate * halfWidth - sinField * halfDist;
+            
+            // 第二块板
+            const plate2X1 = capacitor.x - cosPlate * halfWidth + cosField * halfDist;
+            const plate2Y1 = capacitor.y - sinPlate * halfWidth + sinField * halfDist;
+            const plate2X2 = capacitor.x + cosPlate * halfWidth + cosField * halfDist;
+            const plate2Y2 = capacitor.y + sinPlate * halfWidth + sinField * halfDist;
+            
+            // 绘制边界框（淡色）
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(plate1X1, plate1Y1);
+            ctx.lineTo(plate2X1, plate2Y1);
+            ctx.lineTo(plate2X2, plate2Y2);
+            ctx.lineTo(plate1X2, plate1Y2);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 绘制极板
+            ctx.strokeStyle = capacitor.polarity > 0 ? '#0088ff' : '#ff4444';
+            ctx.lineWidth = 4;
+            
+            ctx.beginPath();
+            ctx.moveTo(plate1X1, plate1Y1);
+            ctx.lineTo(plate1X2, plate1Y2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(plate2X1, plate2Y1);
+            ctx.lineTo(plate2X2, plate2Y2);
+            ctx.stroke();
+            
+            // 绘制中心点
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(capacitor.x, capacitor.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制光标位置
+            if (mousePos.x > 0 && mousePos.y > 0) {
+                ctx.fillStyle = isInside ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.arc(mousePos.x, mousePos.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制连接线
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.moveTo(capacitor.x, capacitor.y);
+                ctx.lineTo(mousePos.x, mousePos.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // 如果正在拖拽，显示高亮
+            if (isDragging) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(plate1X1, plate1Y1);
+                ctx.lineTo(plate2X1, plate2Y1);
+                ctx.lineTo(plate2X2, plate2Y2);
+                ctx.lineTo(plate1X2, plate1Y2);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        function updateStatus() {
+            const dx = mousePos.x - capacitor.x;
+            const dy = mousePos.y - capacitor.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 计算投影
+            const plateAngle = (capacitor.direction + 90) * Math.PI / 180;
+            const cosPlate = Math.cos(plateAngle);
+            const sinPlate = Math.sin(plateAngle);
+            
+            const fieldAngle = capacitor.direction * Math.PI / 180;
+            const cosField = Math.cos(fieldAngle);
+            const sinField = Math.sin(fieldAngle);
+            
+            const alongPlate = dx * cosPlate + dy * sinPlate;
+            const alongField = dx * cosField + dy * sinField;
+            
+            statusDiv.innerHTML = `
+                <div class="status"><strong>光标位置:</strong> (${mousePos.x.toFixed(0)}, ${mousePos.y.toFixed(0)})</div>
+                <div class="status"><strong>电容器中心:</strong> (${capacitor.x.toFixed(0)}, ${capacitor.y.toFixed(0)})</div>
+                <div class="status"><strong>距离中心:</strong> ${distance.toFixed(1)} px</div>
+                <div class="status"><strong>沿极板方向投影:</strong> ${alongPlate.toFixed(1)} (范围: ±${(capacitor.width/2).toFixed(1)})</div>
+                <div class="status"><strong>沿电场方向投影:</strong> ${alongField.toFixed(1)} (范围: ±${(capacitor.plateDistance/2).toFixed(1)})</div>
+                <div class="status ${isInside ? 'inside' : 'outside'}"><strong>在电容器内:</strong> ${isInside ? '✓ 是' : '✗ 否'}</div>
+                <div class="status"><strong>拖拽状态:</strong> ${isDragging ? '🟢 拖拽中' : '⚪ 未拖拽'}</div>
+            `;
+        }
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mousePos.x = e.clientX - rect.left;
+            mousePos.y = e.clientY - rect.top;
+            
+            isInside = capacitor.containsPoint(mousePos.x, mousePos.y);
+            
+            if (isDragging) {
+                capacitor.x = mousePos.x - dragOffset.x;
+                capacitor.y = mousePos.y - dragOffset.y;
+            }
+            
+            draw();
+            updateStatus();
+        });
+        
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (capacitor.containsPoint(x, y)) {
+                isDragging = true;
+                dragOffset.x = x - capacitor.x;
+                dragOffset.y = y - capacitor.y;
+                canvas.style.cursor = 'grabbing';
+                console.log('开始拖拽电容器');
+            } else {
+                console.log('点击位置不在电容器内');
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (isDragging) {
+                console.log('停止拖拽');
+            }
+            isDragging = false;
+            canvas.style.cursor = 'crosshair';
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            canvas.style.cursor = 'crosshair';
+        });
+        
+        draw();
+        console.log('电容器拖拽测试页面已加载');
+        console.log('电容器参数:', capacitor);
+    </script>
+</body>
+</html>

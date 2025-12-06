@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        #toolbar {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+        }
+        .tool-item {
+            display: inline-block;
+            padding: 10px;
+            margin: 5px;
+            background: white;
+            border: 1px solid #ccc;
+            cursor: move;
+        }
+        #canvas {
+            border: 1px solid #000;
+            display: block;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>拖拽测试</h1>
+    
+    <div id="toolbar">
+        <div class="tool-item" draggable="true" data-type="electric-field-semicircle">半圆电场</div>
+        <div class="tool-item" draggable="true" data-type="capacitor">平行板电容器</div>
+    </div>
+    
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div id="log">
+        <strong>日志：</strong><br>
+    </div>
+
+    <script type="module">
+        import { SemiCircleElectricField } from './js/objects/SemiCircleElectricField.js';
+        import { ParallelPlateCapacitor } from './js/objects/ParallelPlateCapacitor.js';
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const log = document.getElementById('log');
+        
+        function addLog(msg) {
+            const now = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${now}] ${msg}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        addLog('页面加载完成');
+        
+        // 工具栏拖拽事件
+        document.querySelectorAll('.tool-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('component-type', item.dataset.type);
+                addLog(`开始拖拽: ${item.dataset.type}`);
+            });
+        });
+        
+        // Canvas接收拖拽
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+        
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const type = e.dataTransfer.getData('component-type');
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            addLog(`释放在Canvas: ${type} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+            
+            let object = null;
+            
+            try {
+                switch (type) {
+                    case 'electric-field-semicircle':
+                        object = new SemiCircleElectricField({ x, y, radius: 100, strength: 1000, direction: 90, orientation: 0 });
+                        addLog('✅ 创建半圆电场成功');
+                        break;
+                    case 'capacitor':
+                        object = new ParallelPlateCapacitor({ x, y, width: 300, height: 200, plateDistance: 100, strength: 1000, direction: 0, polarity: 1 });
+                        addLog('✅ 创建平行板电容器成功');
+                        break;
+                    default:
+                        addLog(`⚠️ 未知类型: ${type}`);
+                        return;
+                }
+                
+                // 绘制对象
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (object.type === 'semicircle-electric-field') {
+                    ctx.strokeStyle = '#ff6b00';
+                    ctx.lineWidth = 2;
+                    
+                    const angle = object.orientation * Math.PI / 180;
+                    const startAngle = angle - Math.PI / 2;
+                    const endAngle = angle + Math.PI / 2;
+                    
+                    ctx.beginPath();
+                    ctx.arc(object.x, object.y, object.radius, startAngle, endAngle);
+                    ctx.lineTo(object.x, object.y);
+                    ctx.closePath();
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'rgba(255, 200, 0, 0.1)';
+                    ctx.fill();
+                    
+                    addLog(`✅ 绘制半圆电场在 (${object.x}, ${object.y})`);
+                } else if (object.type === 'parallel-plate-capacitor') {
+                    ctx.strokeStyle = '#00a8ff';
+                    ctx.lineWidth = 3;
+                    
+                    const angle = object.direction * Math.PI / 180;
+                    const cosAngle = Math.cos(angle);
+                    const sinAngle = Math.sin(angle);
+                    
+                    const halfDist = object.plateDistance / 2;
+                    const halfWidth = object.width / 2;
+                    
+                    // 第一块板
+                    const p1x1 = object.x - halfDist * sinAngle - halfWidth * cosAngle;
+                    const p1y1 = object.y + halfDist * cosAngle - halfWidth * sinAngle;
+                    const p1x2 = object.x - halfDist * sinAngle + halfWidth * cosAngle;
+                    const p1y2 = object.y + halfDist * cosAngle + halfWidth * sinAngle;
+                    
+                    // 第二块板
+                    const p2x1 = object.x + halfDist * sinAngle - halfWidth * cosAngle;
+                    const p2y1 = object.y - halfDist * cosAngle - halfWidth * sinAngle;
+                    const p2x2 = object.x + halfDist * sinAngle + halfWidth * cosAngle;
+                    const p2y2 = object.y - halfDist * cosAngle + halfWidth * sinAngle;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(p1x1, p1y1);
+                    ctx.lineTo(p1x2, p1y2);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(p2x1, p2y1);
+                    ctx.lineTo(p2x2, p2y2);
+                    ctx.stroke();
+                    
+                    // 连接线
+                    ctx.strokeStyle = 'rgba(0, 168, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([5, 5]);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(p1x1, p1y1);
+                    ctx.lineTo(p2x1, p2y1);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(p1x2, p1y2);
+                    ctx.lineTo(p2x2, p2y2);
+                    ctx.stroke();
+                    
+                    ctx.setLineDash([]);
+                    
+                    addLog(`✅ 绘制平行板电容器在 (${object.x}, ${object.y})`);
+                }
+                
+                // 测试getFieldAt方法
+                const field = object.getFieldAt(x, y);
+                addLog(`电场强度在 (${x.toFixed(0)}, ${y.toFixed(0)}): (${field.x.toFixed(2)}, ${field.y.toFixed(2)})`);
+                
+            } catch (error) {
+                addLog(`❌ 错误: ${error.message}`);
+                console.error(error);
+            }
+        });
+        
+        addLog('拖拽系统已初始化');
+    </script>
+</body>
+</html>

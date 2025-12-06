@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>完整功能测试</title>
+    <link rel="stylesheet" href="styles/theme.css">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        #debug-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 10000;
+        }
+        #debug-panel h3 {
+            margin: 0 0 10px 0;
+            color: #ff0;
+        }
+        #debug-panel .log-entry {
+            margin: 3px 0;
+            padding: 2px 5px;
+            border-left: 2px solid #0f0;
+        }
+        #debug-panel .log-entry.error {
+            border-left-color: #f00;
+            color: #f00;
+        }
+        #debug-panel .log-entry.success {
+            border-left-color: #0f0;
+            color: #0f0;
+        }
+        #debug-panel .log-entry.info {
+            border-left-color: #0ff;
+            color: #0ff;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px 5px 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header id="header">
+            <h1>完整功能测试</h1>
+            <div class="header-controls">
+                <button id="theme-toggle-btn" class="btn" title="切换主题">🌙</button>
+                <button id="play-pause-btn" class="btn btn-primary">▶️</button>
+            </div>
+        </header>
+
+        <aside id="toolbar">
+            <h2>组件库</h2>
+            <div class="tool-section">
+                <h3>电场</h3>
+                <div class="tool-item" draggable="true" data-type="electric-field-rect">均匀电场</div>
+                <div class="tool-item" draggable="true" data-type="electric-field-circle">圆形电场</div>
+                <div class="tool-item" draggable="true" data-type="electric-field-semicircle">半圆电场</div>
+                <div class="tool-item" draggable="true" data-type="capacitor">平行板电容器</div>
+            </div>
+        </aside>
+
+        <main id="canvas-container">
+            <canvas id="grid-canvas"></canvas>
+            <canvas id="field-canvas"></canvas>
+            <canvas id="particle-canvas"></canvas>
+        </main>
+    </div>
+
+    <div id="debug-panel">
+        <h3>🔍 调试控制台</h3>
+        <div>
+            <button class="test-button" onclick="testThemeToggle()">测试主题切换</button>
+            <button class="test-button" onclick="testDragDrop()">测试拖拽</button>
+            <button class="test-button" onclick="clearLogs()">清空日志</button>
+        </div>
+        <hr style="border-color: #333; margin: 10px 0;">
+        <div id="log-container"></div>
+    </div>
+
+    <script type="module">
+        import { ThemeManager } from './js/utils/ThemeManager.js';
+        import { SemiCircleElectricField } from './js/objects/SemiCircleElectricField.js';
+        import { ParallelPlateCapacitor } from './js/objects/ParallelPlateCapacitor.js';
+        
+        const logContainer = document.getElementById('log-container');
+        
+        window.addLog = function(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${timestamp}] ${msg}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, msg);
+        };
+        
+        window.clearLogs = function() {
+            logContainer.innerHTML = '';
+            addLog('日志已清空', 'info');
+        };
+        
+        addLog('页面加载完成', 'success');
+        
+        // 测试ThemeManager
+        let themeManager;
+        try {
+            themeManager = new ThemeManager();
+            addLog('✅ ThemeManager 初始化成功', 'success');
+            addLog(`当前主题: ${themeManager.getCurrentTheme()}`, 'info');
+        } catch (error) {
+            addLog(`❌ ThemeManager 初始化失败: ${error.message}`, 'error');
+            console.error(error);
+        }
+        
+        // 测试主题切换按钮
+        const themeBtn = document.getElementById('theme-toggle-btn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                addLog('主题切换按钮被点击', 'info');
+                if (themeManager) {
+                    try {
+                        themeManager.toggle();
+                        addLog(`✅ 主题已切换到: ${themeManager.getCurrentTheme()}`, 'success');
+                    } catch (error) {
+                        addLog(`❌ 主题切换失败: ${error.message}`, 'error');
+                    }
+                } else {
+                    addLog('❌ ThemeManager 未初始化', 'error');
+                }
+            });
+            addLog('✅ 主题切换按钮事件已绑定', 'success');
+        } else {
+            addLog('❌ 找不到主题切换按钮', 'error');
+        }
+        
+        window.testThemeToggle = function() {
+            addLog('执行主题切换测试...', 'info');
+            themeBtn.click();
+        };
+        
+        // 测试拖拽系统
+        const canvas = document.getElementById('particle-canvas');
+        let dragDropInitialized = false;
+        
+        if (canvas) {
+            addLog('✅ 找到Canvas元素', 'success');
+            
+            // 设置Canvas大小
+            canvas.width = 800;
+            canvas.height = 600;
+            
+            // 工具栏拖拽事件
+            document.querySelectorAll('.tool-item').forEach((item, index) => {
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('component-type', item.dataset.type);
+                    addLog(`🎯 开始拖拽: ${item.dataset.type}`, 'info');
+                });
+            });
+            addLog(`✅ 已绑定 ${document.querySelectorAll('.tool-item').length} 个工具项的拖拽事件`, 'success');
+            
+            // Canvas接收拖拽
+            canvas.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+            
+            canvas.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const type = e.dataTransfer.getData('component-type');
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                addLog(`📍 释放在Canvas: ${type} at (${x.toFixed(0)}, ${y.toFixed(0)})`, 'info');
+                
+                let object = null;
+                
+                try {
+                    switch (type) {
+                        case 'electric-field-semicircle':
+                            object = new SemiCircleElectricField({ x, y, radius: 100, strength: 1000, direction: 90, orientation: 0 });
+                            addLog('✅ 创建半圆电场成功', 'success');
+                            break;
+                        case 'capacitor':
+                            object = new ParallelPlateCapacitor({ x, y, width: 300, height: 200, plateDistance: 100, strength: 1000, direction: 0, polarity: 1 });
+                            addLog('✅ 创建平行板电容器成功', 'success');
+                            break;
+                        case 'electric-field-rect':
+                            addLog('✅ 矩形电场 (未实现绘制)', 'info');
+                            break;
+                        case 'electric-field-circle':
+                            addLog('✅ 圆形电场 (未实现绘制)', 'info');
+                            break;
+                        default:
+                            addLog(`⚠️ 未知类型: ${type}`, 'error');
+                            return;
+                    }
+                    
+                    if (object) {
+                        addLog(`对象属性: type=${object.type}, x=${object.x}, y=${object.y}`, 'info');
+                        
+                        // 测试getFieldAt方法
+                        const field = object.getFieldAt(x, y);
+                        addLog(`电场强度: (${field.x.toFixed(2)}, ${field.y.toFixed(2)}, ${field.z.toFixed(2)})`, 'info');
+                        
+                        // 测试containsPoint方法
+                        const contains = object.containsPoint(x, y);
+                        addLog(`containsPoint(${x.toFixed(0)}, ${y.toFixed(0)}): ${contains}`, 'info');
+                        
+                        // 绘制到Canvas
+                        const ctx = canvas.getContext('2d');
+                        ctx.strokeStyle = '#ff6b00';
+                        ctx.lineWidth = 2;
+                        
+                        if (object.type === 'semicircle-electric-field') {
+                            const angle = object.orientation * Math.PI / 180;
+                            const startAngle = angle - Math.PI / 2;
+                            const endAngle = angle + Math.PI / 2;
+                            
+                            ctx.beginPath();
+                            ctx.arc(object.x, object.y, object.radius, startAngle, endAngle);
+                            ctx.lineTo(object.x, object.y);
+                            ctx.closePath();
+                            ctx.stroke();
+                            ctx.fillStyle = 'rgba(255, 200, 0, 0.2)';
+                            ctx.fill();
+                            
+                            addLog('✅ 半圆电场已绘制', 'success');
+                        } else if (object.type === 'parallel-plate-capacitor') {
+                            ctx.strokeStyle = '#00a8ff';
+                            ctx.lineWidth = 3;
+                            
+                            const angle = object.direction * Math.PI / 180;
+                            const cosAngle = Math.cos(angle);
+                            const sinAngle = Math.sin(angle);
+                            
+                            const halfDist = object.plateDistance / 2;
+                            const halfWidth = object.width / 2;
+                            
+                            const p1x1 = object.x - halfDist * sinAngle - halfWidth * cosAngle;
+                            const p1y1 = object.y + halfDist * cosAngle - halfWidth * sinAngle;
+                            const p1x2 = object.x - halfDist * sinAngle + halfWidth * cosAngle;
+                            const p1y2 = object.y + halfDist * cosAngle + halfWidth * sinAngle;
+                            
+                            const p2x1 = object.x + halfDist * sinAngle - halfWidth * cosAngle;
+                            const p2y1 = object.y - halfDist * cosAngle - halfWidth * sinAngle;
+                            const p2x2 = object.x + halfDist * sinAngle + halfWidth * cosAngle;
+                            const p2y2 = object.y - halfDist * cosAngle + halfWidth * sinAngle;
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(p1x1, p1y1);
+                            ctx.lineTo(p1x2, p1y2);
+                            ctx.stroke();
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(p2x1, p2y1);
+                            ctx.lineTo(p2x2, p2y2);
+                            ctx.stroke();
+                            
+                            addLog('✅ 平行板电容器已绘制', 'success');
+                        }
+                    }
+                    
+                } catch (error) {
+                    addLog(`❌ 错误: ${error.message}`, 'error');
+                    console.error(error);
+                }
+            });
+            
+            dragDropInitialized = true;
+            addLog('✅ 拖拽系统已初始化', 'success');
+        } else {
+            addLog('❌ 找不到Canvas元素', 'error');
+        }
+        
+        window.testDragDrop = function() {
+            if (dragDropInitialized) {
+                addLog('拖拽系统已就绪，请从左侧工具栏拖动组件到Canvas', 'info');
+            } else {
+                addLog('❌ 拖拽系统未初始化', 'error');
+            }
+        };
+        
+        // 捕获所有未处理的错误
+        window.addEventListener('error', (e) => {
+            addLog(`❌ 全局错误: ${e.message}`, 'error');
+            addLog(`   位置: ${e.filename}:${e.lineno}:${e.colno}`, 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            addLog(`❌ 未处理的Promise拒绝: ${e.reason}`, 'error');
+        });
+        
+        addLog('🚀 所有测试就绪', 'success');
+    </script>
+</body>
+</html>

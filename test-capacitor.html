@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>平行板电容器测试</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #333;
+            display: block;
+            margin: 20px 0;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .controls label {
+            display: inline-block;
+            width: 120px;
+            margin: 5px 0;
+        }
+        .controls input, .controls select {
+            width: 200px;
+        }
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .test-point {
+            margin: 5px 0;
+            padding: 5px;
+            background: #e0e0e0;
+            border-left: 3px solid #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>平行板电容器功能测试</h1>
+    
+    <div class="controls">
+        <h3>参数设置</h3>
+        <div>
+            <label>电场方向 (度):</label>
+            <input type="number" id="direction" value="0" min="0" max="359" step="15">
+        </div>
+        <div>
+            <label>极板长度:</label>
+            <input type="number" id="width" value="200" min="50" max="400" step="10">
+        </div>
+        <div>
+            <label>板间距:</label>
+            <input type="number" id="plateDistance" value="80" min="20" max="200" step="10">
+        </div>
+        <div>
+            <label>电场强度:</label>
+            <input type="number" id="strength" value="1000" min="100" max="5000" step="100">
+        </div>
+        <div>
+            <label>极性:</label>
+            <select id="polarity">
+                <option value="1">正常 (+1)</option>
+                <option value="-1">反向 (-1)</option>
+            </select>
+        </div>
+        <button onclick="updateCapacitor()" style="margin-top: 10px; padding: 8px 20px;">更新参数</button>
+    </div>
+    
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div class="info">
+        <h3>测试说明</h3>
+        <p><strong>电场方向</strong>: 0°=向右, 90°=向上, 180°=向左, 270°=向下</p>
+        <p><strong>极板方向</strong>: 垂直于电场方向</p>
+        <p><strong>点击画布</strong>查看该点的电场强度和是否在电容器内</p>
+        <div id="test-results"></div>
+    </div>
+
+    <script type="module">
+        import { ParallelPlateCapacitor } from './js/objects/ParallelPlateCapacitor.js';
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const resultsDiv = document.getElementById('test-results');
+        
+        let capacitor = new ParallelPlateCapacitor({
+            x: 400,
+            y: 300,
+            width: 200,
+            plateDistance: 80,
+            strength: 1000,
+            direction: 0,
+            polarity: 1
+        });
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制中心点
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(capacitor.x, capacitor.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制极板
+            const plateAngle = (capacitor.direction + 90) * Math.PI / 180;
+            const cosPlate = Math.cos(plateAngle);
+            const sinPlate = Math.sin(plateAngle);
+            
+            const fieldAngle = capacitor.direction * Math.PI / 180;
+            const cosField = Math.cos(fieldAngle);
+            const sinField = Math.sin(fieldAngle);
+            
+            const halfWidth = capacitor.width / 2;
+            const halfDist = capacitor.plateDistance / 2;
+            
+            // 第一块板
+            const plate1X1 = capacitor.x - cosPlate * halfWidth - cosField * halfDist;
+            const plate1Y1 = capacitor.y - sinPlate * halfWidth - sinField * halfDist;
+            const plate1X2 = capacitor.x + cosPlate * halfWidth - cosField * halfDist;
+            const plate1Y2 = capacitor.y + sinPlate * halfWidth - sinField * halfDist;
+            
+            // 第二块板
+            const plate2X1 = capacitor.x - cosPlate * halfWidth + cosField * halfDist;
+            const plate2Y1 = capacitor.y - sinPlate * halfWidth + sinField * halfDist;
+            const plate2X2 = capacitor.x + cosPlate * halfWidth + cosField * halfDist;
+            const plate2Y2 = capacitor.y + sinPlate * halfWidth + sinField * halfDist;
+            
+            // 绘制板
+            ctx.strokeStyle = capacitor.polarity > 0 ? '#0088ff' : '#ff4444';
+            ctx.lineWidth = 4;
+            
+            ctx.beginPath();
+            ctx.moveTo(plate1X1, plate1Y1);
+            ctx.lineTo(plate1X2, plate1Y2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(plate2X1, plate2Y1);
+            ctx.lineTo(plate2X2, plate2Y2);
+            ctx.stroke();
+            
+            // 绘制边界框（虚线）
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            
+            ctx.beginPath();
+            ctx.moveTo(plate1X1, plate1Y1);
+            ctx.lineTo(plate2X1, plate2Y1);
+            ctx.lineTo(plate2X2, plate2Y2);
+            ctx.lineTo(plate1X2, plate1Y2);
+            ctx.closePath();
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            
+            // 绘制电场方向箭头
+            const arrowLen = 40;
+            const arrowX = capacitor.x + cosField * arrowLen;
+            const arrowY = capacitor.y + sinField * arrowLen;
+            
+            ctx.strokeStyle = '#00aa00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(capacitor.x, capacitor.y);
+            ctx.lineTo(arrowX, arrowY);
+            ctx.stroke();
+            
+            // 箭头头部
+            const arrowAngle = Math.atan2(arrowY - capacitor.y, arrowX - capacitor.x);
+            const arrowSize = 10;
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(
+                arrowX - arrowSize * Math.cos(arrowAngle - Math.PI / 6),
+                arrowY - arrowSize * Math.sin(arrowAngle - Math.PI / 6)
+            );
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(
+                arrowX - arrowSize * Math.cos(arrowAngle + Math.PI / 6),
+                arrowY - arrowSize * Math.sin(arrowAngle + Math.PI / 6)
+            );
+            ctx.stroke();
+            
+            // 标注
+            ctx.fillStyle = '#000';
+            ctx.font = '12px Arial';
+            ctx.fillText('中心', capacitor.x + 10, capacitor.y - 10);
+            ctx.fillStyle = '#00aa00';
+            ctx.fillText(`电场方向: ${capacitor.direction}°`, capacitor.x + 50, capacitor.y);
+        }
+        
+        window.updateCapacitor = function() {
+            capacitor.direction = parseFloat(document.getElementById('direction').value);
+            capacitor.width = parseFloat(document.getElementById('width').value);
+            capacitor.plateDistance = parseFloat(document.getElementById('plateDistance').value);
+            capacitor.strength = parseFloat(document.getElementById('strength').value);
+            capacitor.polarity = parseFloat(document.getElementById('polarity').value);
+            draw();
+        };
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const isInside = capacitor.containsPoint(x, y);
+            const field = capacitor.getFieldAt(x, y);
+            
+            // 绘制点击点
+            draw();
+            ctx.fillStyle = isInside ? '#00ff00' : '#ff0000';
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 显示结果
+            resultsDiv.innerHTML = `
+                <div class="test-point">
+                    <strong>点击位置:</strong> (${x.toFixed(0)}, ${y.toFixed(0)})<br>
+                    <strong>在电容器内:</strong> ${isInside ? '✓ 是' : '✗ 否'}<br>
+                    <strong>电场强度:</strong> (${field.x.toFixed(2)}, ${field.y.toFixed(2)}, ${field.z.toFixed(2)})<br>
+                    <strong>电场大小:</strong> ${Math.sqrt(field.x * field.x + field.y * field.y).toFixed(2)}
+                </div>
+            `;
+        });
+        
+        draw();
+        
+        console.log('平行板电容器测试页面已加载');
+        console.log('电容器参数:', capacitor);
+    </script>
+</body>
+</html>
