@@ -55,8 +55,12 @@ class Application {
         // 加载默认场景
         this.loadDefaultScene();
         
-        // 启动主循环
-        this.start();
+        // 默认暂停，等待点击开始
+        this.scene.isPaused = true;
+        const playIcon = document.getElementById('play-icon');
+        if (playIcon) playIcon.textContent = '▶';
+        this.renderer.render(this.scene);
+        this.updateUI();
         
         console.log('✅ 初始化完成');
     }
@@ -114,6 +118,15 @@ class Application {
             this.timeStep = parseFloat(e.target.value);
             timestepValue.textContent = (this.timeStep * 1000).toFixed(0) + 'ms';
         });
+
+        // 能量显示开关
+        const energyToggle = document.getElementById('toggle-energy-overlay');
+        if (energyToggle) {
+            energyToggle.checked = this.scene.settings.showEnergy;
+            energyToggle.addEventListener('change', (e) => {
+                this.scene.settings.showEnergy = e.target.checked;
+            });
+        }
         
         // 预设场景按钮
         document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -206,6 +219,7 @@ class Application {
         
         // 物理更新
         this.performanceMonitor.startMeasure('physics');
+        this.scene.time += this.timeStep;
         this.physicsEngine.update(this.scene, this.timeStep);
         this.performanceMonitor.endMeasure('physics');
         

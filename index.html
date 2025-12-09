@@ -27,6 +27,10 @@
                 <button id="theme-toggle-btn" class="btn" title="切换主题">🌙</button>
                 <input type="file" id="import-file-input" accept=".json" style="display: none;">
                 <label class="control-label">
+                    <span>显示能量:</span>
+                    <input type="checkbox" id="toggle-energy-overlay" checked>
+                </label>
+                <label class="control-label">
                     <span>时间步长:</span>
                     <input type="range" id="timestep-slider" min="0.001" max="0.05" step="0.001" value="0.016">
                     <span id="timestep-value">16ms</span>
@@ -69,6 +73,14 @@
                     </svg>
                     <span>平行板电容器</span>
                 </div>
+                <div class="tool-item" draggable="true" data-type="vertical-capacitor" title="垂直平行板电容器">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <rect x="6" y="4" width="4" height="16" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <rect x="14" y="4" width="4" height="16" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <path d="M6 12h12" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>垂直平行板电容器</span>
+                </div>
             </div>
 
             <div class="tool-section">
@@ -86,11 +98,31 @@
 
             <div class="tool-section">
                 <h3>粒子</h3>
+                <div class="tool-item" draggable="true" data-type="electron-gun" title="电子枪">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path d="M4 7h10l4 5-4 5H4z" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="6" cy="12" r="1.5" fill="currentColor"/>
+                    </svg>
+                    <span>电子枪</span>
+                </div>
                 <div class="tool-item" draggable="true" data-type="particle" title="带电粒子">
                     <svg viewBox="0 0 24 24" width="24" height="24">
                         <circle cx="12" cy="12" r="6" fill="currentColor"/>
                     </svg>
                     <span>带电粒子</span>
+                </div>
+            </div>
+
+            <div class="tool-section">
+                <h3>显示</h3>
+                <div class="tool-item" draggable="true" data-type="fluorescent-screen" title="荧光屏">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <rect x="4" y="4" width="8" height="16" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <rect x="12" y="6" width="8" height="12" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <circle cx="16" cy="12" r="2" fill="currentColor"/>
+                    </svg>
+                    <span>荧光屏</span>
                 </div>
             </div>
 

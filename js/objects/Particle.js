@@ -13,8 +13,8 @@ export class Particle extends BaseObject {
         // 物理属性
         this.position = new Vector(config.x || 0, config.y || 0, 0);
         this.velocity = new Vector(config.vx || 0, config.vy || 0, 0);
-        this.mass = config.mass || 9.109e-31; // 默认电子质量(kg)
-        this.charge = config.charge || -1.602e-19; // 默认电子电荷(C)
+        this.mass = config.mass ?? 9.109e-31; // 默认电子质量(kg)
+        this.charge = config.charge ?? -1.602e-19; // 默认电子电荷(C)
         
         // 显示属性
         this.radius = config.radius || 6;

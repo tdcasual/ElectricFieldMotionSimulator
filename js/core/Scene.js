@@ -6,9 +6,12 @@ export class Scene {
     constructor() {
         this.electricFields = [];
         this.magneticFields = [];
+        this.emitters = [];
+        this.screens = [];
         this.particles = [];
         this.selectedObject = null;
-        this.isPaused = false;  // 暂停状态标志
+        this.isPaused = false;
+        this.time = 0; // 模拟时间（秒）
         
         // 场景设置
         this.settings = {
@@ -24,13 +27,19 @@ export class Scene {
      * 添加对象到场景
      */
     addObject(object) {
-        // 平行板电容器没有带 electric 关键字，但在功能上仍属于电场对象
-        const isElectric = object.type.includes('electric') || object.type === 'parallel-plate-capacitor';
+        // 平行板和垂直平行板没有 electric 关键字，但在功能上属于电场对象
+        const isElectric = object.type.includes('electric') ||
+            object.type === 'parallel-plate-capacitor' ||
+            object.type === 'vertical-parallel-plate-capacitor';
 
         if (isElectric) {
             this.electricFields.push(object);
         } else if (object.type.includes('magnetic')) {
             this.magneticFields.push(object);
+        } else if (object.type === 'electron-gun') {
+            this.emitters.push(object);
+        } else if (object.type === 'fluorescent-screen') {
+            this.screens.push(object);
         } else if (object.type === 'particle') {
             this.particles.push(object);
         }
@@ -43,7 +52,9 @@ export class Scene {
      * 从场景移除对象
      */
     removeObject(object) {
-        const isElectric = object.type.includes('electric') || object.type === 'parallel-plate-capacitor';
+        const isElectric = object.type.includes('electric') ||
+            object.type === 'parallel-plate-capacitor' ||
+            object.type === 'vertical-parallel-plate-capacitor';
 
         if (isElectric) {
             const index = this.electricFields.indexOf(object);
@@ -51,6 +62,12 @@ export class Scene {
         } else if (object.type.includes('magnetic')) {
             const index = this.magneticFields.indexOf(object);
             if (index > -1) this.magneticFields.splice(index, 1);
+        } else if (object.type === 'electron-gun') {
+            const index = this.emitters.indexOf(object);
+            if (index > -1) this.emitters.splice(index, 1);
+        } else if (object.type === 'fluorescent-screen') {
+            const index = this.screens.indexOf(object);
+            if (index > -1) this.screens.splice(index, 1);
         } else if (object.type === 'particle') {
             const index = this.particles.indexOf(object);
             if (index > -1) this.particles.splice(index, 1);
@@ -66,6 +83,8 @@ export class Scene {
         return [
             ...this.electricFields,
             ...this.magneticFields,
+            ...this.emitters,
+            ...this.screens,
             ...this.particles
         ];
     }
@@ -93,8 +112,11 @@ export class Scene {
     clear() {
         this.electricFields = [];
         this.magneticFields = [];
+        this.emitters = [];
+        this.screens = [];
         this.particles = [];
         this.selectedObject = null;
+        this.time = 0;
     }
     
     /**
@@ -102,7 +124,7 @@ export class Scene {
      */
     duplicateObject(object) {
         const data = object.serialize();
-        // 偏移位置
+        // 位移位置
         data.x += 20;
         data.y += 20;
         
@@ -123,6 +145,8 @@ export class Scene {
             settings: { ...this.settings },
             electricFields: this.electricFields.map(obj => obj.serialize()),
             magneticFields: this.magneticFields.map(obj => obj.serialize()),
+            emitters: this.emitters.map(obj => obj.serialize()),
+            screens: this.screens.map(obj => obj.serialize()),
             particles: this.particles.map(obj => obj.serialize())
         };
     }
@@ -191,6 +215,48 @@ export class Scene {
                 });
             }
         });
+
+        import('../objects/VerticalParallelPlateCapacitor.js').then(module => {
+            const VerticalParallelPlateCapacitor = module.VerticalParallelPlateCapacitor;
+
+            if (data.electricFields) {
+                data.electricFields.forEach(fieldData => {
+                    if (fieldData.type === 'vertical-parallel-plate-capacitor') {
+                        const field = new VerticalParallelPlateCapacitor(fieldData);
+                        field.deserialize(fieldData);
+                        this.addObject(field);
+                    }
+                });
+            }
+        });
+        
+        import('../objects/ElectronGun.js').then(module => {
+            const ElectronGun = module.ElectronGun;
+
+            if (data.emitters) {
+                data.emitters.forEach(emitterData => {
+                    if (emitterData.type === 'electron-gun') {
+                        const emitter = new ElectronGun(emitterData);
+                        emitter.deserialize(emitterData);
+                        this.addObject(emitter);
+                    }
+                });
+            }
+        });
+
+        import('../objects/FluorescentScreen.js').then(module => {
+            const FluorescentScreen = module.FluorescentScreen;
+
+            if (data.screens) {
+                data.screens.forEach(screenData => {
+                    if (screenData.type === 'fluorescent-screen') {
+                        const screen = new FluorescentScreen(screenData);
+                        screen.deserialize(screenData);
+                        this.addObject(screen);
+                    }
+                });
+            }
+        });
         
         import('../objects/MagneticField.js').then(module => {
             const MagneticField = module.MagneticField;
@@ -222,16 +288,20 @@ export class Scene {
         if (data.settings) {
             Object.assign(this.settings, data.settings);
         }
+
+        // 重置时间轴
+        this.time = 0;
     }
     
     /**
-     * 获取场强（所有电场叠加）
+     * 获取电场强度（所有电场叠加）
      */
     getElectricField(x, y) {
         let Ex = 0, Ey = 0;
+        const t = this.time || 0;
         
         for (const field of this.electricFields) {
-            const E = field.getFieldAt(x, y);
+            const E = field.getFieldAt(x, y, t);
             Ex += E.x;
             Ey += E.y;
         }
@@ -246,9 +316,15 @@ export class Scene {
         let Bz = 0;
         
         for (const field of this.magneticFields) {
-            Bz += field.getFieldAt(x, y);
+            Bz += field.getFieldAt(x, y, this.time || 0);
         }
         
         return Bz;
+    }
+
+    hasTimeVaryingFields() {
+        const timeVaryingE = this.electricFields.some(field => typeof field.isTimeVarying === 'function' && field.isTimeVarying());
+        const screensActive = this.screens?.some(screen => screen.hits && screen.hits.length > 0);
+        return timeVaryingE || screensActive;
     }
 }

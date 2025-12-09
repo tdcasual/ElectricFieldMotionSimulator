@@ -7,7 +7,10 @@ import { RectElectricField } from '../objects/RectElectricField.js';
 import { CircleElectricField } from '../objects/CircleElectricField.js';
 import { SemiCircleElectricField } from '../objects/SemiCircleElectricField.js';
 import { ParallelPlateCapacitor } from '../objects/ParallelPlateCapacitor.js';
+import { VerticalParallelPlateCapacitor } from '../objects/VerticalParallelPlateCapacitor.js';
 import { MagneticField } from '../objects/MagneticField.js';
+import { ElectronGun } from '../objects/ElectronGun.js';
+import { FluorescentScreen } from '../objects/FluorescentScreen.js';
 
 export class DragDropManager {
     constructor(scene, renderer, options = {}) {
@@ -79,8 +82,30 @@ export class DragDropManager {
             case 'capacitor':
                 object = new ParallelPlateCapacitor({ x, y, width: 200, plateDistance: 80, strength: 1000, direction: 0, polarity: 1 });
                 break;
+            case 'vertical-capacitor':
+                object = new VerticalParallelPlateCapacitor({ x, y, height: 200, plateDistance: 80, strength: 1000, polarity: 1 });
+                break;
             case 'magnetic-field':
                 object = new MagneticField({ x, y, width: 200, height: 150, strength: 0.5 });
+                break;
+            case 'electron-gun':
+                object = new ElectronGun({
+                    x, y,
+                    direction: 0,
+                    emissionRate: 2,
+                    emissionSpeed: 200,
+                    particleType: 'electron'
+                });
+                break;
+            case 'fluorescent-screen':
+                object = new FluorescentScreen({
+                    x, y,
+                    width: 150,
+                    height: 150,
+                    depth: 30,
+                    spotSize: 6,
+                    persistence: 1.5
+                });
                 break;
             case 'particle':
                 object = new Particle({ 
@@ -96,6 +121,9 @@ export class DragDropManager {
         if (object) {
             this.scene.addObject(object);
             this.renderer?.invalidateFields?.();
+            if (this.scene.isPaused) {
+                this.renderer?.render?.(this.scene);
+            }
         }
     }
     

@@ -1,67 +1,52 @@
 /**
- * 平行板电容器（屏幕平面内）
+ * 垂直平行板电容器（板垂直于屏幕，用于左右偏转）
+ * 仅以电场箭头示意，不绘制矩形区域。
  */
 
 import { ElectricField } from './ElectricField.js';
 import { Vector } from '../physics/VectorMath.js';
 
-export class ParallelPlateCapacitor extends ElectricField {
+export class VerticalParallelPlateCapacitor extends ElectricField {
     constructor(config = {}) {
         super(config);
-        
-        this.type = 'parallel-plate-capacitor';
-        this.width = config.width || 200;                // 板长度（垂直于电场方向）
-        this.plateDistance = config.plateDistance || 80; // 两板间距（沿电场方向）
-        this.polarity = config.polarity || 1;            // 1 = 正向, -1 = 反向
-        this.sourceType = config.sourceType || 'dc';     // dc | ac | custom
+
+        this.type = 'vertical-parallel-plate-capacitor';
+        this.height = config.height || 200;             // 板高度（显示用）
+        this.plateDistance = config.plateDistance || 80; // 板间距（沿屏幕法向）
+        this.polarity = config.polarity || 1;
+        this.sourceType = config.sourceType || 'dc';    // dc | ac | custom
         this.acAmplitude = config.acAmplitude ?? this.strength;
-        this.acFrequency = config.acFrequency ?? 50;     // Hz
-        this.acPhase = config.acPhase ?? 0;              // deg
-        this.dcBias = config.dcBias ?? 0;                // 直流偏置
-        this.waveform = config.waveform || 'sine';       // sine|square|triangle
+        this.acFrequency = config.acFrequency ?? 50;
+        this.acPhase = config.acPhase ?? 0;
+        this.dcBias = config.dcBias ?? 0;
+        this.waveform = config.waveform || 'sine';
         this.customExpression = config.customExpression || 'Math.sin(2 * Math.PI * 50 * t)';
         this._customFn = null;
         this.compileCustomExpression();
     }
-    
+
     getFieldAt(x, y, time = 0) {
         if (!this.containsPoint(x, y)) {
             return new Vector(0, 0, 0);
         }
-        
-        const angle = this.direction * Math.PI / 180;
         const strength = this.getEffectiveStrength(time);
-        const Ex = strength * Math.cos(angle) * this.polarity;
-        const Ey = strength * Math.sin(angle) * this.polarity;
-        
-        return new Vector(Ex, Ey, 0);
+        // 参考图示：电场箭头竖直，polarity 控制正反向（正=向上，负=向下）
+        return new Vector(0, strength * this.polarity, 0);
     }
-    
+
     containsPoint(x, y) {
+        // 将板视作以 (x,y) 为中心的竖直条带，高度 height，厚度 plateDistance/2 前后
         const dx = x - this.x;
         const dy = y - this.y;
-        
-        const plateAngle = (this.direction + 90) * Math.PI / 180;
-        const cosPlate = Math.cos(plateAngle);
-        const sinPlate = Math.sin(plateAngle);
-        
-        const fieldAngle = this.direction * Math.PI / 180;
-        const cosField = Math.cos(fieldAngle);
-        const sinField = Math.sin(fieldAngle);
-        
-        const alongPlate = dx * cosPlate + dy * sinPlate;  // 沿板方向
-        const alongField = dx * cosField + dy * sinField;  // 沿电场方向
-        
-        if (Math.abs(alongPlate) > this.width / 2) return false;
-        if (Math.abs(alongField) > this.plateDistance / 2) return false;
-        
+        if (Math.abs(dx) > this.plateDistance / 2) return false;
+        if (Math.abs(dy) > this.height / 2) return false;
         return true;
     }
-    
+
     serialize() {
         return {
             ...super.serialize(),
-            width: this.width,
+            height: this.height,
             plateDistance: this.plateDistance,
             polarity: this.polarity,
             color: this.color,
@@ -74,13 +59,13 @@ export class ParallelPlateCapacitor extends ElectricField {
             customExpression: this.customExpression
         };
     }
-    
+
     deserialize(data) {
         super.deserialize(data);
-        this.width = data.width;
+        this.height = data.height;
         this.plateDistance = data.plateDistance;
         this.strength = data.strength;
-        this.direction = data.direction;
+        this.direction = data.direction ?? 0; // unused for field direction, kept for compatibility
         this.polarity = data.polarity;
         this.color = data.color;
         this.sourceType = data.sourceType || 'dc';
@@ -127,7 +112,7 @@ export class ParallelPlateCapacitor extends ElectricField {
             // eslint-disable-next-line no-new-func
             this._customFn = new Function('t', `return ${this.customExpression};`);
         } catch (e) {
-            console.warn('Invalid custom expression for capacitor:', e);
+            console.warn('Invalid custom expression for vertical capacitor:', e);
             this._customFn = null;
         }
     }

@@ -77,7 +77,7 @@ export class Renderer {
         if (!this.bgCtx || !this.fieldCtx || !this.particleCtx) return;
 
         // 渲染背景层（仅在需要时）
-        if (this.needFieldRedraw) {
+        if (this.needFieldRedraw || scene.hasTimeVaryingFields()) {
             this.renderBackground(scene);
             this.renderFields(scene);
             this.needFieldRedraw = false;
@@ -108,7 +108,21 @@ export class Renderer {
         for (const field of scene.magneticFields) {
             this.drawMagneticField(field);
         }
-        
+
+        // 绘制荧光屏
+        if (scene.screens?.length) {
+            for (const screen of scene.screens) {
+                this.drawFluorescentScreen(screen, scene.time || 0);
+            }
+        }
+
+        // 绘制发射器
+        if (scene.emitters?.length) {
+            for (const emitter of scene.emitters) {
+                this.drawElectronGun(emitter, scene);
+            }
+        }
+
         // 绘制场强矢量（可选）
         if (scene.settings.showFieldVectors) {
             this.fieldVisualizer.render(this.fieldCtx, scene, this.width, this.height);
@@ -216,6 +230,52 @@ export class Renderer {
             this.fieldCtx.lineTo(plate2X1, plate2Y1);
             this.fieldCtx.closePath();
             this.fieldCtx.fill();
+        } else if (field.type === 'vertical-parallel-plate-capacitor') {
+            // 垂直平行板电容器：用两条竖线和箭头示意
+            const halfHeight = field.height / 2;
+            const halfGap = field.plateDistance / 2;
+            const xLeft = field.x - halfGap;
+            const xRight = field.x + halfGap;
+            const yTop = field.y - halfHeight;
+            const yBottom = field.y + halfHeight;
+
+            this.fieldCtx.strokeStyle = field.polarity > 0 ? '#0088ff' : '#ff4444';
+            this.fieldCtx.lineWidth = 3;
+
+            // 左板
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(xLeft, yTop);
+            this.fieldCtx.lineTo(xLeft, yBottom);
+            this.fieldCtx.stroke();
+            // 右板
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(xRight, yTop);
+            this.fieldCtx.lineTo(xRight, yBottom);
+            this.fieldCtx.stroke();
+
+            // 箭头示意电场方向（竖直）
+            const dir = field.polarity >= 0 ? -1 : 1; // 正向向上
+            const arrowX = field.x;
+            const arrowTop = field.y + dir * (halfHeight * 0.6);
+            const arrowBottom = field.y - dir * (halfHeight * 0.1);
+            const dy = arrowBottom - arrowTop;
+
+            this.fieldCtx.strokeStyle = '#00ccaa';
+            this.fieldCtx.fillStyle = '#00ccaa';
+            this.fieldCtx.lineWidth = 2;
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(arrowX, arrowTop);
+            this.fieldCtx.lineTo(arrowX, arrowBottom);
+            this.fieldCtx.stroke();
+
+            const angle = dir < 0 ? -Math.PI / 2 : Math.PI / 2;
+            const headLen = 8;
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(arrowX, arrowTop);
+            this.fieldCtx.lineTo(arrowX - headLen * Math.cos(angle - Math.PI / 6), arrowTop - headLen * Math.sin(angle - Math.PI / 6));
+            this.fieldCtx.lineTo(arrowX - headLen * Math.cos(angle + Math.PI / 6), arrowTop - headLen * Math.sin(angle + Math.PI / 6));
+            this.fieldCtx.closePath();
+            this.fieldCtx.fill();
         }
         
         // 绘制选中高亮
@@ -266,6 +326,10 @@ export class Renderer {
                 );
                 this.fieldCtx.closePath();
                 this.fieldCtx.stroke();
+            } else if (field.type === 'vertical-parallel-plate-capacitor') {
+                const halfHeight = field.height / 2 + 5;
+                const halfGap = field.plateDistance / 2 + 5;
+                this.fieldCtx.strokeRect(field.x - halfGap, field.y - halfHeight, halfGap * 2, halfHeight * 2);
             }
             
             this.fieldCtx.setLineDash([]);
@@ -311,6 +375,117 @@ export class Renderer {
         }
         
         this.fieldCtx.restore();
+    }
+
+    drawFluorescentScreen(screen, time) {
+        this.fieldCtx.save();
+
+        const frontX = screen.x;
+        const frontY = screen.y;
+        const frontW = screen.width;
+        const frontH = screen.height;
+        const sideW = screen.depth;
+        const gap = screen.viewGap ?? 12;
+        const sideX = (frontX - frontW / 2) - gap - sideW / 2;
+
+        // 侧视矩形（在左侧）
+        const sideRect = {
+            x: sideX - sideW / 2,
+            y: frontY - frontH / 2,
+            w: sideW,
+            h: frontH
+        };
+        this.fieldCtx.fillStyle = 'rgba(120, 140, 160, 0.5)';
+        this.fieldCtx.strokeStyle = 'rgba(80, 90, 100, 0.9)';
+        this.fieldCtx.lineWidth = 2;
+        this.fieldCtx.fillRect(sideRect.x, sideRect.y, sideRect.w, sideRect.h);
+        this.fieldCtx.strokeRect(sideRect.x, sideRect.y, sideRect.w, sideRect.h);
+
+        // 正视方形屏幕
+        const frontRect = {
+            x: frontX - frontW / 2,
+            y: frontY - frontH / 2,
+            w: frontW,
+            h: frontH
+        };
+        this.fieldCtx.fillStyle = 'rgba(30, 60, 40, 0.6)';
+        this.fieldCtx.strokeStyle = 'rgba(120, 200, 120, 0.9)';
+        this.fieldCtx.lineWidth = 2;
+        this.fieldCtx.fillRect(frontRect.x, frontRect.y, frontRect.w, frontRect.h);
+        this.fieldCtx.strokeRect(frontRect.x, frontRect.y, frontRect.w, frontRect.h);
+
+        // 光斑
+        screen.pruneHits(time);
+        for (const hit of screen.hits) {
+            const age = time - hit.time;
+            const alpha = Math.max(0, 1 - age / screen.persistence);
+            const cx = frontX + hit.x;
+            const cy = frontY + hit.y;
+            this.fieldCtx.save();
+            this.fieldCtx.fillStyle = `rgba(120, 255, 120, ${0.2 + 0.8 * alpha})`;
+            this.fieldCtx.shadowColor = 'rgba(120, 255, 120, 0.6)';
+            this.fieldCtx.shadowBlur = 8;
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(cx, cy, screen.spotSize, 0, Math.PI * 2);
+            this.fieldCtx.fill();
+            this.fieldCtx.restore();
+        }
+
+        // 选中高亮
+        if (screen === window.app?.scene?.selectedObject) {
+            this.fieldCtx.strokeStyle = '#0e639c';
+            this.fieldCtx.setLineDash([5, 5]);
+            this.fieldCtx.lineWidth = 2;
+            this.fieldCtx.strokeRect(frontRect.x - 4, frontRect.y - 4, frontRect.w + 8, frontRect.h + 8);
+        }
+
+        this.fieldCtx.restore();
+    }
+
+    drawElectronGun(emitter, scene) {
+        this.fieldCtx.save();
+        this.fieldCtx.translate(emitter.x, emitter.y);
+        this.fieldCtx.rotate(emitter.direction * Math.PI / 180);
+
+        const bodyLen = 30;
+        const bodyWidth = 12;
+
+        this.fieldCtx.fillStyle = '#6c9bf4';
+        this.fieldCtx.strokeStyle = '#2c5aa0';
+        this.fieldCtx.lineWidth = 2;
+
+        // 枪体轮廓
+        this.fieldCtx.beginPath();
+        this.fieldCtx.moveTo(-bodyLen * 0.3, -bodyWidth / 2);
+        this.fieldCtx.lineTo(bodyLen * 0.7, -bodyWidth / 2);
+        this.fieldCtx.lineTo(bodyLen * 0.9, 0);
+        this.fieldCtx.lineTo(bodyLen * 0.7, bodyWidth / 2);
+        this.fieldCtx.lineTo(-bodyLen * 0.3, bodyWidth / 2);
+        this.fieldCtx.closePath();
+        this.fieldCtx.fill();
+        this.fieldCtx.stroke();
+
+        // 发射指示箭头
+        this.fieldCtx.strokeStyle = '#ffffff';
+        this.fieldCtx.lineWidth = 2;
+        this.fieldCtx.beginPath();
+        this.fieldCtx.moveTo(0, 0);
+        this.fieldCtx.lineTo(bodyLen, 0);
+        this.fieldCtx.stroke();
+
+        this.fieldCtx.restore();
+
+        // 选中高亮
+        if (emitter === scene.selectedObject) {
+            this.fieldCtx.save();
+            this.fieldCtx.strokeStyle = '#0e639c';
+            this.fieldCtx.lineWidth = 2.5;
+            this.fieldCtx.setLineDash([5, 5]);
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(emitter.x, emitter.y, 18, 0, Math.PI * 2);
+            this.fieldCtx.stroke();
+            this.fieldCtx.restore();
+        }
     }
     
     renderParticles(scene) {
