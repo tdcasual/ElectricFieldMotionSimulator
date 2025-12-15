@@ -147,11 +147,16 @@ export class DragDropManager {
         
         if (object) {
             this.scene.addObject(object);
-            this.renderer?.invalidateFields?.();
-            if (this.scene.isPaused) {
-                this.renderer?.render?.(this.scene);
+            const app = window.app;
+            if (app?.requestRender && app.scene === this.scene) {
+                app.requestRender({ invalidateFields: true });
+            } else {
+                this.renderer?.invalidateFields?.();
+                if (this.scene.isPaused) {
+                    this.renderer?.render?.(this.scene);
+                }
+                window.app?.updateUI?.();
             }
-            window.app?.updateUI?.();
         }
     }
 
@@ -282,9 +287,14 @@ export class DragDropManager {
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
-            this.renderer?.invalidateFields?.();
-            if (this.scene.isPaused) {
-                this.renderer?.render?.(this.scene);
+            const app = window.app;
+            if (app?.requestRender && app.scene === this.scene) {
+                app.requestRender({ invalidateFields: true, updateUI: false });
+            } else {
+                this.renderer?.invalidateFields?.();
+                if (this.scene.isPaused) {
+                    this.renderer?.render?.(this.scene);
+                }
             }
         }
     }
@@ -405,9 +415,14 @@ export class DragDropManager {
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
-            this.renderer?.invalidateFields?.();
-            if (this.scene.isPaused) {
-                this.renderer?.render?.(this.scene);
+            const app = window.app;
+            if (app?.requestRender && app.scene === this.scene) {
+                app.requestRender({ invalidateFields: true, updateUI: false });
+            } else {
+                this.renderer?.invalidateFields?.();
+                if (this.scene.isPaused) {
+                    this.renderer?.render?.(this.scene);
+                }
             }
         }
     }
@@ -442,6 +457,15 @@ export class DragDropManager {
     
     onContextMenu(e) {
         e.preventDefault();
+        const fromTouch = e.sourceCapabilities?.firesTouchEvents === true;
+        if (fromTouch) return;
+
+        const isRightClick =
+            (typeof e.button === 'number' && e.button === 2) ||
+            (typeof e.which === 'number' && e.which === 3) ||
+            (e.ctrlKey && typeof e.button === 'number' && e.button === 0);
+        if (this.isCoarsePointer && !isRightClick) return;
+
         const pos = this.getMousePos(e);
         const prevSelectedObject = this.scene.selectedObject;
         const clickedObject = this.scene.findObjectAt(pos.x, pos.y);
@@ -450,9 +474,14 @@ export class DragDropManager {
             this.scene.selectedObject = clickedObject;
 
             if (prevSelectedObject !== this.scene.selectedObject) {
-                this.renderer?.invalidateFields?.();
-                if (this.scene.isPaused) {
-                    this.renderer?.render?.(this.scene);
+                const app = window.app;
+                if (app?.requestRender && app.scene === this.scene) {
+                    app.requestRender({ invalidateFields: true, updateUI: false });
+                } else {
+                    this.renderer?.invalidateFields?.();
+                    if (this.scene.isPaused) {
+                        this.renderer?.render?.(this.scene);
+                    }
                 }
             }
             

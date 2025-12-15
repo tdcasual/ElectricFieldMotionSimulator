@@ -160,6 +160,11 @@
     border-color: var(--accent-blue);
 }
 
+.preset-btn:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
 /* 画布区域 */
 #canvas-area {
     grid-area: canvas;

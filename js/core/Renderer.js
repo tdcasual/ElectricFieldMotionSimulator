@@ -480,6 +480,55 @@ export class Renderer {
 
         this.fieldCtx.restore();
 
+        // 叠加显示（速度/能量）
+        if (emitter.showVelocity || emitter.showEnergy) {
+            const angle = emitter.direction * Math.PI / 180;
+            const barrelLength = emitter.barrelLength ?? 25;
+            const originX = emitter.x + Math.cos(angle) * barrelLength;
+            const originY = emitter.y + Math.sin(angle) * barrelLength;
+
+            if (emitter.showVelocity) {
+                if (emitter.velocityDisplayMode === 'speed') {
+                    this.drawTextBadge(
+                        this.fieldCtx,
+                        emitter.x + 18,
+                        emitter.y - 18,
+                        `v0: ${this.formatNumber(emitter.emissionSpeed)} m/s`
+                    );
+                } else {
+                    const vScale = 0.08;
+                    let dx = Math.cos(angle) * emitter.emissionSpeed * vScale;
+                    let dy = Math.sin(angle) * emitter.emissionSpeed * vScale;
+                    if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+                        dx = 0;
+                        dy = 0;
+                    }
+                    const len = Math.hypot(dx, dy);
+                    const maxLen = 140;
+                    if (len > maxLen && len > 0) {
+                        const s = maxLen / len;
+                        dx *= s;
+                        dy *= s;
+                    }
+                    if (Number.isFinite(len) && len > 0) {
+                        this.drawArrow(this.fieldCtx, originX, originY, dx, dy, '#ffffff', 2);
+                    }
+                }
+            }
+
+            if (emitter.showEnergy) {
+                const speed = Number.isFinite(emitter.emissionSpeed) ? emitter.emissionSpeed : 0;
+                const mass = Number.isFinite(emitter.particleMass) ? emitter.particleMass : 0;
+                const Ek = 0.5 * mass * speed * speed;
+                this.drawTextBadge(
+                    this.fieldCtx,
+                    emitter.x + 18,
+                    emitter.y - 2,
+                    `Ek0: ${this.formatNumber(Ek * 1e9)} nJ`
+                );
+            }
+        }
+
         // 选中高亮
         if (emitter === scene.selectedObject) {
             this.fieldCtx.save();
@@ -502,17 +551,47 @@ export class Renderer {
                 this.trajectoryRenderer.render(this.particleCtx, particle);
             }
             
-            // 绘制粒子
-            this.drawParticle(particle, scene);
+            // 绘制粒子主体
+            this.drawParticle(particle);
+
+            // 绘制速度信息（矢量或数值）
+            if (particle.showVelocity) {
+                if (particle.velocityDisplayMode === 'speed') {
+                    this.drawSpeedInfo(particle);
+                } else {
+                    const vScale = 0.1;
+                    let dx = particle.velocity.x * vScale;
+                    let dy = particle.velocity.y * vScale;
+                    if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+                        dx = 0;
+                        dy = 0;
+                    }
+                    const len = Math.hypot(dx, dy);
+                    const maxLen = 120;
+                    if (len > maxLen && len > 0) {
+                        const s = maxLen / len;
+                        dx *= s;
+                        dy *= s;
+                    }
+                    if (Number.isFinite(len) && len > 0) {
+                        this.drawArrow(this.particleCtx, particle.position.x, particle.position.y, dx, dy, 'white', 2);
+                    }
+                }
+            }
             
             // 绘制能量信息
             if (scene.settings.showEnergy && particle.showEnergy) {
                 this.drawEnergyInfo(particle);
             }
+
+            // 选中高亮
+            if (particle === scene.selectedObject) {
+                this.drawParticleSelection(particle);
+            }
         }
     }
     
-    drawParticle(particle, scene) {
+    drawParticle(particle) {
         this.particleCtx.save();
         
         // 粒子主体
@@ -526,80 +605,97 @@ export class Renderer {
         this.particleCtx.lineWidth = 2;
         this.particleCtx.stroke();
         
-        // 绘制速度向量
-        const vScale = 0.1;
-        this.drawArrow(
-            particle.position.x,
-            particle.position.y,
-            particle.velocity.x * vScale,
-            particle.velocity.y * vScale,
-            'white',
-            2
-        );
-        
-        // 选中高亮
-        if (particle === scene.selectedObject) {
-            this.particleCtx.strokeStyle = '#0e639c';
-            this.particleCtx.lineWidth = 3;
-            this.particleCtx.setLineDash([5, 5]);
-            this.particleCtx.beginPath();
-            this.particleCtx.arc(particle.position.x, particle.position.y, particle.radius + 8, 0, Math.PI * 2);
-            this.particleCtx.stroke();
-            this.particleCtx.setLineDash([]);
-        }
-        
         this.particleCtx.restore();
     }
     
-    drawArrow(x, y, dx, dy, color = 'white', lineWidth = 2) {
+    drawParticleSelection(particle) {
+        this.particleCtx.save();
+        this.particleCtx.strokeStyle = '#0e639c';
+        this.particleCtx.lineWidth = 3;
+        this.particleCtx.setLineDash([5, 5]);
+        this.particleCtx.beginPath();
+        this.particleCtx.arc(particle.position.x, particle.position.y, particle.radius + 8, 0, Math.PI * 2);
+        this.particleCtx.stroke();
+        this.particleCtx.setLineDash([]);
+        this.particleCtx.restore();
+    }
+    
+    drawArrow(ctx, x, y, dx, dy, color = 'white', lineWidth = 2) {
         const length = Math.sqrt(dx * dx + dy * dy);
         if (length < 5) return;
         
         const angle = Math.atan2(dy, dx);
         const headLen = 8;
         
-        this.particleCtx.save();
-        this.particleCtx.strokeStyle = color;
-        this.particleCtx.fillStyle = color;
-        this.particleCtx.lineWidth = lineWidth;
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = lineWidth;
         
         // 箭头线
-        this.particleCtx.beginPath();
-        this.particleCtx.moveTo(x, y);
-        this.particleCtx.lineTo(x + dx, y + dy);
-        this.particleCtx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + dx, y + dy);
+        ctx.stroke();
         
         // 箭头头部
-        this.particleCtx.beginPath();
-        this.particleCtx.moveTo(x + dx, y + dy);
-        this.particleCtx.lineTo(
+        ctx.beginPath();
+        ctx.moveTo(x + dx, y + dy);
+        ctx.lineTo(
             x + dx - headLen * Math.cos(angle - Math.PI / 6),
             y + dy - headLen * Math.sin(angle - Math.PI / 6)
         );
-        this.particleCtx.lineTo(
+        ctx.lineTo(
             x + dx - headLen * Math.cos(angle + Math.PI / 6),
             y + dy - headLen * Math.sin(angle + Math.PI / 6)
         );
-        this.particleCtx.closePath();
-        this.particleCtx.fill();
+        ctx.closePath();
+        ctx.fill();
         
-        this.particleCtx.restore();
+        ctx.restore();
     }
     
+    formatNumber(value) {
+        if (!Number.isFinite(value)) return '0';
+        const abs = Math.abs(value);
+        if (abs === 0) return '0';
+        if (abs < 0.01 || abs >= 1e5) return value.toExponential(2);
+        if (abs < 1) return value.toFixed(3).replace(/\.?0+$/, '');
+        if (abs < 10) return value.toFixed(2);
+        if (abs < 100) return value.toFixed(1);
+        return value.toFixed(0);
+    }
+
+    drawTextBadge(ctx, x, y, text) {
+        ctx.save();
+        ctx.font = '11px monospace';
+        const paddingX = 6;
+        const paddingY = 4;
+        const metrics = ctx.measureText(text);
+        const width = Math.ceil(metrics.width) + paddingX * 2;
+        const height = 14 + paddingY * 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(x - paddingX, y - 11 - paddingY, width, height);
+
+        ctx.fillStyle = 'white';
+        ctx.fillText(text, x, y);
+        ctx.restore();
+    }
+
+    drawSpeedInfo(particle) {
+        const speed = particle.velocity.magnitude();
+        const x = particle.position.x + 15;
+        const y = particle.position.y + 20;
+        this.drawTextBadge(this.particleCtx, x, y, `v: ${this.formatNumber(speed)} m/s`);
+    }
+
     drawEnergyInfo(particle) {
         const Ek = particle.getKineticEnergy();
         const x = particle.position.x + 15;
         const y = particle.position.y - 15;
-        
-        this.particleCtx.save();
-        this.particleCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        this.particleCtx.fillRect(x - 5, y - 15, 120, 25);
-        
-        this.particleCtx.fillStyle = 'white';
-        this.particleCtx.font = '11px monospace';
-        this.particleCtx.fillText(`Ek: ${(Ek * 1e9).toFixed(2)} nJ`, x, y);
-        
-        this.particleCtx.restore();
+
+        this.drawTextBadge(this.particleCtx, x, y, `Ek: ${this.formatNumber(Ek * 1e9)} nJ`);
     }
     
     /**

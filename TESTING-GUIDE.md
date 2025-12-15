@@ -2,6 +2,11 @@
 
 ## 测试步骤
 
+## 自动化测试
+
+- 主题系统集成测试：`python3 test_theme_integration.py`
+- 单元测试（需要 Node.js 20+）：`npm test` 或 `node --test`
+
 ### 1. 清除浏览器缓存
 - **Chrome/Edge**: 按 `Ctrl + Shift + Delete`，选择"缓存的图片和文件"，点击清除
 - 或者在开发者工具(F12)中，右键刷新按钮，选择"清空缓存并硬性重新加载"

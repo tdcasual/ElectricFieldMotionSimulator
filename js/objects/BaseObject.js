@@ -49,8 +49,14 @@ export class BaseObject {
      * 从数据反序列化
      */
     deserialize(data) {
-        this.id = data.id;
-        this.x = data.x;
-        this.y = data.y;
+        if (data && typeof data.id === 'string' && data.id.length) {
+            this.id = data.id;
+        }
+        if (data && typeof data.x === 'number') {
+            this.x = data.x;
+        }
+        if (data && typeof data.y === 'number') {
+            this.y = data.y;
+        }
     }
 }

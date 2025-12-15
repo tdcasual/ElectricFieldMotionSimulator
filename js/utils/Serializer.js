@@ -99,17 +99,34 @@ export class Serializer {
         if (!data.version) {
             return { valid: false, error: '缺少版本信息' };
         }
-        
-        if (!Array.isArray(data.electricFields)) {
+
+        const ensureArray = (key) => {
+            if (data[key] == null) {
+                data[key] = [];
+                return true;
+            }
+            if (!Array.isArray(data[key])) {
+                return false;
+            }
+            return true;
+        };
+
+        if (!ensureArray('electricFields')) {
             return { valid: false, error: '电场数据格式无效' };
         }
-        
-        if (!Array.isArray(data.magneticFields)) {
+        if (!ensureArray('magneticFields')) {
             return { valid: false, error: '磁场数据格式无效' };
         }
-        
-        if (!Array.isArray(data.particles)) {
+        if (!ensureArray('particles')) {
             return { valid: false, error: '粒子数据格式无效' };
+        }
+
+        // 可选数组（旧版本可能不存在）
+        if (data.emitters != null && !Array.isArray(data.emitters)) {
+            return { valid: false, error: '发射器数据格式无效' };
+        }
+        if (data.screens != null && !Array.isArray(data.screens)) {
+            return { valid: false, error: '荧光屏数据格式无效' };
         }
         
         return { valid: true };

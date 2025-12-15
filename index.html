@@ -15,16 +15,16 @@
         <header id="header">
             <h1>⚡ 电磁场粒子运动模拟器</h1>
             <div class="header-controls">
-                <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停">
+                <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停">
                     <span id="play-icon">▶️</span>
                 </button>
-                <button id="reset-btn" class="btn" title="重置">🔄</button>
-                <button id="clear-btn" class="btn" title="清空场景">🗑️</button>
-                <button id="save-btn" class="btn" title="保存场景">💾</button>
-                <button id="load-btn" class="btn" title="加载场景">📂</button>
-                <button id="export-btn" class="btn" title="导出场景">📤</button>
-                <button id="import-btn" class="btn" title="导入场景">📥</button>
-                <button id="theme-toggle-btn" class="btn" title="切换主题">🌙</button>
+                <button id="reset-btn" class="btn" title="重置" aria-label="重置">🔄</button>
+                <button id="clear-btn" class="btn" title="清空场景" aria-label="清空场景">🗑️</button>
+                <button id="save-btn" class="btn" title="保存场景" aria-label="保存场景">💾</button>
+                <button id="load-btn" class="btn" title="加载场景" aria-label="加载场景">📂</button>
+                <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景">📤</button>
+                <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景">📥</button>
+                <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题">🌙</button>
                 <input type="file" id="import-file-input" accept=".json" style="display: none;">
                 <label class="control-label">
                     <span>显示能量:</span>
@@ -148,7 +148,7 @@
         <aside id="property-panel" class="panel" style="display: none;">
             <div class="panel-header">
                 <h3>属性面板</h3>
-                <button id="close-panel-btn" class="btn-icon">✖</button>
+                <button id="close-panel-btn" class="btn-icon" aria-label="关闭属性面板">✖</button>
             </div>
             <div id="property-content" class="panel-content">
                 <!-- 动态生成 -->
@@ -176,7 +176,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h3 id="modal-title"></h3>
-                <button id="modal-close-btn" class="btn-icon">✖</button>
+                <button id="modal-close-btn" class="btn-icon" aria-label="关闭对话框">✖</button>
             </div>
             <div id="modal-content" class="modal-content"></div>
             <div class="modal-footer">

@@ -21,6 +21,9 @@ export class Particle extends BaseObject {
         this.ignoreGravity = config.ignoreGravity !== undefined ? config.ignoreGravity : true;
         this.showTrajectory = config.showTrajectory !== undefined ? config.showTrajectory : true;
         this.showEnergy = config.showEnergy !== undefined ? config.showEnergy : true;
+        this.showVelocity = config.showVelocity !== undefined ? config.showVelocity : true;
+        const velocityMode = config.velocityDisplayMode || config.velocityDisplay || 'vector';
+        this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
         
         // 轨迹数据
         this.trajectory = [];
@@ -92,7 +95,9 @@ export class Particle extends BaseObject {
             radius: this.radius,
             ignoreGravity: this.ignoreGravity,
             showTrajectory: this.showTrajectory,
-            showEnergy: this.showEnergy
+            showEnergy: this.showEnergy,
+            showVelocity: this.showVelocity,
+            velocityDisplayMode: this.velocityDisplayMode
         };
     }
     
@@ -101,15 +106,25 @@ export class Particle extends BaseObject {
      */
     deserialize(data) {
         super.deserialize(data);
-        this.position = Vector.fromArray(data.position);
-        this.velocity = Vector.fromArray(data.velocity);
+        const position = Array.isArray(data.position)
+            ? data.position
+            : [data.x ?? this.x ?? 0, data.y ?? this.y ?? 0, 0];
+        const velocity = Array.isArray(data.velocity)
+            ? data.velocity
+            : [data.vx ?? 0, data.vy ?? 0, 0];
+
+        this.position = Vector.fromArray(position);
+        this.velocity = Vector.fromArray(velocity);
         this.x = this.position.x;
         this.y = this.position.y;
-        this.mass = data.mass;
-        this.charge = data.charge;
-        this.radius = data.radius;
-        this.ignoreGravity = data.ignoreGravity;
-        this.showTrajectory = data.showTrajectory;
-        this.showEnergy = data.showEnergy;
+        this.mass = data.mass ?? this.mass;
+        this.charge = data.charge ?? this.charge;
+        this.radius = data.radius ?? this.radius;
+        this.ignoreGravity = data.ignoreGravity ?? this.ignoreGravity;
+        this.showTrajectory = data.showTrajectory ?? this.showTrajectory;
+        this.showEnergy = data.showEnergy ?? this.showEnergy;
+        this.showVelocity = data.showVelocity ?? this.showVelocity;
+        const velocityMode = data.velocityDisplayMode || data.velocityDisplay || this.velocityDisplayMode || 'vector';
+        this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
     }
 }

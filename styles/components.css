@@ -22,6 +22,11 @@
     transform: translateY(1px);
 }
 
+.btn:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
 .btn-primary {
     background: var(--accent-blue);
     border-color: var(--accent-blue);
@@ -46,6 +51,12 @@
 
 .btn-icon:hover {
     color: var(--text-primary);
+}
+
+.btn-icon:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
 }
 
 /* 右键菜单 */

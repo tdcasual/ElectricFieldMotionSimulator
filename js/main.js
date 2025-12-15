@@ -29,7 +29,6 @@ class Application {
         this.themeManager = new ThemeManager();
         
         this.running = false;
-        this.lastTime = 0;
         this.timeStep = 0.016; // 默认16ms (60fps)
         
         this.init();
@@ -40,6 +39,7 @@ class Application {
         
         // 初始化渲染器
         this.renderer.init();
+        this.syncViewportFromRenderer();
         
         // 初始化UI组件
         this.contextMenu = new ContextMenu(this.scene);
@@ -63,6 +63,31 @@ class Application {
         this.updateUI();
         
         console.log('✅ 初始化完成');
+    }
+
+    syncViewportFromRenderer() {
+        const width = this.renderer?.width ?? 0;
+        const height = this.renderer?.height ?? 0;
+        this.scene.setViewport(width, height);
+    }
+
+    handleResize() {
+        this.renderer.resize();
+        this.syncViewportFromRenderer();
+        this.requestRender({ forceRender: true, updateUI: false });
+    }
+
+    requestRender(options = {}) {
+        const { invalidateFields = false, forceRender = false, updateUI = true } = options;
+        if (invalidateFields) {
+            this.renderer.invalidateFields();
+        }
+        if (forceRender || this.scene.isPaused) {
+            this.renderer.render(this.scene);
+        }
+        if (updateUI) {
+            this.updateUI();
+        }
     }
     
     bindEvents() {
@@ -125,9 +150,7 @@ class Application {
             energyToggle.checked = this.scene.settings.showEnergy;
             energyToggle.addEventListener('change', (e) => {
                 this.scene.settings.showEnergy = e.target.checked;
-                if (this.scene.isPaused) {
-                    this.renderer.render(this.scene);
-                }
+                this.requestRender({ updateUI: false });
             });
         }
         
@@ -146,10 +169,7 @@ class Application {
         
         // 窗口大小改变
         window.addEventListener('resize', () => {
-            this.renderer.resize();
-            if (this.scene.isPaused) {
-                this.renderer.render(this.scene);
-            }
+            this.handleResize();
         });
         
         // 键盘快捷键
@@ -170,11 +190,7 @@ class Application {
             this.scene.removeObject(this.scene.selectedObject);
             this.scene.selectedObject = null;
             this.propertyPanel.hide();
-            this.renderer.invalidateFields();
-            if (this.scene.isPaused) {
-                this.renderer.render(this.scene);
-            }
-            this.updateUI();
+            this.requestRender({ invalidateFields: true });
         }
         
         // Ctrl+S: 保存
@@ -198,7 +214,6 @@ class Application {
     
     start() {
         this.running = true;
-        this.lastTime = performance.now();
         this.loop();
     }
     
@@ -213,17 +228,12 @@ class Application {
         playIcon.textContent = this.running ? '⏸️' : '▶️';
         
         if (this.running) {
-            this.lastTime = performance.now();
             this.loop();
         }
     }
     
     loop() {
         if (!this.running) return;
-        
-        const now = performance.now();
-        const dt = Math.min((now - this.lastTime) / 1000, 0.05); // 限制最大时间步长
-        this.lastTime = now;
         
         // 性能监控
         this.performanceMonitor.startFrame();
@@ -263,11 +273,7 @@ class Application {
     reset() {
         this.scene.clear();
         this.propertyPanel.hide();
-        this.renderer.invalidateFields();
-        if (this.scene.isPaused) {
-            this.renderer.render(this.scene);
-        }
-        this.updateUI();
+        this.requestRender({ invalidateFields: true });
         this.showNotification('场景已重置', 'info');
     }
     
@@ -275,11 +281,7 @@ class Application {
         if (confirm('确定要清空整个场景吗？此操作不可撤销。')) {
             this.scene.clear();
             this.propertyPanel.hide();
-            this.renderer.invalidateFields();
-            if (this.scene.isPaused) {
-                this.renderer.render(this.scene);
-            }
-            this.updateUI();
+            this.requestRender({ invalidateFields: true });
             this.showNotification('场景已清空', 'success');
         }
     }
@@ -301,12 +303,8 @@ class Application {
                     // 重用现有 scene 实例以保持 UI 组件引用
                     this.scene.clear();
                     this.scene.loadFromData(loadedData);
-                    this.renderer.invalidateFields();
                     this.propertyPanel.hide();
-                    if (this.scene.isPaused) {
-                        this.renderer.render(this.scene);
-                    }
-                    this.updateUI();
+                    this.requestRender({ invalidateFields: true });
                     this.showNotification(`场景 "${sceneName}" 已加载`, 'success');
                 } else {
                     this.showNotification(`场景 "${sceneName}" 不存在`, 'error');
@@ -324,15 +322,17 @@ class Application {
     
     loadPreset(presetName) {
         const preset = Presets.get(presetName);
-        if (preset) {
+        if (!preset) return;
+
+        try {
             this.scene.clear();
+            this.propertyPanel?.hide?.();
             this.scene.loadFromData(preset.data);
-            this.renderer.invalidateFields();
-            if (this.scene.isPaused) {
-                this.renderer.render(this.scene);
-            }
-            this.updateUI();
+            this.requestRender({ invalidateFields: true });
             this.showNotification(`已加载预设场景: ${preset.name}`, 'success');
+        } catch (error) {
+            console.error('加载预设失败:', error);
+            this.showNotification('加载预设失败: ' + error.message, 'error');
         }
     }
     
@@ -375,12 +375,8 @@ class Application {
                 // 清空当前场景并加载新数据
                 this.scene.clear();
                 this.scene.loadFromData(data);
-                this.renderer.invalidateFields();
                 this.propertyPanel.hide();
-                if (this.scene.isPaused) {
-                    this.renderer.render(this.scene);
-                }
-                this.updateUI();
+                this.requestRender({ invalidateFields: true });
                 
                 const objectCount = (data.electricFields?.length || 0) +
                                    (data.magneticFields?.length || 0) +
@@ -410,10 +406,7 @@ class Application {
      */
     toggleTheme() {
         this.themeManager.toggle();
-        this.renderer.invalidateFields();
-        if (this.scene.isPaused) {
-            this.renderer.render(this.scene);
-        }
+        this.requestRender({ invalidateFields: true, updateUI: false });
         const currentTheme = this.themeManager.getCurrentTheme();
         this.showNotification(`已切换到${currentTheme === 'dark' ? '深色' : '浅色'}模式`, 'success');
     }

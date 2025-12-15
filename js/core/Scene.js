@@ -22,6 +22,7 @@ export class Scene {
         this.selectedObject = null;
         this.isPaused = false;
         this.time = 0; // 模拟时间（秒）
+        this.viewport = { width: 0, height: 0 };
         
         // 场景设置
         this.settings = {
@@ -31,6 +32,13 @@ export class Scene {
             showEnergy: true,
             showFieldVectors: true
         };
+    }
+
+    setViewport(width, height) {
+        const w = Number.isFinite(width) ? width : 0;
+        const h = Number.isFinite(height) ? height : 0;
+        this.viewport.width = Math.max(0, w);
+        this.viewport.height = Math.max(0, h);
     }
     
     /**
@@ -133,13 +141,25 @@ export class Scene {
      * 复制对象
      */
     duplicateObject(object) {
-        const data = object.serialize();
+        const originalData = object.serialize();
+        const data = JSON.parse(JSON.stringify(originalData));
+
         // 位移位置
-        data.x += 20;
-        data.y += 20;
+        if (typeof data.x === 'number') data.x += 20;
+        if (typeof data.y === 'number') data.y += 20;
+        if (Array.isArray(data.position) && data.position.length >= 2) {
+            data.position[0] += 20;
+            data.position[1] += 20;
+        }
+
+        // 复制时应生成新 id，避免与原对象冲突
+        delete data.id;
         
         const ObjectClass = object.constructor;
         const newObject = new ObjectClass(data);
+        if (typeof newObject.deserialize === 'function') {
+            newObject.deserialize(data);
+        }
         this.addObject(newObject);
         
         return newObject;

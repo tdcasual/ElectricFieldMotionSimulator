@@ -17,6 +17,14 @@ export class PhysicsEngine {
      */
     update(scene, dt) {
         const toRemove = [];
+        let boundsWidth = scene.viewport?.width ?? 0;
+        let boundsHeight = scene.viewport?.height ?? 0;
+
+        if (!boundsWidth || !boundsHeight) {
+            const canvasContainer = document.getElementById('canvas-container');
+            boundsWidth = canvasContainer?.clientWidth ?? 0;
+            boundsHeight = canvasContainer?.clientHeight ?? 0;
+        }
 
         // Emitters
         if (scene.emitters && scene.emitters.length) {
@@ -44,7 +52,7 @@ export class PhysicsEngine {
             this.handleCapacitorCollision(particle, scene);
             let removed = this.handleScreenHit(particle, scene);
             if (!removed) {
-                removed = this.handleBoundaries(particle, scene);
+                removed = this.handleBoundaries(particle, boundsWidth, boundsHeight);
             }
             if (removed) {
                 toRemove.push(particle);
@@ -63,10 +71,8 @@ export class PhysicsEngine {
     /**
      * Boundary handling: now remove when out of bounds.
      */
-    handleBoundaries(particle, scene) {
-        const canvasContainer = document.getElementById('canvas-container');
-        const width = canvasContainer.clientWidth;
-        const height = canvasContainer.clientHeight;
+    handleBoundaries(particle, width, height) {
+        if (!width || !height) return false;
         
         if (particle.position.x < particle.radius) {
             return true;

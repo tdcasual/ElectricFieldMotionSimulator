@@ -15,6 +15,12 @@ export class ElectronGun extends BaseObject {
         this.emissionSpeed = config.emissionSpeed ?? 200; // 初速度大小（px/s）
         this.barrelLength = config.barrelLength ?? 25; // 发射口偏移
 
+        // 显示配置（用于画布叠加信息）
+        this.showVelocity = config.showVelocity ?? false;
+        const velocityMode = config.velocityDisplayMode || config.velocityDisplay || 'vector';
+        this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
+        this.showEnergy = config.showEnergy ?? false;
+
         this.particleType = config.particleType || 'electron';
         this.particleCharge = config.particleCharge ?? -1.602e-19;
         this.particleMass = config.particleMass ?? 9.109e-31;
@@ -88,6 +94,9 @@ export class ElectronGun extends BaseObject {
             emissionRate: this.emissionRate,
             emissionSpeed: this.emissionSpeed,
             barrelLength: this.barrelLength,
+            showVelocity: this.showVelocity,
+            velocityDisplayMode: this.velocityDisplayMode,
+            showEnergy: this.showEnergy,
             particleType: this.particleType,
             particleCharge: this.particleCharge,
             particleMass: this.particleMass,
@@ -102,6 +111,10 @@ export class ElectronGun extends BaseObject {
         this.emissionRate = data.emissionRate ?? 0;
         this.emissionSpeed = data.emissionSpeed ?? 0;
         this.barrelLength = data.barrelLength ?? 25;
+        this.showVelocity = data.showVelocity ?? this.showVelocity ?? false;
+        const velocityMode = data.velocityDisplayMode || data.velocityDisplay || this.velocityDisplayMode || 'vector';
+        this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
+        this.showEnergy = data.showEnergy ?? this.showEnergy ?? false;
         this.particleType = data.particleType || 'electron';
         this.particleCharge = data.particleCharge ?? -1.602e-19;
         this.particleMass = data.particleMass ?? 9.109e-31;

@@ -20,11 +20,7 @@ export class ContextMenu {
         document.getElementById('menu-duplicate').addEventListener('click', () => {
             if (this.scene.selectedObject) {
                 this.scene.duplicateObject(this.scene.selectedObject);
-                window.app?.renderer?.invalidateFields?.();
-                if (this.scene.isPaused) {
-                    window.app?.renderer?.render?.(this.scene);
-                }
-                window.app?.updateUI?.();
+                window.app?.requestRender?.({ invalidateFields: true });
             }
         });
         
@@ -33,11 +29,8 @@ export class ContextMenu {
             if (this.scene.selectedObject) {
                 this.scene.removeObject(this.scene.selectedObject);
                 this.scene.selectedObject = null;
-                window.app?.renderer?.invalidateFields?.();
-                if (this.scene.isPaused) {
-                    window.app?.renderer?.render?.(this.scene);
-                }
-                window.app?.updateUI?.();
+                window.app?.propertyPanel?.hide?.();
+                window.app?.requestRender?.({ invalidateFields: true });
             }
         });
     }

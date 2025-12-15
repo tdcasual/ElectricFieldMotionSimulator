@@ -53,11 +53,7 @@ export class PropertyPanel {
         requestAnimationFrame(() => {
             panel.classList.add('open');
         });
-
-        window.app?.renderer?.resize?.();
-        if (window.app?.scene?.isPaused) {
-            window.app?.renderer?.render?.(window.app.scene);
-        }
+        window.app?.handleResize?.();
     }
 
     closePanel() {
@@ -80,10 +76,7 @@ export class PropertyPanel {
             panel.style.display = 'none';
         }
 
-        window.app?.renderer?.resize?.();
-        if (window.app?.scene?.isPaused) {
-            window.app?.renderer?.render?.(window.app.scene);
-        }
+        window.app?.handleResize?.();
     }
     
     renderParticleProperties(container, particle) {
@@ -123,6 +116,19 @@ export class PropertyPanel {
             </div>
             <div class="form-row">
                 <label>
+                    <input type="checkbox" id="prop-show-velocity" ${particle.showVelocity ? 'checked' : ''}>
+                    显示速度
+                </label>
+            </div>
+            <div class="form-row">
+                <label>速度显示方式</label>
+                <select id="prop-velocity-display-mode">
+                    <option value="vector" ${particle.velocityDisplayMode !== 'speed' ? 'selected' : ''}>矢量</option>
+                    <option value="speed" ${particle.velocityDisplayMode === 'speed' ? 'selected' : ''}>数值</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>
                     <input type="checkbox" id="prop-show-energy" ${particle.showEnergy ? 'checked' : ''}>
                     显示能量
                 </label>
@@ -130,6 +136,16 @@ export class PropertyPanel {
             <button class="btn btn-primary" id="apply-particle-props">应用</button>
             <button class="btn" id="clear-trajectory">清空轨迹</button>
         `;
+
+        const showVelocityInput = document.getElementById('prop-show-velocity');
+        const velocityModeInput = document.getElementById('prop-velocity-display-mode');
+        const syncVelocityModeState = () => {
+            if (velocityModeInput && showVelocityInput) {
+                velocityModeInput.disabled = !showVelocityInput.checked;
+            }
+        };
+        syncVelocityModeState();
+        showVelocityInput?.addEventListener('change', syncVelocityModeState);
         
         document.getElementById('apply-particle-props').addEventListener('click', () => {
             particle.mass = parseFloat(document.getElementById('prop-mass').value);
@@ -139,17 +155,15 @@ export class PropertyPanel {
             particle.radius = parseFloat(document.getElementById('prop-radius').value);
             particle.ignoreGravity = document.getElementById('prop-ignore-gravity').checked;
             particle.showTrajectory = document.getElementById('prop-show-trajectory').checked;
+            particle.showVelocity = document.getElementById('prop-show-velocity').checked;
+            particle.velocityDisplayMode = document.getElementById('prop-velocity-display-mode').value;
             particle.showEnergy = document.getElementById('prop-show-energy').checked;
-            if (window.app?.scene?.isPaused) {
-                window.app.renderer.render(window.app.scene);
-            }
+            window.app?.requestRender?.({ updateUI: false });
         });
         
         document.getElementById('clear-trajectory').addEventListener('click', () => {
             particle.clearTrajectory();
-            if (window.app?.scene?.isPaused) {
-                window.app.renderer.render(window.app.scene);
-            }
+            window.app?.requestRender?.({ updateUI: false });
         });
     }
     
@@ -166,13 +180,26 @@ export class PropertyPanel {
             `;
         }
         
-        // 为平行板电容器添加极性参数
-        if (field.type === 'parallel-plate-capacitor' || field.type === 'vertical-parallel-plate-capacitor') {
-            extraFields = `
+        // 为平行板电容器添加极性/电源参数
+        const isCapacitor = field.type === 'parallel-plate-capacitor' || field.type === 'vertical-parallel-plate-capacitor';
+        if (isCapacitor) {
+            const plateSizeRow = field.type === 'parallel-plate-capacitor' ? `
             <div class="form-row">
                 <label>板长度</label>
                 <input type="number" id="prop-plate-width" value="${field.width}" min="50" step="10">
             </div>
+            ` : '';
+
+            const polarityOptions = field.type === 'vertical-parallel-plate-capacitor' ? `
+                    <option value="1" ${field.polarity === 1 ? 'selected' : ''}>向上</option>
+                    <option value="-1" ${field.polarity === -1 ? 'selected' : ''}>向下</option>
+                ` : `
+                    <option value="1" ${field.polarity === 1 ? 'selected' : ''}>沿方向</option>
+                    <option value="-1" ${field.polarity === -1 ? 'selected' : ''}>反向</option>
+                `;
+
+            extraFields = `
+            ${plateSizeRow}
             <div class="form-row">
                 <label>板间距离</label>
                 <input type="number" id="prop-plate-distance" value="${field.plateDistance}" min="20" step="10">
@@ -180,8 +207,7 @@ export class PropertyPanel {
             <div class="form-row">
                 <label>极性</label>
                 <select id="prop-polarity">
-                    <option value="1" ${field.polarity === 1 ? 'selected' : ''}>正板在方向正侧</option>
-                    <option value="-1" ${field.polarity === -1 ? 'selected' : ''}>负板在方向正侧</option>
+                    ${polarityOptions}
                 </select>
             </div>
             <div class="form-row">
@@ -259,10 +285,12 @@ export class PropertyPanel {
                 <label>场强 (N/C)</label>
                 <input type="number" id="prop-strength" value="${field.strength}" step="100">
             </div>
+            ${(field.type !== 'vertical-parallel-plate-capacitor') ? `
             <div class="form-row">
                 <label>方向 (度)</label>
                 <input type="number" id="prop-direction" value="${field.direction}" min="0" max="360">
             </div>
+            ` : ''}
             ${extraFields}
             <button class="btn btn-primary" id="apply-field-props">应用</button>
         `;
@@ -274,8 +302,8 @@ export class PropertyPanel {
         const toggleAcFields = () => {
             const isAc = sourceTypeSelect && sourceTypeSelect.value === 'ac';
             const isCustom = sourceTypeSelect && sourceTypeSelect.value === 'custom';
-            acOnlyRows.forEach(row => row.style.display = isAc ? 'flex' : 'none');
-            customRows.forEach(row => row.style.display = isCustom ? 'flex' : 'none');
+            acOnlyRows.forEach(row => row.style.display = isAc ? '' : 'none');
+            customRows.forEach(row => row.style.display = isCustom ? '' : 'none');
         };
         if (sourceTypeSelect) {
             toggleAcFields();
@@ -296,7 +324,10 @@ export class PropertyPanel {
                 field.radius = parseFloat(document.getElementById('prop-radius').value);
             }
             field.strength = parseFloat(document.getElementById('prop-strength').value);
-            field.direction = parseFloat(document.getElementById('prop-direction').value);
+            const directionInput = document.getElementById('prop-direction');
+            if (directionInput) {
+                field.direction = parseFloat(directionInput.value);
+            }
             
             // 处理特定属性
             if (field.type === 'semicircle-electric-field') {
@@ -350,11 +381,7 @@ export class PropertyPanel {
                 }
             }
             
-            // 标记需要重绘
-            window.app?.renderer?.invalidateFields();
-            if (window.app?.scene?.isPaused) {
-                window.app.renderer.render(window.app.scene);
-            }
+            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
         });
     }
 
@@ -409,6 +436,27 @@ export class PropertyPanel {
                     忽略重力
                 </label>
             </div>
+            <hr>
+            <h4>显示</h4>
+            <div class="form-row">
+                <label>
+                    <input type="checkbox" id="prop-gun-show-velocity" ${emitter.showVelocity ? 'checked' : ''}>
+                    显示发射速度
+                </label>
+            </div>
+            <div class="form-row">
+                <label>速度显示方式</label>
+                <select id="prop-gun-velocity-display-mode">
+                    <option value="vector" ${emitter.velocityDisplayMode !== 'speed' ? 'selected' : ''}>矢量</option>
+                    <option value="speed" ${emitter.velocityDisplayMode === 'speed' ? 'selected' : ''}>数值</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>
+                    <input type="checkbox" id="prop-gun-show-energy" ${emitter.showEnergy ? 'checked' : ''}>
+                    显示发射能量
+                </label>
+            </div>
             <button class="btn btn-primary" id="apply-gun-props">应用</button>
         `;
 
@@ -432,6 +480,16 @@ export class PropertyPanel {
             });
         }
 
+        const showGunVelocityInput = document.getElementById('prop-gun-show-velocity');
+        const gunVelocityModeInput = document.getElementById('prop-gun-velocity-display-mode');
+        const syncGunVelocityModeState = () => {
+            if (gunVelocityModeInput && showGunVelocityInput) {
+                gunVelocityModeInput.disabled = !showGunVelocityInput.checked;
+            }
+        };
+        syncGunVelocityModeState();
+        showGunVelocityInput?.addEventListener('change', syncGunVelocityModeState);
+
         document.getElementById('apply-gun-props').addEventListener('click', () => {
             emitter.x = parseFloat(document.getElementById('prop-gun-x').value);
             emitter.y = parseFloat(document.getElementById('prop-gun-y').value);
@@ -450,11 +508,12 @@ export class PropertyPanel {
             emitter.particleRadius = parseFloat(document.getElementById('prop-gun-radius').value);
             emitter.ignoreGravity = document.getElementById('prop-gun-ignore-gravity').checked;
 
+            emitter.showVelocity = document.getElementById('prop-gun-show-velocity').checked;
+            emitter.velocityDisplayMode = document.getElementById('prop-gun-velocity-display-mode').value;
+            emitter.showEnergy = document.getElementById('prop-gun-show-energy').checked;
+
             emitter._emitAccumulator = 0;
-            window.app?.renderer?.invalidateFields();
-            if (window.app?.scene?.isPaused) {
-                window.app.renderer.render(window.app.scene);
-            }
+            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
         });
     }
     
@@ -490,8 +549,7 @@ export class PropertyPanel {
             field.width = parseFloat(document.getElementById('prop-width').value);
             field.height = parseFloat(document.getElementById('prop-height').value);
             field.strength = parseFloat(document.getElementById('prop-strength').value);
-            
-            window.app?.renderer?.invalidateFields();
+            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
         });
     }
 
@@ -543,18 +601,12 @@ export class PropertyPanel {
             screen.viewGap = parseFloat(document.getElementById('prop-screen-gap').value);
             screen.spotSize = parseFloat(document.getElementById('prop-screen-spot').value);
             screen.persistence = parseFloat(document.getElementById('prop-screen-persistence').value);
-            window.app?.renderer?.invalidateFields();
-            if (window.app?.scene?.isPaused) {
-                window.app.renderer.render(window.app.scene);
-            }
+            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
         });
 
         document.getElementById('clear-screen-spots').addEventListener('click', () => {
             screen.hits = [];
-            window.app?.renderer?.invalidateFields();
-            if (window.app?.scene?.isPaused) {
-                window.app.renderer.render(window.app.scene);
-            }
+            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
         });
     }
 }

@@ -5,6 +5,7 @@
 
 import { ElectricField } from './ElectricField.js';
 import { Vector } from '../physics/VectorMath.js';
+import { compileSafeMathExpression } from '../utils/SafeExpression.js';
 
 export class VerticalParallelPlateCapacitor extends ElectricField {
     constructor(config = {}) {
@@ -109,8 +110,7 @@ export class VerticalParallelPlateCapacitor extends ElectricField {
 
     compileCustomExpression() {
         try {
-            // eslint-disable-next-line no-new-func
-            this._customFn = new Function('t', `return ${this.customExpression};`);
+            this._customFn = compileSafeMathExpression(this.customExpression);
         } catch (e) {
             console.warn('Invalid custom expression for vertical capacitor:', e);
             this._customFn = null;
