@@ -266,3 +266,17 @@ hr {
     opacity: 0.5;
     filter: brightness(0.8);
 }
+
+@media (max-width: 600px) {
+    .modal {
+        min-width: unset;
+        width: 92vw;
+        max-width: 92vw;
+    }
+
+    .notification {
+        right: 10px;
+        left: 10px;
+        max-width: unset;
+    }
+}

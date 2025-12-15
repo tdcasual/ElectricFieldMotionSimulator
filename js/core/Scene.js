@@ -2,6 +2,16 @@
  * 场景管理器 - 管理所有对象和状态
  */
 
+import { CircleElectricField } from '../objects/CircleElectricField.js';
+import { ElectronGun } from '../objects/ElectronGun.js';
+import { FluorescentScreen } from '../objects/FluorescentScreen.js';
+import { MagneticField } from '../objects/MagneticField.js';
+import { ParallelPlateCapacitor } from '../objects/ParallelPlateCapacitor.js';
+import { Particle } from '../objects/Particle.js';
+import { RectElectricField } from '../objects/RectElectricField.js';
+import { SemiCircleElectricField } from '../objects/SemiCircleElectricField.js';
+import { VerticalParallelPlateCapacitor } from '../objects/VerticalParallelPlateCapacitor.js';
+
 export class Scene {
     constructor() {
         this.electricFields = [];
@@ -155,134 +165,68 @@ export class Scene {
      * 从数据加载场景
      */
     loadFromData(data) {
-        // 导入对象类
-        import('../objects/RectElectricField.js').then(module => {
-            const RectElectricField = module.RectElectricField;
-            
-            // 加载矩形电场
-            if (data.electricFields) {
-                data.electricFields.forEach(fieldData => {
-                    if (fieldData.type === 'electric-field-rect') {
-                        const field = new RectElectricField(fieldData);
-                        field.deserialize(fieldData);
-                        this.addObject(field);
-                    }
-                });
-            }
-        });
-        
-        import('../objects/CircleElectricField.js').then(module => {
-            const CircleElectricField = module.CircleElectricField;
-            
-            // 加载圆形电场
-            if (data.electricFields) {
-                data.electricFields.forEach(fieldData => {
-                    if (fieldData.type === 'electric-field-circle') {
-                        const field = new CircleElectricField(fieldData);
-                        field.deserialize(fieldData);
-                        this.addObject(field);
-                    }
-                });
-            }
-        });
-        
-        import('../objects/SemiCircleElectricField.js').then(module => {
-            const SemiCircleElectricField = module.SemiCircleElectricField;
-            
-            // 加载半圆电场
-            if (data.electricFields) {
-                data.electricFields.forEach(fieldData => {
-                    if (fieldData.type === 'semicircle-electric-field') {
-                        const field = new SemiCircleElectricField(fieldData);
-                        field.deserialize(fieldData);
-                        this.addObject(field);
-                    }
-                });
-            }
-        });
-        
-        import('../objects/ParallelPlateCapacitor.js').then(module => {
-            const ParallelPlateCapacitor = module.ParallelPlateCapacitor;
-            
-            // 加载平行板电容器
-            if (data.electricFields) {
-                data.electricFields.forEach(fieldData => {
-                    if (fieldData.type === 'parallel-plate-capacitor') {
-                        const field = new ParallelPlateCapacitor(fieldData);
-                        field.deserialize(fieldData);
-                        this.addObject(field);
-                    }
-                });
-            }
-        });
+        // 加载电场
+        if (Array.isArray(data.electricFields)) {
+            for (const fieldData of data.electricFields) {
+                let field = null;
+                if (fieldData.type === 'electric-field-rect') {
+                    field = new RectElectricField(fieldData);
+                } else if (fieldData.type === 'electric-field-circle') {
+                    field = new CircleElectricField(fieldData);
+                } else if (fieldData.type === 'semicircle-electric-field') {
+                    field = new SemiCircleElectricField(fieldData);
+                } else if (fieldData.type === 'parallel-plate-capacitor') {
+                    field = new ParallelPlateCapacitor(fieldData);
+                } else if (fieldData.type === 'vertical-parallel-plate-capacitor') {
+                    field = new VerticalParallelPlateCapacitor(fieldData);
+                }
 
-        import('../objects/VerticalParallelPlateCapacitor.js').then(module => {
-            const VerticalParallelPlateCapacitor = module.VerticalParallelPlateCapacitor;
-
-            if (data.electricFields) {
-                data.electricFields.forEach(fieldData => {
-                    if (fieldData.type === 'vertical-parallel-plate-capacitor') {
-                        const field = new VerticalParallelPlateCapacitor(fieldData);
-                        field.deserialize(fieldData);
-                        this.addObject(field);
-                    }
-                });
-            }
-        });
-        
-        import('../objects/ElectronGun.js').then(module => {
-            const ElectronGun = module.ElectronGun;
-
-            if (data.emitters) {
-                data.emitters.forEach(emitterData => {
-                    if (emitterData.type === 'electron-gun') {
-                        const emitter = new ElectronGun(emitterData);
-                        emitter.deserialize(emitterData);
-                        this.addObject(emitter);
-                    }
-                });
-            }
-        });
-
-        import('../objects/FluorescentScreen.js').then(module => {
-            const FluorescentScreen = module.FluorescentScreen;
-
-            if (data.screens) {
-                data.screens.forEach(screenData => {
-                    if (screenData.type === 'fluorescent-screen') {
-                        const screen = new FluorescentScreen(screenData);
-                        screen.deserialize(screenData);
-                        this.addObject(screen);
-                    }
-                });
-            }
-        });
-        
-        import('../objects/MagneticField.js').then(module => {
-            const MagneticField = module.MagneticField;
-            
-            // 加载磁场
-            if (data.magneticFields) {
-                data.magneticFields.forEach(fieldData => {
-                    const field = new MagneticField(fieldData);
+                if (field) {
                     field.deserialize(fieldData);
                     this.addObject(field);
-                });
+                }
             }
-        });
-        
-        import('../objects/Particle.js').then(module => {
-            const Particle = module.Particle;
-            
-            // 加载粒子
-            if (data.particles) {
-                data.particles.forEach(particleData => {
-                    const particle = new Particle(particleData);
-                    particle.deserialize(particleData);
-                    this.addObject(particle);
-                });
+        }
+
+        // 加载磁场
+        if (Array.isArray(data.magneticFields)) {
+            for (const fieldData of data.magneticFields) {
+                const field = new MagneticField(fieldData);
+                field.deserialize(fieldData);
+                this.addObject(field);
             }
-        });
+        }
+
+        // 加载发射器
+        if (Array.isArray(data.emitters)) {
+            for (const emitterData of data.emitters) {
+                if (emitterData.type === 'electron-gun') {
+                    const emitter = new ElectronGun(emitterData);
+                    emitter.deserialize(emitterData);
+                    this.addObject(emitter);
+                }
+            }
+        }
+
+        // 加载荧光屏
+        if (Array.isArray(data.screens)) {
+            for (const screenData of data.screens) {
+                if (screenData.type === 'fluorescent-screen') {
+                    const screen = new FluorescentScreen(screenData);
+                    screen.deserialize(screenData);
+                    this.addObject(screen);
+                }
+            }
+        }
+
+        // 加载粒子
+        if (Array.isArray(data.particles)) {
+            for (const particleData of data.particles) {
+                const particle = new Particle(particleData);
+                particle.deserialize(particleData);
+                this.addObject(particle);
+            }
+        }
         
         // 加载设置
         if (data.settings) {

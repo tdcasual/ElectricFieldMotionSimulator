@@ -245,6 +245,22 @@ JSON格式示例（`example-scene.json`）：
 - 检查粒子质量和电荷量的数量级
 - 验证场强设置是否合理
 
+## 部署
+
+### Vercel（推荐）
+项目已包含 `vercel.json`，可直接作为静态站点部署：
+1. 将仓库导入 Vercel
+2. Framework Preset 选择 **Other**
+3. Root Directory 选择仓库根目录
+
+### Docker
+项目已包含 `Dockerfile`，使用 Nginx 提供静态文件服务：
+```bash
+docker build -t electric-field-sim .
+docker run --rm -p 8080:80 electric-field-sim
+```
+浏览器访问：`http://localhost:8080`
+
 ## 未来计划
 
 - [ ] 半圆形电场

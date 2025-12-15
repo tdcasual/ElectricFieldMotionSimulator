@@ -20,6 +20,19 @@ export class DragDropManager {
         this.draggingObject = null;
         this.dragOffset = { x: 0, y: 0 };
         this.isDragging = false;
+
+        this.activePointerId = null;
+        this.pointerDownPos = null;
+        this.pointerDownObject = null;
+        this.longPressTimer = null;
+        this.longPressTriggered = false;
+        this.lastTap = { time: 0, objectId: null };
+
+        this.armedToolType = null;
+        this.armedToolElement = null;
+        this.isCoarsePointer =
+            window.matchMedia?.('(pointer: coarse)')?.matches ||
+            (navigator.maxTouchPoints ?? 0) > 0;
         
         // 允许外部传入 canvas（测试页面或自定义场景）
         this.canvas = options.canvas || document.getElementById('particle-canvas');
@@ -39,6 +52,13 @@ export class DragDropManager {
                 e.dataTransfer.effectAllowed = 'copy';
                 e.dataTransfer.setData('component-type', item.dataset.type);
             });
+
+            // 触屏设备：点击工具后，再点击画布放置对象（替代原生拖拽）
+            item.addEventListener('click', (e) => {
+                if (!this.isCoarsePointer) return;
+                e.preventDefault();
+                this.toggleArmedTool(item);
+            });
         });
         
         // Canvas接收拖拽
@@ -57,10 +77,17 @@ export class DragDropManager {
             this.createObject(type, x, y);
         });
         
-        // Canvas内对象拖拽
-        this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+        // Canvas内对象拖拽（Pointer Events 优先，兼容触屏）
+        if (window.PointerEvent) {
+            this.canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+            this.canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
+            this.canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
+            this.canvas.addEventListener('pointercancel', (e) => this.onPointerCancel(e));
+        } else {
+            this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+            this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+            this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+        }
         
         // 右键菜单
         this.canvas.addEventListener('contextmenu', (e) => this.onContextMenu(e));
@@ -124,7 +151,218 @@ export class DragDropManager {
             if (this.scene.isPaused) {
                 this.renderer?.render?.(this.scene);
             }
+            window.app?.updateUI?.();
         }
+    }
+
+    setStatus(text) {
+        const el = document.getElementById('status-text');
+        if (el) el.textContent = text;
+    }
+
+    toggleArmedTool(item) {
+        const type = item?.dataset?.type;
+        if (!type) return;
+
+        if (this.armedToolType === type) {
+            this.disarmTool();
+        } else {
+            this.armTool(type, item);
+        }
+    }
+
+    armTool(type, element) {
+        if (this.armedToolElement) {
+            this.armedToolElement.classList.remove('active');
+        }
+
+        this.armedToolType = type;
+        this.armedToolElement = element || null;
+        this.armedToolElement?.classList.add('active');
+
+        const label = element?.title || element?.querySelector?.('span')?.textContent || type;
+        this.setStatus(`点击画布放置: ${label}`);
+    }
+
+    disarmTool() {
+        if (this.armedToolElement) {
+            this.armedToolElement.classList.remove('active');
+        }
+        this.armedToolType = null;
+        this.armedToolElement = null;
+        this.setStatus('就绪');
+    }
+
+    clearLongPressTimer() {
+        if (this.longPressTimer) {
+            clearTimeout(this.longPressTimer);
+            this.longPressTimer = null;
+        }
+    }
+
+    openProperties(object) {
+        if (!object) return;
+        const event = new CustomEvent('show-properties', {
+            detail: { object }
+        });
+        document.dispatchEvent(event);
+    }
+
+    onPointerDown(e) {
+        if (!this.canvas) return;
+        if (this.activePointerId !== null) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        this.activePointerId = e.pointerId;
+        this.longPressTriggered = false;
+        this.pointerDownPos = this.getMousePos(e);
+
+        this.canvas.setPointerCapture?.(e.pointerId);
+
+        // 触屏放置模式：点击空白处放置已选工具
+        if (this.armedToolType) {
+            const objAt = this.scene.findObjectAt(this.pointerDownPos.x, this.pointerDownPos.y);
+            if (!objAt) {
+                this.createObject(this.armedToolType, this.pointerDownPos.x, this.pointerDownPos.y);
+                this.disarmTool();
+
+                this.canvas.releasePointerCapture?.(e.pointerId);
+                this.activePointerId = null;
+                this.pointerDownPos = null;
+                return;
+            }
+            // 点到现有对象则取消放置，转为选择/拖拽
+            this.disarmTool();
+        }
+
+        const prevSelectedObject = this.scene.selectedObject;
+        const clickedObject = this.scene.findObjectAt(this.pointerDownPos.x, this.pointerDownPos.y);
+        this.pointerDownObject = clickedObject;
+
+        if (clickedObject) {
+            this.draggingObject = clickedObject;
+            this.scene.selectedObject = clickedObject;
+            this.isDragging = false;
+
+            if (clickedObject.type === 'particle') {
+                clickedObject.stuckToCapacitor = false;
+                this.dragOffset = {
+                    x: this.pointerDownPos.x - clickedObject.position.x,
+                    y: this.pointerDownPos.y - clickedObject.position.y
+                };
+            } else {
+                this.dragOffset = {
+                    x: this.pointerDownPos.x - clickedObject.x,
+                    y: this.pointerDownPos.y - clickedObject.y
+                };
+            }
+
+            if (e.pointerType === 'mouse') {
+                this.canvas.style.cursor = 'grabbing';
+            }
+
+            // 触屏长按打开属性面板
+            if (e.pointerType !== 'mouse') {
+                this.clearLongPressTimer();
+                this.longPressTimer = setTimeout(() => {
+                    if (this.pointerDownObject === clickedObject && !this.isDragging) {
+                        this.longPressTriggered = true;
+                        this.openProperties(clickedObject);
+                        this.draggingObject = null;
+                        this.isDragging = false;
+                        this.canvas.style.cursor = 'default';
+                    }
+                }, 550);
+            }
+        } else {
+            this.draggingObject = null;
+            this.scene.selectedObject = null;
+            this.isDragging = false;
+            this.clearLongPressTimer();
+        }
+
+        if (prevSelectedObject !== this.scene.selectedObject) {
+            this.renderer?.invalidateFields?.();
+            if (this.scene.isPaused) {
+                this.renderer?.render?.(this.scene);
+            }
+        }
+    }
+
+    onPointerMove(e) {
+        if (this.activePointerId !== e.pointerId) return;
+        if (!this.draggingObject || !this.pointerDownPos) return;
+
+        const pos = this.getMousePos(e);
+        const dx = pos.x - this.pointerDownPos.x;
+        const dy = pos.y - this.pointerDownPos.y;
+        const thresholdSq = e.pointerType === 'mouse' ? 1 : 9;
+
+        if (!this.isDragging) {
+            if ((dx * dx + dy * dy) < thresholdSq) return;
+            this.isDragging = true;
+            this.clearLongPressTimer();
+        }
+
+        if (this.draggingObject.type === 'particle') {
+            this.draggingObject.position.x = pos.x - this.dragOffset.x;
+            this.draggingObject.position.y = pos.y - this.dragOffset.y;
+            this.draggingObject.clearTrajectory();
+        } else {
+            this.draggingObject.x = pos.x - this.dragOffset.x;
+            this.draggingObject.y = pos.y - this.dragOffset.y;
+            this.renderer.invalidateFields();
+        }
+
+        if (this.scene.isPaused) {
+            this.renderer.render(this.scene);
+        }
+    }
+
+    onPointerUp(e) {
+        if (this.activePointerId !== e.pointerId) return;
+
+        const tappedObject = this.pointerDownObject;
+        const wasDragging = this.isDragging;
+        const shouldHandleTap = !wasDragging && tappedObject && !this.longPressTriggered && e.pointerType !== 'mouse';
+
+        this.clearLongPressTimer();
+
+        if (shouldHandleTap) {
+            const now = performance.now();
+            if (this.lastTap.objectId === tappedObject.id && (now - this.lastTap.time) < 350) {
+                this.openProperties(tappedObject);
+                this.lastTap = { time: 0, objectId: null };
+            } else {
+                this.lastTap = { time: now, objectId: tappedObject.id };
+            }
+        }
+
+        this.isDragging = false;
+        this.draggingObject = null;
+        this.pointerDownPos = null;
+        this.pointerDownObject = null;
+        this.longPressTriggered = false;
+
+        if (e.pointerType === 'mouse') {
+            this.canvas.style.cursor = 'default';
+        }
+
+        this.canvas.releasePointerCapture?.(e.pointerId);
+        this.activePointerId = null;
+    }
+
+    onPointerCancel(e) {
+        if (this.activePointerId !== e.pointerId) return;
+        this.clearLongPressTimer();
+        this.isDragging = false;
+        this.draggingObject = null;
+        this.pointerDownPos = null;
+        this.pointerDownObject = null;
+        this.longPressTriggered = false;
+        this.canvas.releasePointerCapture?.(e.pointerId);
+        this.activePointerId = null;
+        this.canvas.style.cursor = 'default';
     }
     
     getMousePos(e) {
@@ -139,6 +377,7 @@ export class DragDropManager {
         if (e.button !== 0) return; // 只处理左键
         
         const pos = this.getMousePos(e);
+        const prevSelectedObject = this.scene.selectedObject;
         const clickedObject = this.scene.findObjectAt(pos.x, pos.y);
         
         if (clickedObject) {
@@ -163,6 +402,13 @@ export class DragDropManager {
             this.canvas.style.cursor = 'grabbing';
         } else {
             this.scene.selectedObject = null;
+        }
+
+        if (prevSelectedObject !== this.scene.selectedObject) {
+            this.renderer?.invalidateFields?.();
+            if (this.scene.isPaused) {
+                this.renderer?.render?.(this.scene);
+            }
         }
     }
     
@@ -197,10 +443,18 @@ export class DragDropManager {
     onContextMenu(e) {
         e.preventDefault();
         const pos = this.getMousePos(e);
+        const prevSelectedObject = this.scene.selectedObject;
         const clickedObject = this.scene.findObjectAt(pos.x, pos.y);
         
         if (clickedObject) {
             this.scene.selectedObject = clickedObject;
+
+            if (prevSelectedObject !== this.scene.selectedObject) {
+                this.renderer?.invalidateFields?.();
+                if (this.scene.isPaused) {
+                    this.renderer?.render?.(this.scene);
+                }
+            }
             
             // 显示右键菜单
             const contextMenu = document.getElementById('context-menu');

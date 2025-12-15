@@ -56,6 +56,7 @@ export class Renderer {
         if (!container || !this.bgCanvas || !this.fieldCanvas || !this.particleCanvas) {
             return;
         }
+        this.dpr = window.devicePixelRatio || 1;
         this.width = container.clientWidth;
         this.height = container.clientHeight;
         
@@ -65,9 +66,10 @@ export class Renderer {
             canvas.height = this.height * this.dpr;
             canvas.style.width = this.width + 'px';
             canvas.style.height = this.height + 'px';
-            
+
             const ctx = canvas.getContext('2d');
-            ctx.scale(this.dpr, this.dpr);
+            ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+            ctx.imageSmoothingEnabled = true;
         });
         
         this.needFieldRedraw = true;
@@ -112,7 +114,7 @@ export class Renderer {
         // 绘制荧光屏
         if (scene.screens?.length) {
             for (const screen of scene.screens) {
-                this.drawFluorescentScreen(screen, scene.time || 0);
+                this.drawFluorescentScreen(screen, scene);
             }
         }
 
@@ -352,8 +354,10 @@ export class Renderer {
         
         // 绘制磁场符号（点或叉）
         const spacing = 40;
-        this.fieldCtx.fillStyle = field.strength > 0 ? 
+        const symbolColor = field.strength > 0 ?
             'rgba(100, 150, 255, 0.8)' : 'rgba(255, 100, 100, 0.8)';
+        this.fieldCtx.fillStyle = symbolColor;
+        this.fieldCtx.strokeStyle = symbolColor;
         
         for (let x = field.x + spacing / 2; x < field.x + field.width; x += spacing) {
             for (let y = field.y + spacing / 2; y < field.y + field.height; y += spacing) {
@@ -377,9 +381,10 @@ export class Renderer {
         this.fieldCtx.restore();
     }
 
-    drawFluorescentScreen(screen, time) {
+    drawFluorescentScreen(screen, scene) {
         this.fieldCtx.save();
 
+        const time = scene.time || 0;
         const frontX = screen.x;
         const frontY = screen.y;
         const frontW = screen.width;
@@ -432,7 +437,7 @@ export class Renderer {
         }
 
         // 选中高亮
-        if (screen === window.app?.scene?.selectedObject) {
+        if (screen === scene.selectedObject) {
             this.fieldCtx.strokeStyle = '#0e639c';
             this.fieldCtx.setLineDash([5, 5]);
             this.fieldCtx.lineWidth = 2;

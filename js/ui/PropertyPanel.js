@@ -33,12 +33,57 @@ export class PropertyPanel {
             this.renderScreenProperties(content, object);
         }
         
-        document.getElementById('property-panel').style.display = 'flex';
+        this.openPanel();
     }
     
     hide() {
-        document.getElementById('property-panel').style.display = 'none';
+        this.closePanel();
         this.currentObject = null;
+    }
+
+    openPanel() {
+        const panel = document.getElementById('property-panel');
+        const app = document.getElementById('app');
+        if (!panel) return;
+
+        panel.style.display = 'flex';
+        panel.classList.remove('open');
+        app?.classList.add('panel-open');
+
+        requestAnimationFrame(() => {
+            panel.classList.add('open');
+        });
+
+        window.app?.renderer?.resize?.();
+        if (window.app?.scene?.isPaused) {
+            window.app?.renderer?.render?.(window.app.scene);
+        }
+    }
+
+    closePanel() {
+        const panel = document.getElementById('property-panel');
+        const app = document.getElementById('app');
+        if (!panel) return;
+
+        panel.classList.remove('open');
+        app?.classList.remove('panel-open');
+
+        const isDrawer = window.matchMedia?.('(max-width: 1200px)')?.matches;
+        if (isDrawer) {
+            const hide = () => {
+                panel.style.display = 'none';
+                panel.removeEventListener('transitionend', hide);
+            };
+            panel.addEventListener('transitionend', hide);
+            setTimeout(hide, 350);
+        } else {
+            panel.style.display = 'none';
+        }
+
+        window.app?.renderer?.resize?.();
+        if (window.app?.scene?.isPaused) {
+            window.app?.renderer?.render?.(window.app.scene);
+        }
     }
     
     renderParticleProperties(container, particle) {
@@ -102,6 +147,9 @@ export class PropertyPanel {
         
         document.getElementById('clear-trajectory').addEventListener('click', () => {
             particle.clearTrajectory();
+            if (window.app?.scene?.isPaused) {
+                window.app.renderer.render(window.app.scene);
+            }
         });
     }
     

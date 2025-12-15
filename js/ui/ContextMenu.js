@@ -20,6 +20,11 @@ export class ContextMenu {
         document.getElementById('menu-duplicate').addEventListener('click', () => {
             if (this.scene.selectedObject) {
                 this.scene.duplicateObject(this.scene.selectedObject);
+                window.app?.renderer?.invalidateFields?.();
+                if (this.scene.isPaused) {
+                    window.app?.renderer?.render?.(this.scene);
+                }
+                window.app?.updateUI?.();
             }
         });
         
@@ -28,14 +33,16 @@ export class ContextMenu {
             if (this.scene.selectedObject) {
                 this.scene.removeObject(this.scene.selectedObject);
                 this.scene.selectedObject = null;
+                window.app?.renderer?.invalidateFields?.();
+                if (this.scene.isPaused) {
+                    window.app?.renderer?.render?.(this.scene);
+                }
+                window.app?.updateUI?.();
             }
         });
     }
     
     showPropertyPanel() {
-        const panel = document.getElementById('property-panel');
-        panel.style.display = 'flex';
-        
         // 触发属性面板更新
         const event = new CustomEvent('show-properties', {
             detail: { object: this.scene.selectedObject }

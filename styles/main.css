@@ -1,14 +1,20 @@
 /* 主布局 */
 #app {
+    --panel-width: 0px;
     display: grid;
     grid-template-areas:
         "toolbar header header"
         "toolbar canvas panel"
         "toolbar footer footer";
-    grid-template-columns: 220px 1fr 320px;
+    grid-template-columns: 220px 1fr var(--panel-width);
     grid-template-rows: 60px 1fr 40px;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
+}
+
+#app.panel-open {
+    --panel-width: 320px;
 }
 
 /* 头部 */
@@ -19,6 +25,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--spacing-md);
     padding: 0 var(--spacing-lg);
 }
 
@@ -26,12 +33,28 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--text-primary);
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .header-controls {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-end;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+}
+
+.header-controls::-webkit-scrollbar {
+    height: 6px;
 }
 
 .control-label {
@@ -99,6 +122,12 @@
     box-shadow: var(--shadow-sm);
 }
 
+.tool-item.active {
+    background: var(--bg-hover);
+    border-color: var(--accent-blue);
+    box-shadow: var(--shadow-sm);
+}
+
 .tool-item:active {
     cursor: grabbing;
     transform: scale(0.98);
@@ -151,6 +180,7 @@
     left: 0;
     width: 100%;
     height: 100%;
+    touch-action: none;
 }
 
 #bg-canvas {
@@ -256,5 +286,28 @@
     
     #toolbar {
         padding: var(--spacing-sm);
+    }
+}
+
+@media (max-width: 768px) {
+    #app {
+        grid-template-columns: 52px 1fr;
+    }
+
+    #header {
+        padding: 0 var(--spacing-md);
+    }
+
+    #header h1 {
+        font-size: 14px;
+    }
+
+    #timestep-slider {
+        width: 80px;
+    }
+
+    #property-panel {
+        width: 100vw;
+        right: -100vw;
     }
 }

@@ -125,6 +125,9 @@ class Application {
             energyToggle.checked = this.scene.settings.showEnergy;
             energyToggle.addEventListener('change', (e) => {
                 this.scene.settings.showEnergy = e.target.checked;
+                if (this.scene.isPaused) {
+                    this.renderer.render(this.scene);
+                }
             });
         }
         
@@ -144,6 +147,9 @@ class Application {
         // 窗口大小改变
         window.addEventListener('resize', () => {
             this.renderer.resize();
+            if (this.scene.isPaused) {
+                this.renderer.render(this.scene);
+            }
         });
         
         // 键盘快捷键
@@ -164,6 +170,11 @@ class Application {
             this.scene.removeObject(this.scene.selectedObject);
             this.scene.selectedObject = null;
             this.propertyPanel.hide();
+            this.renderer.invalidateFields();
+            if (this.scene.isPaused) {
+                this.renderer.render(this.scene);
+            }
+            this.updateUI();
         }
         
         // Ctrl+S: 保存
@@ -253,6 +264,10 @@ class Application {
         this.scene.clear();
         this.propertyPanel.hide();
         this.renderer.invalidateFields();
+        if (this.scene.isPaused) {
+            this.renderer.render(this.scene);
+        }
+        this.updateUI();
         this.showNotification('场景已重置', 'info');
     }
     
@@ -261,6 +276,10 @@ class Application {
             this.scene.clear();
             this.propertyPanel.hide();
             this.renderer.invalidateFields();
+            if (this.scene.isPaused) {
+                this.renderer.render(this.scene);
+            }
+            this.updateUI();
             this.showNotification('场景已清空', 'success');
         }
     }
@@ -284,6 +303,10 @@ class Application {
                     this.scene.loadFromData(loadedData);
                     this.renderer.invalidateFields();
                     this.propertyPanel.hide();
+                    if (this.scene.isPaused) {
+                        this.renderer.render(this.scene);
+                    }
+                    this.updateUI();
                     this.showNotification(`场景 "${sceneName}" 已加载`, 'success');
                 } else {
                     this.showNotification(`场景 "${sceneName}" 不存在`, 'error');
@@ -305,6 +328,10 @@ class Application {
             this.scene.clear();
             this.scene.loadFromData(preset.data);
             this.renderer.invalidateFields();
+            if (this.scene.isPaused) {
+                this.renderer.render(this.scene);
+            }
+            this.updateUI();
             this.showNotification(`已加载预设场景: ${preset.name}`, 'success');
         }
     }
@@ -350,9 +377,15 @@ class Application {
                 this.scene.loadFromData(data);
                 this.renderer.invalidateFields();
                 this.propertyPanel.hide();
+                if (this.scene.isPaused) {
+                    this.renderer.render(this.scene);
+                }
+                this.updateUI();
                 
-                const objectCount = (data.electricFields?.length || 0) + 
-                                   (data.magneticFields?.length || 0) + 
+                const objectCount = (data.electricFields?.length || 0) +
+                                   (data.magneticFields?.length || 0) +
+                                   (data.emitters?.length || 0) +
+                                   (data.screens?.length || 0) +
                                    (data.particles?.length || 0);
                 this.showNotification(`场景已导入 (${objectCount}个对象)`, 'success');
             } catch (error) {
@@ -377,6 +410,10 @@ class Application {
      */
     toggleTheme() {
         this.themeManager.toggle();
+        this.renderer.invalidateFields();
+        if (this.scene.isPaused) {
+            this.renderer.render(this.scene);
+        }
         const currentTheme = this.themeManager.getCurrentTheme();
         this.showNotification(`已切换到${currentTheme === 'dark' ? '深色' : '浅色'}模式`, 'success');
     }

@@ -83,6 +83,8 @@ export class Particle extends BaseObject {
     serialize() {
         return {
             ...super.serialize(),
+            x: this.position.x,
+            y: this.position.y,
             position: this.position.toArray(),
             velocity: this.velocity.toArray(),
             mass: this.mass,
@@ -101,6 +103,8 @@ export class Particle extends BaseObject {
         super.deserialize(data);
         this.position = Vector.fromArray(data.position);
         this.velocity = Vector.fromArray(data.velocity);
+        this.x = this.position.x;
+        this.y = this.position.y;
         this.mass = data.mass;
         this.charge = data.charge;
         this.radius = data.radius;
