@@ -62,10 +62,12 @@ export class Integrator {
         
         // 加速度 = 力 / 质量
         const acceleration = force.divide(particle.mass);
+        const pixelsPerMeter = this.forceCalculator.getPixelsPerMeter(scene);
+        const accelerationPx = acceleration.multiply(pixelsPerMeter);
         
         return {
             velocity: particle.velocity.clone(),
-            acceleration: acceleration
+            acceleration: accelerationPx
         };
     }
     

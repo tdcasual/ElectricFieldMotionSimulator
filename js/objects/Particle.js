@@ -27,7 +27,10 @@ export class Particle extends BaseObject {
         
         // 轨迹数据
         this.trajectory = [];
-        this.maxTrajectoryLength = 500;
+        const maxLen = config.maxTrajectoryLength;
+        this.maxTrajectoryLength = maxLen === Infinity
+            ? Infinity
+            : (Number.isFinite(maxLen) && maxLen > 0 ? maxLen : 500);
         
         // 状态
         this.active = true;
@@ -55,7 +58,10 @@ export class Particle extends BaseObject {
      * 计算动能
      */
     getKineticEnergy() {
-        const v = this.velocity.magnitude();
+        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+            ? this.scene.settings.pixelsPerMeter
+            : 1;
+        const v = this.velocity.magnitude() / pixelsPerMeter;
         return 0.5 * this.mass * v * v;
     }
     
@@ -65,7 +71,10 @@ export class Particle extends BaseObject {
     getPotentialEnergy(field) {
         // U = qEh (简化计算)
         if (field && field.type === 'electric-field-rect') {
-            const h = this.position.y - field.y;
+            const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+                ? this.scene.settings.pixelsPerMeter
+                : 1;
+            const h = (this.position.y - field.y) / pixelsPerMeter;
             return this.charge * field.strength * h;
         }
         return 0;

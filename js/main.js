@@ -33,6 +33,33 @@ class Application {
         
         this.init();
     }
+
+    syncHeaderControlsFromScene() {
+        const energyToggle = document.getElementById('toggle-energy-overlay');
+        if (energyToggle && document.activeElement !== energyToggle) {
+            energyToggle.checked = !!this.scene.settings.showEnergy;
+        }
+
+        const scaleInput = document.getElementById('scale-px-per-meter');
+        if (scaleInput && document.activeElement !== scaleInput) {
+            scaleInput.value = String(this.scene.settings.pixelsPerMeter ?? 1);
+        }
+
+        const boundarySelect = document.getElementById('boundary-mode-select');
+        if (boundarySelect && document.activeElement !== boundarySelect) {
+            boundarySelect.value = this.scene.settings.boundaryMode ?? 'margin';
+        }
+
+        const boundaryMarginInput = document.getElementById('boundary-margin-input');
+        if (boundaryMarginInput && document.activeElement !== boundaryMarginInput) {
+            boundaryMarginInput.value = String(this.scene.settings.boundaryMargin ?? 200);
+        }
+
+        const boundaryMarginControl = document.getElementById('boundary-margin-control');
+        if (boundaryMarginControl && boundarySelect) {
+            boundaryMarginControl.style.display = boundarySelect.value === 'margin' ? '' : 'none';
+        }
+    }
     
     init() {
         console.log('🚀 电磁场粒子运动模拟器启动中...');
@@ -153,6 +180,49 @@ class Application {
                 this.requestRender({ updateUI: false });
             });
         }
+
+        // 比例尺（px ↔ m）
+        const scaleInput = document.getElementById('scale-px-per-meter');
+        if (scaleInput) {
+            scaleInput.value = String(this.scene.settings.pixelsPerMeter ?? 1);
+            const applyScale = () => {
+                const value = parseFloat(scaleInput.value);
+                if (!Number.isFinite(value) || value <= 0) return;
+                this.scene.settings.pixelsPerMeter = value;
+                this.requestRender({ invalidateFields: true, updateUI: false });
+            };
+            scaleInput.addEventListener('change', applyScale);
+        }
+
+        // 边界处理
+        const boundarySelect = document.getElementById('boundary-mode-select');
+        const boundaryMarginInput = document.getElementById('boundary-margin-input');
+        const boundaryMarginControl = document.getElementById('boundary-margin-control');
+
+        const syncBoundaryMarginVisibility = () => {
+            if (!boundaryMarginControl || !boundarySelect) return;
+            boundaryMarginControl.style.display = boundarySelect.value === 'margin' ? '' : 'none';
+        };
+
+        if (boundarySelect) {
+            boundarySelect.value = this.scene.settings.boundaryMode ?? 'margin';
+            syncBoundaryMarginVisibility();
+            boundarySelect.addEventListener('change', (e) => {
+                this.scene.settings.boundaryMode = e.target.value;
+                syncBoundaryMarginVisibility();
+                this.requestRender({ updateUI: false });
+            });
+        }
+
+        if (boundaryMarginInput) {
+            boundaryMarginInput.value = String(this.scene.settings.boundaryMargin ?? 200);
+            boundaryMarginInput.addEventListener('change', () => {
+                const value = parseFloat(boundaryMarginInput.value);
+                if (!Number.isFinite(value) || value < 0) return;
+                this.scene.settings.boundaryMargin = value;
+                this.requestRender({ updateUI: false });
+            });
+        }
         
         // 预设场景按钮
         document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -268,6 +338,8 @@ class Application {
             `对象: ${this.scene.getAllObjects().length}`;
         document.getElementById('particle-count').textContent = 
             `粒子: ${this.scene.particles.length}`;
+
+        this.syncHeaderControlsFromScene();
     }
     
     reset() {
@@ -380,6 +452,7 @@ class Application {
                 
                 const objectCount = (data.electricFields?.length || 0) +
                                    (data.magneticFields?.length || 0) +
+                                   (data.disappearZones?.length || 0) +
                                    (data.emitters?.length || 0) +
                                    (data.screens?.length || 0) +
                                    (data.particles?.length || 0);

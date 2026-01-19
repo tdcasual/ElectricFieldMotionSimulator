@@ -10,6 +10,7 @@ export class PhysicsEngine {
         this.forceCalculator = new ForceCalculator();
         this.integrator = new Integrator();
         this.gravity = 9.8; // m/s^2
+        this.restitution = 0.9; // 边界反弹恢复系数
     }
     
     /**
@@ -35,27 +36,45 @@ export class PhysicsEngine {
             }
         }
 
+        const hasContinuousColliders =
+            (scene.disappearZones && scene.disappearZones.length) ||
+            (scene.screens && scene.screens.length);
+
         for (const particle of scene.particles) {
             if (!particle.active) continue;
             if (particle.stuckToCapacitor) {
                 continue;
             }
-            
-            // 保存上一帧位置用于屏幕碰撞检测
-            particle.prevX = particle.position.x;
-            particle.prevY = particle.position.y;
 
-            // Integrate motion
-            this.integrator.updateParticle(particle, scene, dt, this.gravity);
-            
-            // Collisions and boundaries.
-            this.handleCapacitorCollision(particle, scene);
-            let removed = this.handleScreenHit(particle, scene);
-            if (!removed) {
-                removed = this.handleBoundaries(particle, boundsWidth, boundsHeight);
-            }
-            if (removed) {
-                toRemove.push(particle);
+            const speed = Math.hypot(particle.velocity.x, particle.velocity.y);
+            const displacement = (Number.isFinite(speed) ? speed : 0) * dt;
+            const maxStepDistance = 12;
+            const subSteps = hasContinuousColliders
+                ? Math.max(1, Math.min(50, Math.ceil(displacement / maxStepDistance)))
+                : 1;
+            const stepDt = dt / subSteps;
+
+            for (let step = 0; step < subSteps; step++) {
+                // 保存上一帧位置用于碰撞检测
+                particle.prevX = particle.position.x;
+                particle.prevY = particle.position.y;
+
+                // Integrate motion
+                this.integrator.updateParticle(particle, scene, stepDt, this.gravity);
+
+                // Collisions and boundaries.
+                this.handleCapacitorCollision(particle, scene);
+                let removed = this.handleDisappearZoneHit(particle, scene);
+                if (!removed) {
+                    removed = this.handleScreenHit(particle, scene);
+                }
+                if (!removed) {
+                    removed = this.handleBoundaries(particle, scene, boundsWidth, boundsHeight);
+                }
+                if (removed) {
+                    toRemove.push(particle);
+                    break;
+                }
             }
         }
 
@@ -69,23 +88,173 @@ export class PhysicsEngine {
     }
     
     /**
-     * Boundary handling: now remove when out of bounds.
+     * Boundary handling: remove / bounce / wrap / margin-remove.
      */
-    handleBoundaries(particle, width, height) {
+    handleBoundaries(particle, scene, width, height) {
         if (!width || !height) return false;
-        
-        if (particle.position.x < particle.radius) {
-            return true;
-        } else if (particle.position.x > width - particle.radius) {
-            return true;
-        }
-        
-        if (particle.position.y < particle.radius) {
-            return true;
-        } else if (particle.position.y > height - particle.radius) {
+
+        const mode = scene?.settings?.boundaryMode || 'bounce';
+        const marginSetting = scene?.settings?.boundaryMargin;
+        const margin = Number.isFinite(marginSetting) && marginSetting >= 0 ? marginSetting : 0;
+
+        const radius = Number.isFinite(particle.radius) ? particle.radius : 0;
+        const x = particle.position.x;
+        const y = particle.position.y;
+        const vx = particle.velocity.x;
+        const vy = particle.velocity.y;
+
+        // 数值异常时直接移除，避免粒子被夹到角落“幽灵出现”
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(vx) || !Number.isFinite(vy)) {
             return true;
         }
 
+        const minX = radius;
+        const maxX = width - radius;
+        const minY = radius;
+        const maxY = height - radius;
+
+        if (mode === 'remove' || mode === 'margin') {
+            const extra = mode === 'margin' ? margin : 0;
+            const minXRemove = -radius - extra;
+            const maxXRemove = width + radius + extra;
+            const minYRemove = -radius - extra;
+            const maxYRemove = height + radius + extra;
+
+            if (x < minXRemove || x > maxXRemove || y < minYRemove || y > maxYRemove) {
+                return true;
+            }
+            return false;
+        }
+
+        if (mode === 'wrap') {
+            let wrapped = false;
+            if (x < minX) {
+                particle.position.x = maxX;
+                wrapped = true;
+            } else if (x > maxX) {
+                particle.position.x = minX;
+                wrapped = true;
+            }
+
+            if (y < minY) {
+                particle.position.y = maxY;
+                wrapped = true;
+            } else if (y > maxY) {
+                particle.position.y = minY;
+                wrapped = true;
+            }
+
+            if (wrapped && typeof particle.clearTrajectory === 'function') {
+                particle.clearTrajectory();
+            }
+            return false;
+        }
+
+        let bounced = false;
+
+        if (x < minX) {
+            particle.position.x = minX;
+            particle.velocity.x = Math.abs(vx) * this.restitution;
+            bounced = true;
+        } else if (x > maxX) {
+            particle.position.x = maxX;
+            particle.velocity.x = -Math.abs(vx) * this.restitution;
+            bounced = true;
+        }
+
+        if (y < minY) {
+            particle.position.y = minY;
+            particle.velocity.y = Math.abs(vy) * this.restitution;
+            bounced = true;
+        } else if (y > maxY) {
+            particle.position.y = maxY;
+            particle.velocity.y = -Math.abs(vy) * this.restitution;
+            bounced = true;
+        }
+
+        if (bounced && typeof particle.clearTrajectory === 'function') {
+            particle.clearTrajectory();
+        }
+
+        return false;
+    }
+
+    distancePointToSegment(px, py, ax, ay, bx, by) {
+        const abx = bx - ax;
+        const aby = by - ay;
+        const apx = px - ax;
+        const apy = py - ay;
+        const abLenSq = abx * abx + aby * aby;
+        if (abLenSq === 0) return Math.hypot(apx, apy);
+        let t = (apx * abx + apy * aby) / abLenSq;
+        t = Math.max(0, Math.min(1, t));
+        const cx = ax + abx * t;
+        const cy = ay + aby * t;
+        return Math.hypot(px - cx, py - cy);
+    }
+
+    segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+        const orient = (px, py, qx, qy, rx, ry) => {
+            const val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+            if (val === 0) return 0;
+            return val > 0 ? 1 : 2;
+        };
+        const onSegment = (px, py, qx, qy, rx, ry) => {
+            return qx <= Math.max(px, rx) && qx >= Math.min(px, rx) &&
+                   qy <= Math.max(py, ry) && qy >= Math.min(py, ry);
+        };
+
+        const o1 = orient(ax, ay, bx, by, cx, cy);
+        const o2 = orient(ax, ay, bx, by, dx, dy);
+        const o3 = orient(cx, cy, dx, dy, ax, ay);
+        const o4 = orient(cx, cy, dx, dy, bx, by);
+
+        if (o1 !== o2 && o3 !== o4) return true;
+        if (o1 === 0 && onSegment(ax, ay, cx, cy, bx, by)) return true;
+        if (o2 === 0 && onSegment(ax, ay, dx, dy, bx, by)) return true;
+        if (o3 === 0 && onSegment(cx, cy, ax, ay, dx, dy)) return true;
+        if (o4 === 0 && onSegment(cx, cy, bx, by, dx, dy)) return true;
+        return false;
+    }
+
+    segmentDistance(ax, ay, bx, by, cx, cy, dx, dy) {
+        if (this.segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy)) return 0;
+        const d1 = this.distancePointToSegment(ax, ay, cx, cy, dx, dy);
+        const d2 = this.distancePointToSegment(bx, by, cx, cy, dx, dy);
+        const d3 = this.distancePointToSegment(cx, cy, ax, ay, bx, by);
+        const d4 = this.distancePointToSegment(dx, dy, ax, ay, bx, by);
+        return Math.min(d1, d2, d3, d4);
+    }
+
+    handleDisappearZoneHit(particle, scene) {
+        if (!scene.disappearZones || !scene.disappearZones.length) return false;
+
+        const prevX = particle.prevX ?? particle.position.x;
+        const prevY = particle.prevY ?? particle.position.y;
+        const currX = particle.position.x;
+        const currY = particle.position.y;
+        const radius = Number.isFinite(particle.radius) ? particle.radius : 0;
+
+        for (const zone of scene.disappearZones) {
+            if (!zone || zone.type !== 'disappear-zone') continue;
+            const length = Number.isFinite(zone.length) ? zone.length : 0;
+            if (length <= 0) continue;
+            const angle = (Number.isFinite(zone.angle) ? zone.angle : 0) * Math.PI / 180;
+            const dx = Math.cos(angle) * (length / 2);
+            const dy = Math.sin(angle) * (length / 2);
+            const x1 = zone.x - dx;
+            const y1 = zone.y - dy;
+            const x2 = zone.x + dx;
+            const y2 = zone.y + dy;
+
+            const lineWidth = Number.isFinite(zone.lineWidth) ? zone.lineWidth : 6;
+            const threshold = radius + lineWidth / 2;
+
+            const dist = this.segmentDistance(prevX, prevY, currX, currY, x1, y1, x2, y2);
+            if (dist <= threshold) {
+                return true;
+            }
+        }
         return false;
     }
 

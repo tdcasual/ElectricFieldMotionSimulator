@@ -5,6 +5,11 @@
 import { Vector } from './VectorMath.js';
 
 export class ForceCalculator {
+    getPixelsPerMeter(scene) {
+        const value = scene?.settings?.pixelsPerMeter;
+        return Number.isFinite(value) && value > 0 ? value : 1;
+    }
+
     /**
      * 计算粒子受到的总力
      */
@@ -47,6 +52,9 @@ export class ForceCalculator {
      */
     calculateMagneticForce(particle, scene) {
         const Bz = scene.getMagneticField(particle.position.x, particle.position.y);
+        const pixelsPerMeter = this.getPixelsPerMeter(scene);
+        const vx = particle.velocity.x / pixelsPerMeter;
+        const vy = particle.velocity.y / pixelsPerMeter;
         
         // 2D中的磁场只有z分量
         // B = (0, 0, Bz)
@@ -54,8 +62,8 @@ export class ForceCalculator {
         // F = q(v × B) = q(vy*Bz, -vx*Bz, 0)
         
         return new Vector(
-            particle.charge * particle.velocity.y * Bz,
-            -particle.charge * particle.velocity.x * Bz,
+            particle.charge * vy * Bz,
+            -particle.charge * vx * Bz,
             0
         );
     }

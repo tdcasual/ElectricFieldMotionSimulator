@@ -20,16 +20,6 @@ export class FieldVisualizer {
             }
         }
         
-        // 绘制磁场
-        for (let x = spacing; x < width; x += spacing) {
-            for (let y = spacing; y < height; y += spacing) {
-                const B = scene.getMagneticField(x, y);
-                if (Math.abs(B) > 0.01) {
-                    this.drawMagneticField(ctx, x, y, B);
-                }
-            }
-        }
-        
         ctx.restore();
     }
     

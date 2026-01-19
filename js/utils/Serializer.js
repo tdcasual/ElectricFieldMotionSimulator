@@ -128,6 +128,9 @@ export class Serializer {
         if (data.screens != null && !Array.isArray(data.screens)) {
             return { valid: false, error: '荧光屏数据格式无效' };
         }
+        if (data.disappearZones != null && !Array.isArray(data.disappearZones)) {
+            return { valid: false, error: '消失区域数据格式无效' };
+        }
         
         return { valid: true };
     }

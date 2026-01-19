@@ -9,7 +9,9 @@ import { SemiCircleElectricField } from '../objects/SemiCircleElectricField.js';
 import { ParallelPlateCapacitor } from '../objects/ParallelPlateCapacitor.js';
 import { VerticalParallelPlateCapacitor } from '../objects/VerticalParallelPlateCapacitor.js';
 import { MagneticField } from '../objects/MagneticField.js';
+import { DisappearZone } from '../objects/DisappearZone.js';
 import { ElectronGun } from '../objects/ElectronGun.js';
+import { ProgrammableEmitter } from '../objects/ProgrammableEmitter.js';
 import { FluorescentScreen } from '../objects/FluorescentScreen.js';
 
 export class DragDropManager {
@@ -33,6 +35,10 @@ export class DragDropManager {
         this.isCoarsePointer =
             window.matchMedia?.('(pointer: coarse)')?.matches ||
             (navigator.maxTouchPoints ?? 0) > 0;
+
+        this.dragMode = 'move'; // move | resize
+        this.resizeHandle = null;
+        this.resizeStart = null;
         
         // 允许外部传入 canvas（测试页面或自定义场景）
         this.canvas = options.canvas || document.getElementById('particle-canvas');
@@ -95,6 +101,9 @@ export class DragDropManager {
     
     createObject(type, x, y) {
         let object = null;
+        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+            ? this.scene.settings.pixelsPerMeter
+            : 1;
         
         switch (type) {
             case 'electric-field-rect':
@@ -113,15 +122,52 @@ export class DragDropManager {
                 object = new VerticalParallelPlateCapacitor({ x, y, height: 200, plateDistance: 80, strength: 1000, polarity: 1 });
                 break;
             case 'magnetic-field':
-                object = new MagneticField({ x, y, width: 200, height: 150, strength: 0.5 });
+                object = new MagneticField({ x, y, shape: 'rect', width: 200, height: 150, strength: 0.5 });
+                break;
+            case 'magnetic-field-long':
+                object = new MagneticField({ x, y, shape: 'rect', width: 320, height: 90, strength: 0.5 });
+                break;
+            case 'magnetic-field-circle':
+                object = new MagneticField({ x, y, shape: 'circle', radius: 90, strength: 0.5 });
+                break;
+            case 'magnetic-field-triangle':
+                object = new MagneticField({ x, y, shape: 'triangle', width: 240, height: 180, strength: 0.5 });
                 break;
             case 'electron-gun':
                 object = new ElectronGun({
                     x, y,
                     direction: 0,
                     emissionRate: 2,
-                    emissionSpeed: 200,
+                    emissionSpeed: 200 * pixelsPerMeter,
                     particleType: 'electron'
+                });
+                break;
+            case 'programmable-emitter':
+                object = new ProgrammableEmitter({
+                    x,
+                    y,
+                    direction: 0,
+                    emissionSpeed: 200 * pixelsPerMeter,
+                    speedMode: 'fixed',
+                    speedMin: 200 * pixelsPerMeter,
+                    speedMax: 200 * pixelsPerMeter,
+                    speedListMode: 'sequential',
+                    speedListLoop: true,
+                    speedList: [],
+                    barrelLength: 25,
+                    startTime: 0,
+                    emissionMode: 'burst',
+                    emissionCount: 6,
+                    emissionInterval: 0.15,
+                    angleMode: 'fixed',
+                    angleMin: 0,
+                    angleMax: 360,
+                    angleListMode: 'sequential',
+                    angleListLoop: true,
+                    angleList: [],
+                    particleType: 'electron',
+                    keepTrajectory: true,
+                    ignoreGravity: true
                 });
                 break;
             case 'fluorescent-screen':
@@ -134,10 +180,19 @@ export class DragDropManager {
                     persistence: 1.5
                 });
                 break;
+            case 'disappear-zone':
+                object = new DisappearZone({
+                    x,
+                    y,
+                    length: 360,
+                    angle: 0,
+                    lineWidth: 6
+                });
+                break;
             case 'particle':
                 object = new Particle({ 
                     x, y, 
-                    vx: 50, vy: 0, 
+                    vx: 50 * pixelsPerMeter, vy: 0, 
                     mass: 9.109e-31, 
                     charge: -1.602e-19,
                     ignoreGravity: true
@@ -248,6 +303,25 @@ export class DragDropManager {
             this.draggingObject = clickedObject;
             this.scene.selectedObject = clickedObject;
             this.isDragging = false;
+            this.dragMode = 'move';
+            this.resizeHandle = null;
+            this.resizeStart = null;
+
+            if (clickedObject.type === 'magnetic-field') {
+                const handle = this.getMagneticResizeHandle(clickedObject, this.pointerDownPos);
+                if (handle) {
+                    this.dragMode = 'resize';
+                    this.resizeHandle = handle;
+                    this.resizeStart = {
+                        x: clickedObject.x,
+                        y: clickedObject.y,
+                        width: clickedObject.width ?? 0,
+                        height: clickedObject.height ?? 0,
+                        radius: clickedObject.radius ?? 0,
+                        shape: clickedObject.shape || 'rect'
+                    };
+                }
+            }
 
             if (clickedObject.type === 'particle') {
                 clickedObject.stuckToCapacitor = false;
@@ -255,7 +329,8 @@ export class DragDropManager {
                     x: this.pointerDownPos.x - clickedObject.position.x,
                     y: this.pointerDownPos.y - clickedObject.position.y
                 };
-            } else {
+                this.dragMode = 'move';
+            } else if (this.dragMode === 'move') {
                 this.dragOffset = {
                     x: this.pointerDownPos.x - clickedObject.x,
                     y: this.pointerDownPos.y - clickedObject.y
@@ -263,7 +338,7 @@ export class DragDropManager {
             }
 
             if (e.pointerType === 'mouse') {
-                this.canvas.style.cursor = 'grabbing';
+                this.canvas.style.cursor = this.dragMode === 'resize' ? 'nwse-resize' : 'grabbing';
             }
 
             // 触屏长按打开属性面板
@@ -284,6 +359,9 @@ export class DragDropManager {
             this.scene.selectedObject = null;
             this.isDragging = false;
             this.clearLongPressTimer();
+            this.dragMode = 'move';
+            this.resizeHandle = null;
+            this.resizeStart = null;
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
@@ -314,10 +392,22 @@ export class DragDropManager {
             this.clearLongPressTimer();
         }
 
-        if (this.draggingObject.type === 'particle') {
+        if (this.dragMode === 'resize' && this.draggingObject.type === 'magnetic-field') {
+            this.resizeMagneticField(this.draggingObject, pos);
+            this.renderer.invalidateFields();
+        } else if (this.draggingObject.type === 'particle') {
             this.draggingObject.position.x = pos.x - this.dragOffset.x;
             this.draggingObject.position.y = pos.y - this.dragOffset.y;
             this.draggingObject.clearTrajectory();
+            if (this.removeParticleIfInDisappearZone(this.draggingObject)) {
+                this.draggingObject = null;
+                this.isDragging = false;
+                this.pointerDownObject = null;
+                this.canvas.style.cursor = 'default';
+                this.canvas.releasePointerCapture?.(e.pointerId);
+                this.activePointerId = null;
+                return;
+            }
         } else {
             this.draggingObject.x = pos.x - this.dragOffset.x;
             this.draggingObject.y = pos.y - this.dragOffset.y;
@@ -353,6 +443,9 @@ export class DragDropManager {
         this.pointerDownPos = null;
         this.pointerDownObject = null;
         this.longPressTriggered = false;
+        this.dragMode = 'move';
+        this.resizeHandle = null;
+        this.resizeStart = null;
 
         if (e.pointerType === 'mouse') {
             this.canvas.style.cursor = 'default';
@@ -370,6 +463,9 @@ export class DragDropManager {
         this.pointerDownPos = null;
         this.pointerDownObject = null;
         this.longPressTriggered = false;
+        this.dragMode = 'move';
+        this.resizeHandle = null;
+        this.resizeStart = null;
         this.canvas.releasePointerCapture?.(e.pointerId);
         this.activePointerId = null;
         this.canvas.style.cursor = 'default';
@@ -394,6 +490,25 @@ export class DragDropManager {
             this.draggingObject = clickedObject;
             this.scene.selectedObject = clickedObject;
             this.isDragging = true;
+            this.dragMode = 'move';
+            this.resizeHandle = null;
+            this.resizeStart = null;
+
+            if (clickedObject.type === 'magnetic-field') {
+                const handle = this.getMagneticResizeHandle(clickedObject, pos);
+                if (handle) {
+                    this.dragMode = 'resize';
+                    this.resizeHandle = handle;
+                    this.resizeStart = {
+                        x: clickedObject.x,
+                        y: clickedObject.y,
+                        width: clickedObject.width ?? 0,
+                        height: clickedObject.height ?? 0,
+                        radius: clickedObject.radius ?? 0,
+                        shape: clickedObject.shape || 'rect'
+                    };
+                }
+            }
             
             if (clickedObject.type === 'particle') {
                 // 解除贴板状态以允许重新拖动
@@ -402,14 +517,15 @@ export class DragDropManager {
                     x: pos.x - clickedObject.position.x,
                     y: pos.y - clickedObject.position.y
                 };
-            } else {
+                this.dragMode = 'move';
+            } else if (this.dragMode === 'move') {
                 this.dragOffset = {
                     x: pos.x - clickedObject.x,
                     y: pos.y - clickedObject.y
                 };
             }
             
-            this.canvas.style.cursor = 'grabbing';
+            this.canvas.style.cursor = this.dragMode === 'resize' ? 'nwse-resize' : 'grabbing';
         } else {
             this.scene.selectedObject = null;
         }
@@ -431,12 +547,21 @@ export class DragDropManager {
         if (!this.isDragging || !this.draggingObject) return;
         
         const pos = this.getMousePos(e);
-        
-        if (this.draggingObject.type === 'particle') {
+
+        if (this.dragMode === 'resize' && this.draggingObject.type === 'magnetic-field') {
+            this.resizeMagneticField(this.draggingObject, pos);
+            this.renderer.invalidateFields();
+        } else if (this.draggingObject.type === 'particle') {
             this.draggingObject.position.x = pos.x - this.dragOffset.x;
             this.draggingObject.position.y = pos.y - this.dragOffset.y;
             // 清空轨迹
             this.draggingObject.clearTrajectory();
+            if (this.removeParticleIfInDisappearZone(this.draggingObject)) {
+                this.draggingObject = null;
+                this.isDragging = false;
+                this.canvas.style.cursor = 'default';
+                return;
+            }
         } else {
             this.draggingObject.x = pos.x - this.dragOffset.x;
             this.draggingObject.y = pos.y - this.dragOffset.y;
@@ -452,7 +577,189 @@ export class DragDropManager {
     onMouseUp(e) {
         this.isDragging = false;
         this.draggingObject = null;
+        this.dragMode = 'move';
+        this.resizeHandle = null;
+        this.resizeStart = null;
         this.canvas.style.cursor = 'default';
+    }
+
+    getMagneticResizeHandles(field) {
+        const shape = field.shape || 'rect';
+        if (shape === 'circle') {
+            const r = Math.max(0, field.radius ?? 0);
+            return [{ key: 'radius', x: field.x + r, y: field.y }];
+        }
+        if (shape === 'triangle') {
+            const x = field.x;
+            const y = field.y;
+            const w = field.width ?? 0;
+            const h = field.height ?? 0;
+            return [
+                { key: 'apex', x: x + w / 2, y },
+                { key: 'bl', x, y: y + h },
+                { key: 'br', x: x + w, y: y + h }
+            ];
+        }
+        const x = field.x;
+        const y = field.y;
+        const w = field.width ?? 0;
+        const h = field.height ?? 0;
+        return [
+            { key: 'nw', x, y },
+            { key: 'ne', x: x + w, y },
+            { key: 'sw', x, y: y + h },
+            { key: 'se', x: x + w, y: y + h }
+        ];
+    }
+
+    getMagneticResizeHandle(field, pos) {
+        const handles = this.getMagneticResizeHandles(field);
+        const tolerance = 10;
+        const tolSq = tolerance * tolerance;
+        for (const handle of handles) {
+            const dx = pos.x - handle.x;
+            const dy = pos.y - handle.y;
+            if ((dx * dx + dy * dy) <= tolSq) {
+                return handle.key;
+            }
+        }
+        return null;
+    }
+
+    resizeMagneticField(field, pos) {
+        if (!this.resizeHandle || !this.resizeStart) return;
+
+        const minSize = 30;
+        const minRadius = 15;
+        const start = this.resizeStart;
+        const shape = field.shape || start.shape || 'rect';
+
+        if (shape === 'circle') {
+            const cx = start.x;
+            const cy = start.y;
+            const r = Math.max(minRadius, Math.hypot(pos.x - cx, pos.y - cy));
+            field.x = cx;
+            field.y = cy;
+            field.radius = r;
+            field.width = r * 2;
+            field.height = r * 2;
+            return;
+        }
+
+        const startX = start.x;
+        const startY = start.y;
+        const startW = start.width;
+        const startH = start.height;
+        const startRight = startX + startW;
+        const startBottom = startY + startH;
+
+        const setRect = ({ x, y, width, height }) => {
+            field.x = x;
+            field.y = y;
+            field.width = width;
+            field.height = height;
+            field.radius = Math.min(width, height) / 2;
+        };
+
+        if (shape === 'triangle') {
+            if (this.resizeHandle === 'apex') {
+                const newY = Math.min(pos.y, startBottom - minSize);
+                const newH = Math.max(minSize, startBottom - newY);
+                setRect({ x: startX, y: newY, width: Math.max(minSize, startW), height: newH });
+                return;
+            }
+            if (this.resizeHandle === 'bl') {
+                const newX = Math.min(pos.x, startRight - minSize);
+                const newW = Math.max(minSize, startRight - newX);
+                const newH = Math.max(minSize, pos.y - startY);
+                setRect({ x: newX, y: startY, width: newW, height: newH });
+                return;
+            }
+            // br
+            const newW = Math.max(minSize, pos.x - startX);
+            const newH = Math.max(minSize, pos.y - startY);
+            setRect({ x: startX, y: startY, width: newW, height: newH });
+            return;
+        }
+
+        // rect
+        if (this.resizeHandle === 'nw') {
+            const newX = Math.min(pos.x, startRight - minSize);
+            const newY = Math.min(pos.y, startBottom - minSize);
+            const newW = Math.max(minSize, startRight - newX);
+            const newH = Math.max(minSize, startBottom - newY);
+            setRect({ x: newX, y: newY, width: newW, height: newH });
+            return;
+        }
+        if (this.resizeHandle === 'ne') {
+            const newY = Math.min(pos.y, startBottom - minSize);
+            const newW = Math.max(minSize, pos.x - startX);
+            const newH = Math.max(minSize, startBottom - newY);
+            setRect({ x: startX, y: newY, width: newW, height: newH });
+            return;
+        }
+        if (this.resizeHandle === 'sw') {
+            const newX = Math.min(pos.x, startRight - minSize);
+            const newW = Math.max(minSize, startRight - newX);
+            const newH = Math.max(minSize, pos.y - startY);
+            setRect({ x: newX, y: startY, width: newW, height: newH });
+            return;
+        }
+
+        // se (default)
+        const newW = Math.max(minSize, pos.x - startX);
+        const newH = Math.max(minSize, pos.y - startY);
+        setRect({ x: startX, y: startY, width: newW, height: newH });
+    }
+
+    removeParticleIfInDisappearZone(particle) {
+        if (!particle || particle.type !== 'particle') return false;
+        const zones = this.scene?.disappearZones;
+        if (!zones || !zones.length) return false;
+
+        const px = particle.position?.x ?? particle.x ?? 0;
+        const py = particle.position?.y ?? particle.y ?? 0;
+        const radius = Number.isFinite(particle.radius) ? particle.radius : 0;
+
+        for (const zone of zones) {
+            if (!zone || zone.type !== 'disappear-zone') continue;
+            const length = Number.isFinite(zone.length) ? zone.length : 0;
+            if (length <= 0) continue;
+            const angle = (Number.isFinite(zone.angle) ? zone.angle : 0) * Math.PI / 180;
+            const dx = Math.cos(angle) * (length / 2);
+            const dy = Math.sin(angle) * (length / 2);
+            const x1 = zone.x - dx;
+            const y1 = zone.y - dy;
+            const x2 = zone.x + dx;
+            const y2 = zone.y + dy;
+
+            const lineWidth = Number.isFinite(zone.lineWidth) ? zone.lineWidth : 6;
+            const threshold = radius + lineWidth / 2;
+
+            const abx = x2 - x1;
+            const aby = y2 - y1;
+            const apx = px - x1;
+            const apy = py - y1;
+            const abLenSq = abx * abx + aby * aby;
+            let t = 0;
+            if (abLenSq > 0) {
+                t = (apx * abx + apy * aby) / abLenSq;
+                t = Math.max(0, Math.min(1, t));
+            }
+            const cx = x1 + abx * t;
+            const cy = y1 + aby * t;
+            const dist = Math.hypot(px - cx, py - cy);
+            if (dist <= threshold) {
+                this.scene.removeObject(particle);
+                if (this.scene.selectedObject === particle) {
+                    this.scene.selectedObject = null;
+                    window.app?.propertyPanel?.hide?.();
+                }
+                window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+                return true;
+            }
+        }
+        return false;
     }
     
     onContextMenu(e) {

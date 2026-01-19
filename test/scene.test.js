@@ -4,6 +4,7 @@ import test from 'node:test';
 import { Scene } from '../js/core/Scene.js';
 import { RectElectricField } from '../js/objects/RectElectricField.js';
 import { Particle } from '../js/objects/Particle.js';
+import { ProgrammableEmitter } from '../js/objects/ProgrammableEmitter.js';
 import { Presets } from '../js/presets/Presets.js';
 import { Serializer } from '../js/utils/Serializer.js';
 
@@ -81,6 +82,20 @@ test('Serializer.validateSceneData rejects invalid optional arrays', () => {
   assert.equal(result.error, '发射器数据格式无效');
 });
 
+test('Serializer.validateSceneData rejects invalid disappearZones', () => {
+  const data = {
+    version: '1.0',
+    electricFields: [],
+    magneticFields: [],
+    particles: [],
+    disappearZones: {}
+  };
+
+  const result = Serializer.validateSceneData(data);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, '消失区域数据格式无效');
+});
+
 test('Particle.deserialize supports legacy x/y/vx/vy format', () => {
   const particle = new Particle({ x: 1, y: 2, vx: 3, vy: 4 });
 
@@ -111,3 +126,59 @@ test('Scene.loadFromData loads built-in presets', () => {
     assert.ok(scene.getAllObjects().length > 0, `Preset ${key} should create objects`);
   }
 });
+
+test('Scene.loadFromData loads programmable emitters', () => {
+  const scene = new Scene();
+  const emitterData = {
+    type: 'programmable-emitter',
+    x: 10,
+    y: 20,
+    startTime: 1,
+    emissionMode: 'sequence',
+    emissionCount: 5,
+    emissionInterval: 0.1,
+    angleMode: 'list',
+    angleList: [0, 30, 60],
+    angleListMode: 'sequential',
+    angleListLoop: false,
+    speedMode: 'arithmetic',
+    speedMin: 100,
+    speedMax: 300,
+    particleType: 'proton',
+    keepTrajectory: false
+  };
+
+  scene.loadFromData({
+    version: '1.0',
+    electricFields: [],
+    magneticFields: [],
+    particles: [],
+    emitters: [emitterData]
+  });
+
+  assert.equal(scene.emitters.length, 1);
+  const emitter = scene.emitters[0];
+  assert.ok(emitter instanceof ProgrammableEmitter);
+  assert.equal(emitter.type, 'programmable-emitter');
+  assert.equal(emitter.x, 10);
+  assert.equal(emitter.y, 20);
+  assert.equal(emitter.startTime, 1);
+  assert.equal(emitter.emissionMode, 'sequence');
+  assert.equal(emitter.emissionCount, 5);
+  assert.equal(emitter.emissionInterval, 0.1);
+  assert.equal(emitter.angleMode, 'list');
+  assert.deepEqual(emitter.angleList, [0, 30, 60]);
+  assert.equal(emitter.angleListMode, 'sequential');
+  assert.equal(emitter.angleListLoop, false);
+  assert.equal(emitter.speedMode, 'arithmetic');
+  assert.equal(emitter.speedMin, 100);
+  assert.equal(emitter.speedMax, 300);
+  assert.equal(emitter.particleType, 'proton');
+  assert.equal(emitter.keepTrajectory, false);
+
+  const saved = scene.serialize();
+  assert.equal(saved.emitters.length, 1);
+  assert.equal(saved.emitters[0].type, 'programmable-emitter');
+  assert.equal(saved.emitters[0].emissionMode, 'sequence');
+  assert.equal(saved.emitters[0].speedMode, 'arithmetic');
+ });

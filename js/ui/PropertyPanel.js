@@ -27,8 +27,12 @@ export class PropertyPanel {
             this.renderElectricFieldProperties(content, object);
         } else if (object.type === 'magnetic-field') {
             this.renderMagneticFieldProperties(content, object);
+        } else if (object.type === 'disappear-zone') {
+            this.renderDisappearZoneProperties(content, object);
         } else if (object.type === 'electron-gun') {
             this.renderElectronGunProperties(content, object);
+        } else if (object.type === 'programmable-emitter') {
+            this.renderProgrammableEmitterProperties(content, object);
         } else if (object.type === 'fluorescent-screen') {
             this.renderScreenProperties(content, object);
         }
@@ -80,6 +84,9 @@ export class PropertyPanel {
     }
     
     renderParticleProperties(container, particle) {
+        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+            ? this.scene.settings.pixelsPerMeter
+            : 1;
         container.innerHTML = `
             <h4>粒子属性</h4>
             <div class="form-row">
@@ -92,11 +99,11 @@ export class PropertyPanel {
             </div>
             <div class="form-row">
                 <label>初始速度 vx (m/s)</label>
-                <input type="number" id="prop-vx" value="${particle.velocity.x}" step="10">
+                <input type="number" id="prop-vx" value="${particle.velocity.x / pixelsPerMeter}" step="10">
             </div>
             <div class="form-row">
                 <label>初始速度 vy (m/s)</label>
-                <input type="number" id="prop-vy" value="${particle.velocity.y}" step="10">
+                <input type="number" id="prop-vy" value="${particle.velocity.y / pixelsPerMeter}" step="10">
             </div>
             <div class="form-row">
                 <label>半径 (px)</label>
@@ -150,8 +157,8 @@ export class PropertyPanel {
         document.getElementById('apply-particle-props').addEventListener('click', () => {
             particle.mass = parseFloat(document.getElementById('prop-mass').value);
             particle.charge = parseFloat(document.getElementById('prop-charge').value);
-            particle.velocity.x = parseFloat(document.getElementById('prop-vx').value);
-            particle.velocity.y = parseFloat(document.getElementById('prop-vy').value);
+            particle.velocity.x = parseFloat(document.getElementById('prop-vx').value) * pixelsPerMeter;
+            particle.velocity.y = parseFloat(document.getElementById('prop-vy').value) * pixelsPerMeter;
             particle.radius = parseFloat(document.getElementById('prop-radius').value);
             particle.ignoreGravity = document.getElementById('prop-ignore-gravity').checked;
             particle.showTrajectory = document.getElementById('prop-show-trajectory').checked;
@@ -386,6 +393,9 @@ export class PropertyPanel {
     }
 
     renderElectronGunProperties(container, emitter) {
+        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+            ? this.scene.settings.pixelsPerMeter
+            : 1;
         const presets = emitter.constructor?.PARTICLE_PRESETS || {};
         const presetOptions = Object.entries(presets).map(
             ([key, value]) => `<option value="${key}" ${emitter.particleType === key ? 'selected' : ''}>${value.label || key}</option>`
@@ -411,8 +421,8 @@ export class PropertyPanel {
                 <input type="number" id="prop-gun-rate" value="${emitter.emissionRate}" min="0" step="0.5">
             </div>
             <div class="form-row">
-                <label>发射初速度 (px/s)</label>
-                <input type="number" id="prop-gun-speed" value="${emitter.emissionSpeed}" step="10">
+                <label>发射初速度 (m/s)</label>
+                <input type="number" id="prop-gun-speed" value="${emitter.emissionSpeed / pixelsPerMeter}" step="10">
             </div>
             <div class="form-row">
                 <label>粒子类型</label>
@@ -495,7 +505,7 @@ export class PropertyPanel {
             emitter.y = parseFloat(document.getElementById('prop-gun-y').value);
             emitter.direction = parseFloat(document.getElementById('prop-gun-direction').value);
             emitter.emissionRate = parseFloat(document.getElementById('prop-gun-rate').value);
-            emitter.emissionSpeed = parseFloat(document.getElementById('prop-gun-speed').value);
+            emitter.emissionSpeed = parseFloat(document.getElementById('prop-gun-speed').value) * pixelsPerMeter;
 
             const chosenType = typeSelect.value;
             emitter.particleType = chosenType;
@@ -516,25 +526,336 @@ export class PropertyPanel {
             window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
         });
     }
-    
-    renderMagneticFieldProperties(container, field) {
+
+    renderProgrammableEmitterProperties(container, emitter) {
+        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+            ? this.scene.settings.pixelsPerMeter
+            : 1;
+
+        const presets = emitter.constructor?.PARTICLE_PRESETS || {};
+        const presetOptions = Object.entries(presets).map(
+            ([key, value]) => `<option value="${key}" ${emitter.particleType === key ? 'selected' : ''}>${value.label || key}</option>`
+        ).join('');
+        const options = presetOptions + `<option value="custom" ${emitter.particleType === 'custom' ? 'selected' : ''}>自定义</option>`;
+
+        const emissionMode = emitter.emissionMode || 'burst';
+        const angleMode = emitter.angleMode || 'fixed';
+        const speedMode = emitter.speedMode || 'fixed';
+        const timeListText = Array.isArray(emitter.timeList) ? emitter.timeList.join(', ') : '';
+        const angleListText = Array.isArray(emitter.angleList) ? emitter.angleList.join(', ') : '';
+        const speedListText = Array.isArray(emitter.speedList)
+            ? emitter.speedList.map(v => (Number.isFinite(v) ? v : 0) / pixelsPerMeter).join(', ')
+            : '';
+
+        const speedMinValue = (Number.isFinite(emitter.speedMin) ? emitter.speedMin : (emitter.emissionSpeed ?? 0)) / pixelsPerMeter;
+        const speedMaxValue = (Number.isFinite(emitter.speedMax) ? emitter.speedMax : (emitter.emissionSpeed ?? 0)) / pixelsPerMeter;
+        const speedFixedValue = (Number.isFinite(emitter.emissionSpeed) ? emitter.emissionSpeed : 0) / pixelsPerMeter;
+
         container.innerHTML = `
-            <h4>磁场属性</h4>
+            <h4>粒子发射器属性</h4>
             <div class="form-row">
                 <label>X 坐标</label>
-                <input type="number" id="prop-x" value="${field.x}" step="10">
+                <input type="number" id="prop-pe-x" value="${emitter.x}" step="10">
             </div>
             <div class="form-row">
                 <label>Y 坐标</label>
+                <input type="number" id="prop-pe-y" value="${emitter.y}" step="10">
+            </div>
+            <hr>
+            <h4>发射计划</h4>
+            <div class="form-row">
+                <label>开始时间 (s)</label>
+                <input type="number" id="prop-pe-start-time" value="${emitter.startTime ?? 0}" min="0" step="0.1">
+            </div>
+            <div class="form-row">
+                <label>模式</label>
+                <select id="prop-pe-mode">
+                    <option value="burst" ${emissionMode === 'burst' ? 'selected' : ''}>同时发射</option>
+                    <option value="sequence" ${emissionMode === 'sequence' ? 'selected' : ''}>顺序发射</option>
+                    <option value="time-list" ${emissionMode === 'time-list' ? 'selected' : ''}>自定义时间表</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>粒子数</label>
+                <input type="number" id="prop-pe-count" value="${emitter.emissionCount ?? 0}" min="0" step="1">
+            </div>
+            <div class="form-row" id="row-pe-interval" style="${emissionMode === 'sequence' ? '' : 'display:none;'}">
+                <label>间隔 (s)</label>
+                <input type="number" id="prop-pe-interval" value="${emitter.emissionInterval ?? 0.2}" min="0" step="0.01">
+            </div>
+            <div class="form-row" id="row-pe-time-list" style="${emissionMode === 'time-list' ? '' : 'display:none;'}">
+                <label>时间表 (s，相对开始时间)</label>
+                <textarea id="prop-pe-time-list" rows="2" placeholder="例如：0, 0.2, 0.4">${timeListText}</textarea>
+            </div>
+            <hr>
+            <h4>初速度</h4>
+            <div class="form-row">
+                <label>速度模式</label>
+                <select id="prop-pe-speed-mode">
+                    <option value="fixed" ${speedMode === 'fixed' ? 'selected' : ''}>固定</option>
+                    <option value="random" ${speedMode === 'random' ? 'selected' : ''}>随机</option>
+                    <option value="list" ${speedMode === 'list' ? 'selected' : ''}>数组</option>
+                    <option value="arithmetic" ${speedMode === 'arithmetic' ? 'selected' : ''}>等差</option>
+                </select>
+            </div>
+            <div class="form-row" id="row-pe-speed-fixed" style="${speedMode === 'fixed' ? '' : 'display:none;'}">
+                <label>固定速度 (m/s)</label>
+                <input type="number" id="prop-pe-speed-fixed" value="${speedFixedValue}" step="10">
+            </div>
+            <div class="form-row" id="row-pe-speed-min" style="${speedMode === 'random' || speedMode === 'arithmetic' ? '' : 'display:none;'}">
+                <label>最小速度 (m/s)</label>
+                <input type="number" id="prop-pe-speed-min" value="${speedMinValue}" min="0" step="10">
+            </div>
+            <div class="form-row" id="row-pe-speed-max" style="${speedMode === 'random' || speedMode === 'arithmetic' ? '' : 'display:none;'}">
+                <label>最大速度 (m/s)</label>
+                <input type="number" id="prop-pe-speed-max" value="${speedMaxValue}" min="0" step="10">
+            </div>
+            <div class="form-row" id="row-pe-speed-list" style="${speedMode === 'list' ? '' : 'display:none;'}">
+                <label>速度数组 (m/s)</label>
+                <textarea id="prop-pe-speed-list" rows="2" placeholder="例如：100, 200, 300">${speedListText}</textarea>
+            </div>
+            <div class="form-row" id="row-pe-speed-list-mode" style="${speedMode === 'list' ? '' : 'display:none;'}">
+                <label>数组使用方式</label>
+                <select id="prop-pe-speed-list-mode">
+                    <option value="sequential" ${emitter.speedListMode !== 'random' ? 'selected' : ''}>按顺序</option>
+                    <option value="random" ${emitter.speedListMode === 'random' ? 'selected' : ''}>随机抽取</option>
+                </select>
+            </div>
+            <div class="form-row" id="row-pe-speed-list-loop" style="${speedMode === 'list' ? '' : 'display:none;'}">
+                <label>
+                    <input type="checkbox" id="prop-pe-speed-list-loop" ${emitter.speedListLoop ? 'checked' : ''}>
+                    速度数组循环
+                </label>
+            </div>
+            <div class="form-row">
+                <label>发射口偏移 (px)</label>
+                <input type="number" id="prop-pe-barrel" value="${emitter.barrelLength ?? 25}" min="0" step="1">
+            </div>
+            <div class="form-row">
+                <label>
+                    <input type="checkbox" id="prop-pe-keep-trajectory" ${emitter.keepTrajectory ? 'checked' : ''}>
+                    保留完整轨迹
+                </label>
+            </div>
+            <hr>
+            <h4>角度</h4>
+            <div class="form-row">
+                <label>角度模式</label>
+                <select id="prop-pe-angle-mode">
+                    <option value="fixed" ${angleMode === 'fixed' ? 'selected' : ''}>固定</option>
+                    <option value="random" ${angleMode === 'random' ? 'selected' : ''}>随机</option>
+                    <option value="list" ${angleMode === 'list' ? 'selected' : ''}>数组</option>
+                </select>
+            </div>
+            <div class="form-row" id="row-pe-direction" style="${angleMode === 'fixed' ? '' : 'display:none;'}">
+                <label>固定角度 (度)</label>
+                <input type="number" id="prop-pe-direction" value="${emitter.direction ?? 0}" step="5">
+            </div>
+            <div class="form-row" id="row-pe-angle-min" style="${angleMode === 'random' ? '' : 'display:none;'}">
+                <label>最小角度 (度)</label>
+                <input type="number" id="prop-pe-angle-min" value="${emitter.angleMin ?? 0}" step="5">
+            </div>
+            <div class="form-row" id="row-pe-angle-max" style="${angleMode === 'random' ? '' : 'display:none;'}">
+                <label>最大角度 (度)</label>
+                <input type="number" id="prop-pe-angle-max" value="${emitter.angleMax ?? 360}" step="5">
+            </div>
+            <div class="form-row" id="row-pe-angle-list" style="${angleMode === 'list' ? '' : 'display:none;'}">
+                <label>角度数组 (度)</label>
+                <textarea id="prop-pe-angle-list" rows="2" placeholder="例如：0, 30, 60">${angleListText}</textarea>
+            </div>
+            <div class="form-row" id="row-pe-angle-list-mode" style="${angleMode === 'list' ? '' : 'display:none;'}">
+                <label>数组使用方式</label>
+                <select id="prop-pe-angle-list-mode">
+                    <option value="sequential" ${emitter.angleListMode !== 'random' ? 'selected' : ''}>按顺序</option>
+                    <option value="random" ${emitter.angleListMode === 'random' ? 'selected' : ''}>随机抽取</option>
+                </select>
+            </div>
+            <div class="form-row" id="row-pe-angle-list-loop" style="${angleMode === 'list' ? '' : 'display:none;'}">
+                <label>
+                    <input type="checkbox" id="prop-pe-angle-list-loop" ${emitter.angleListLoop ? 'checked' : ''}>
+                    角度数组循环
+                </label>
+            </div>
+            <hr>
+            <h4>粒子模板</h4>
+            <div class="form-row">
+                <label>粒子类型</label>
+                <select id="prop-pe-particle-type">${options}</select>
+            </div>
+            <div class="form-row">
+                <label>粒子电荷 (C)</label>
+                <input type="number" id="prop-pe-charge" value="${emitter.particleCharge}" step="1e-20">
+            </div>
+            <div class="form-row">
+                <label>粒子质量 (kg)</label>
+                <input type="number" id="prop-pe-mass" value="${emitter.particleMass}" step="1e-30">
+            </div>
+            <div class="form-row">
+                <label>粒子半径 (px)</label>
+                <input type="number" id="prop-pe-radius" value="${emitter.particleRadius}" min="2" max="20">
+            </div>
+            <div class="form-row">
+                <label>
+                    <input type="checkbox" id="prop-pe-ignore-gravity" ${emitter.ignoreGravity ? 'checked' : ''}>
+                    忽略重力
+                </label>
+            </div>
+            <button class="btn btn-primary" id="apply-pe-props">应用</button>
+        `;
+
+        const parseNumberList = (text) => {
+            if (!text) return [];
+            return String(text)
+                .split(/[\s,;]+/g)
+                .map(part => part.trim())
+                .filter(Boolean)
+                .map(part => Number(part))
+                .filter(value => Number.isFinite(value));
+        };
+
+        const modeSelect = document.getElementById('prop-pe-mode');
+        const rowInterval = document.getElementById('row-pe-interval');
+        const rowTimeList = document.getElementById('row-pe-time-list');
+        const syncModeRows = () => {
+            const mode = modeSelect.value;
+            rowInterval.style.display = mode === 'sequence' ? '' : 'none';
+            rowTimeList.style.display = mode === 'time-list' ? '' : 'none';
+        };
+        modeSelect.addEventListener('change', syncModeRows);
+        syncModeRows();
+
+        const angleModeSelect = document.getElementById('prop-pe-angle-mode');
+        const rowDirection = document.getElementById('row-pe-direction');
+        const rowAngleMin = document.getElementById('row-pe-angle-min');
+        const rowAngleMax = document.getElementById('row-pe-angle-max');
+        const rowAngleList = document.getElementById('row-pe-angle-list');
+        const rowAngleListMode = document.getElementById('row-pe-angle-list-mode');
+        const rowAngleListLoop = document.getElementById('row-pe-angle-list-loop');
+        const syncAngleRows = () => {
+            const mode = angleModeSelect.value;
+            rowDirection.style.display = mode === 'fixed' ? '' : 'none';
+            rowAngleMin.style.display = mode === 'random' ? '' : 'none';
+            rowAngleMax.style.display = mode === 'random' ? '' : 'none';
+            rowAngleList.style.display = mode === 'list' ? '' : 'none';
+            rowAngleListMode.style.display = mode === 'list' ? '' : 'none';
+            rowAngleListLoop.style.display = mode === 'list' ? '' : 'none';
+        };
+        angleModeSelect.addEventListener('change', syncAngleRows);
+        syncAngleRows();
+
+        const speedModeSelect = document.getElementById('prop-pe-speed-mode');
+        const rowSpeedFixed = document.getElementById('row-pe-speed-fixed');
+        const rowSpeedMin = document.getElementById('row-pe-speed-min');
+        const rowSpeedMax = document.getElementById('row-pe-speed-max');
+        const rowSpeedList = document.getElementById('row-pe-speed-list');
+        const rowSpeedListMode = document.getElementById('row-pe-speed-list-mode');
+        const rowSpeedListLoop = document.getElementById('row-pe-speed-list-loop');
+        const syncSpeedRows = () => {
+            const mode = speedModeSelect.value;
+            rowSpeedFixed.style.display = mode === 'fixed' ? '' : 'none';
+            const showRange = mode === 'random' || mode === 'arithmetic';
+            rowSpeedMin.style.display = showRange ? '' : 'none';
+            rowSpeedMax.style.display = showRange ? '' : 'none';
+            const showList = mode === 'list';
+            rowSpeedList.style.display = showList ? '' : 'none';
+            rowSpeedListMode.style.display = showList ? '' : 'none';
+            rowSpeedListLoop.style.display = showList ? '' : 'none';
+        };
+        speedModeSelect.addEventListener('change', syncSpeedRows);
+        syncSpeedRows();
+
+        const typeSelect = document.getElementById('prop-pe-particle-type');
+        const chargeInput = document.getElementById('prop-pe-charge');
+        const massInput = document.getElementById('prop-pe-mass');
+        const applyPreset = () => {
+            const preset = presets[typeSelect.value];
+            if (preset) {
+                chargeInput.value = preset.charge;
+                massInput.value = preset.mass;
+            }
+        };
+        typeSelect?.addEventListener('change', () => {
+            if (presets[typeSelect.value]) {
+                applyPreset();
+            }
+        });
+
+        document.getElementById('apply-pe-props').addEventListener('click', () => {
+            emitter.x = parseFloat(document.getElementById('prop-pe-x').value);
+            emitter.y = parseFloat(document.getElementById('prop-pe-y').value);
+
+            emitter.startTime = parseFloat(document.getElementById('prop-pe-start-time').value);
+            emitter.emissionMode = modeSelect.value;
+            emitter.emissionCount = parseFloat(document.getElementById('prop-pe-count').value);
+            emitter.emissionInterval = parseFloat(document.getElementById('prop-pe-interval')?.value ?? emitter.emissionInterval ?? 0.2);
+            emitter.timeList = parseNumberList(document.getElementById('prop-pe-time-list')?.value ?? '').map(v => Math.max(0, v));
+
+            emitter.speedMode = speedModeSelect.value;
+            emitter.emissionSpeed = parseFloat(document.getElementById('prop-pe-speed-fixed')?.value ?? speedFixedValue) * pixelsPerMeter;
+            emitter.speedMin = parseFloat(document.getElementById('prop-pe-speed-min')?.value ?? speedMinValue) * pixelsPerMeter;
+            emitter.speedMax = parseFloat(document.getElementById('prop-pe-speed-max')?.value ?? speedMaxValue) * pixelsPerMeter;
+            emitter.speedList = parseNumberList(document.getElementById('prop-pe-speed-list')?.value ?? '').map(v => Math.max(0, v) * pixelsPerMeter);
+            emitter.speedListMode = document.getElementById('prop-pe-speed-list-mode')?.value || emitter.speedListMode || 'sequential';
+            emitter.speedListLoop = document.getElementById('prop-pe-speed-list-loop')?.checked ?? true;
+            emitter.barrelLength = parseFloat(document.getElementById('prop-pe-barrel').value);
+            emitter.keepTrajectory = document.getElementById('prop-pe-keep-trajectory').checked;
+
+            emitter.angleMode = angleModeSelect.value;
+            emitter.direction = parseFloat(document.getElementById('prop-pe-direction')?.value ?? emitter.direction ?? 0);
+            emitter.angleMin = parseFloat(document.getElementById('prop-pe-angle-min')?.value ?? emitter.angleMin ?? 0);
+            emitter.angleMax = parseFloat(document.getElementById('prop-pe-angle-max')?.value ?? emitter.angleMax ?? 360);
+            emitter.angleList = parseNumberList(document.getElementById('prop-pe-angle-list')?.value ?? '');
+            emitter.angleListMode = document.getElementById('prop-pe-angle-list-mode')?.value || emitter.angleListMode || 'sequential';
+            emitter.angleListLoop = document.getElementById('prop-pe-angle-list-loop')?.checked ?? true;
+
+            emitter.particleType = typeSelect.value;
+            if (presets[emitter.particleType]) {
+                applyPreset();
+            }
+            emitter.particleCharge = parseFloat(chargeInput.value);
+            emitter.particleMass = parseFloat(massInput.value);
+            emitter.particleRadius = parseFloat(document.getElementById('prop-pe-radius').value);
+            emitter.ignoreGravity = document.getElementById('prop-pe-ignore-gravity').checked;
+
+            emitter.resetRuntime?.();
+            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+        });
+    }
+    
+    renderMagneticFieldProperties(container, field) {
+        const shape = field.shape || 'rect';
+        const isCircle = shape === 'circle';
+        const isTriangle = shape === 'triangle';
+
+        container.innerHTML = `
+            <h4>匀强磁场属性</h4>
+            <div class="form-row">
+                <label>形状</label>
+                <select id="prop-shape">
+                    <option value="rect" ${shape === 'rect' ? 'selected' : ''}>矩形</option>
+                    <option value="triangle" ${shape === 'triangle' ? 'selected' : ''}>三角形</option>
+                    <option value="circle" ${shape === 'circle' ? 'selected' : ''}>圆形</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label id="prop-x-label">${isCircle ? '中心 X' : 'X 坐标'}</label>
+                <input type="number" id="prop-x" value="${field.x}" step="10">
+            </div>
+            <div class="form-row">
+                <label id="prop-y-label">${isCircle ? '中心 Y' : 'Y 坐标'}</label>
                 <input type="number" id="prop-y" value="${field.y}" step="10">
             </div>
-            <div class="form-row">
-                <label>宽度</label>
-                <input type="number" id="prop-width" value="${field.width}" min="50" step="10">
+            <div class="form-row" id="row-width" style="${isCircle ? 'display:none;' : ''}">
+                <label id="prop-width-label">${isTriangle ? '底边宽度' : '宽度'}</label>
+                <input type="number" id="prop-width" value="${field.width ?? 200}" min="10" step="10">
             </div>
-            <div class="form-row">
-                <label>高度</label>
-                <input type="number" id="prop-height" value="${field.height}" min="50" step="10">
+            <div class="form-row" id="row-height" style="${isCircle ? 'display:none;' : ''}">
+                <label id="prop-height-label">${isTriangle ? '高度' : '高度'}</label>
+                <input type="number" id="prop-height" value="${field.height ?? 150}" min="10" step="10">
+            </div>
+            <div class="form-row" id="row-radius" style="${isCircle ? '' : 'display:none;'}">
+                <label>半径</label>
+                <input type="number" id="prop-radius" value="${field.radius ?? 90}" min="5" step="5">
             </div>
             <div class="form-row">
                 <label>磁感应强度 (T)</label>
@@ -542,13 +863,116 @@ export class PropertyPanel {
             </div>
             <button class="btn btn-primary" id="apply-magnetic-props">应用</button>
         `;
-        
+
+        const shapeSelect = document.getElementById('prop-shape');
+        const xLabel = document.getElementById('prop-x-label');
+        const yLabel = document.getElementById('prop-y-label');
+        const widthLabel = document.getElementById('prop-width-label');
+        const heightLabel = document.getElementById('prop-height-label');
+        const rowWidth = document.getElementById('row-width');
+        const rowHeight = document.getElementById('row-height');
+        const rowRadius = document.getElementById('row-radius');
+
+        let lastShape = shapeSelect.value;
+        const syncUiForShape = () => {
+            const currentShape = shapeSelect.value;
+            const circle = currentShape === 'circle';
+            const triangle = currentShape === 'triangle';
+
+            rowWidth.style.display = circle ? 'none' : '';
+            rowHeight.style.display = circle ? 'none' : '';
+            rowRadius.style.display = circle ? '' : 'none';
+
+            xLabel.textContent = circle ? '中心 X' : 'X 坐标';
+            yLabel.textContent = circle ? '中心 Y' : 'Y 坐标';
+            widthLabel.textContent = triangle ? '底边宽度' : '宽度';
+            heightLabel.textContent = '高度';
+
+            // 形状切换时，尽量把当前对象的几何参数映射到新形状的输入框
+            const xInput = document.getElementById('prop-x');
+            const yInput = document.getElementById('prop-y');
+            const wInput = document.getElementById('prop-width');
+            const hInput = document.getElementById('prop-height');
+            const rInput = document.getElementById('prop-radius');
+
+            const asRect = () => {
+                if (lastShape === 'circle') {
+                    const r = field.radius ?? 0;
+                    return { x: field.x - r, y: field.y - r, w: r * 2, h: r * 2 };
+                }
+                return { x: field.x, y: field.y, w: field.width ?? 200, h: field.height ?? 150 };
+            };
+
+            if (circle) {
+                const rect = asRect();
+                xInput.value = String(rect.x + rect.w / 2);
+                yInput.value = String(rect.y + rect.h / 2);
+                if (rInput) rInput.value = String(Math.max(5, Math.min(rect.w, rect.h) / 2));
+            } else {
+                const rect = asRect();
+                xInput.value = String(rect.x);
+                yInput.value = String(rect.y);
+                if (wInput) wInput.value = String(Math.max(10, rect.w));
+                if (hInput) hInput.value = String(Math.max(10, rect.h));
+            }
+
+            lastShape = currentShape;
+        };
+
+        shapeSelect.addEventListener('change', () => {
+            syncUiForShape();
+        });
+
         document.getElementById('apply-magnetic-props').addEventListener('click', () => {
-            field.x = parseFloat(document.getElementById('prop-x').value);
-            field.y = parseFloat(document.getElementById('prop-y').value);
-            field.width = parseFloat(document.getElementById('prop-width').value);
-            field.height = parseFloat(document.getElementById('prop-height').value);
+            const selectedShape = shapeSelect.value;
+            field.shape = selectedShape;
             field.strength = parseFloat(document.getElementById('prop-strength').value);
+
+            if (selectedShape === 'circle') {
+                field.x = parseFloat(document.getElementById('prop-x').value);
+                field.y = parseFloat(document.getElementById('prop-y').value);
+                field.radius = parseFloat(document.getElementById('prop-radius').value);
+                field.width = field.radius * 2;
+                field.height = field.radius * 2;
+            } else {
+                field.x = parseFloat(document.getElementById('prop-x').value);
+                field.y = parseFloat(document.getElementById('prop-y').value);
+                field.width = parseFloat(document.getElementById('prop-width').value);
+                field.height = parseFloat(document.getElementById('prop-height').value);
+                field.radius = Math.min(field.width, field.height) / 2;
+            }
+
+            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+        });
+    }
+
+    renderDisappearZoneProperties(container, zone) {
+        container.innerHTML = `
+            <h4>消失区域属性</h4>
+            <div class="form-row">
+                <label>中心 X</label>
+                <input type="number" id="prop-zone-x" value="${zone.x}" step="10">
+            </div>
+            <div class="form-row">
+                <label>中心 Y</label>
+                <input type="number" id="prop-zone-y" value="${zone.y}" step="10">
+            </div>
+            <div class="form-row">
+                <label>长度 (px)</label>
+                <input type="number" id="prop-zone-length" value="${zone.length ?? 320}" min="30" step="10">
+            </div>
+            <div class="form-row">
+                <label>角度 (度)</label>
+                <input type="number" id="prop-zone-angle" value="${zone.angle ?? 0}" step="5">
+            </div>
+            <button class="btn btn-primary" id="apply-zone-props">应用</button>
+        `;
+
+        document.getElementById('apply-zone-props').addEventListener('click', () => {
+            zone.x = parseFloat(document.getElementById('prop-zone-x').value);
+            zone.y = parseFloat(document.getElementById('prop-zone-y').value);
+            zone.length = parseFloat(document.getElementById('prop-zone-length').value);
+            zone.angle = parseFloat(document.getElementById('prop-zone-angle').value);
             window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
         });
     }

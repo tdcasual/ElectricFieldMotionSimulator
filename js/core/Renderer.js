@@ -108,7 +108,14 @@ export class Renderer {
         
         // 绘制磁场
         for (const field of scene.magneticFields) {
-            this.drawMagneticField(field);
+            this.drawMagneticField(field, scene);
+        }
+
+        // 绘制消失区域
+        if (scene.disappearZones?.length) {
+            for (const zone of scene.disappearZones) {
+                this.drawDisappearZone(zone, scene);
+            }
         }
 
         // 绘制荧光屏
@@ -121,7 +128,12 @@ export class Renderer {
         // 绘制发射器
         if (scene.emitters?.length) {
             for (const emitter of scene.emitters) {
-                this.drawElectronGun(emitter, scene);
+                if (!emitter) continue;
+                if (emitter.type === 'electron-gun') {
+                    this.drawElectronGun(emitter, scene);
+                } else if (emitter.type === 'programmable-emitter') {
+                    this.drawProgrammableEmitter(emitter, scene);
+                }
             }
         }
 
@@ -340,44 +352,190 @@ export class Renderer {
         this.fieldCtx.restore();
     }
     
-    drawMagneticField(field) {
+    drawMagneticField(field, scene) {
         this.fieldCtx.save();
-        
-        // 绘制磁场边界
-        this.fieldCtx.strokeStyle = 'rgba(100, 150, 255, 0.6)';
+
+        const strength = field.strength ?? 0;
+        const shape = field.shape || 'rect';
+        const colorRgb = strength >= 0 ? [100, 150, 255] : [255, 100, 100];
+        const borderColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.65)`;
+        const fillColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.08)`;
+        const symbolColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.85)`;
+
+        const beginShapePath = () => {
+            this.fieldCtx.beginPath();
+            if (shape === 'circle') {
+                const r = Math.max(0, field.radius ?? 0);
+                this.fieldCtx.arc(field.x, field.y, r, 0, Math.PI * 2);
+                return {
+                    minX: field.x - r,
+                    minY: field.y - r,
+                    maxX: field.x + r,
+                    maxY: field.y + r
+                };
+            }
+
+            if (shape === 'triangle') {
+                const x = field.x;
+                const y = field.y;
+                const w = field.width ?? 0;
+                const h = field.height ?? 0;
+                this.fieldCtx.moveTo(x + w / 2, y);
+                this.fieldCtx.lineTo(x, y + h);
+                this.fieldCtx.lineTo(x + w, y + h);
+                this.fieldCtx.closePath();
+                return { minX: x, minY: y, maxX: x + w, maxY: y + h };
+            }
+
+            // rect (默认)
+            const x = field.x;
+            const y = field.y;
+            const w = field.width ?? 0;
+            const h = field.height ?? 0;
+            this.fieldCtx.rect(x, y, w, h);
+            return { minX: x, minY: y, maxX: x + w, maxY: y + h };
+        };
+
+        // 绘制磁场边界与填充
+        const bounds = beginShapePath();
+        this.fieldCtx.strokeStyle = borderColor;
         this.fieldCtx.lineWidth = 2;
-        this.fieldCtx.strokeRect(field.x, field.y, field.width, field.height);
-        
-        // 填充半透明背景
-        this.fieldCtx.fillStyle = 'rgba(100, 150, 255, 0.1)';
-        this.fieldCtx.fillRect(field.x, field.y, field.width, field.height);
-        
-        // 绘制磁场符号（点或叉）
+        this.fieldCtx.stroke();
+        this.fieldCtx.fillStyle = fillColor;
+        this.fieldCtx.fill();
+
+        // 绘制磁场符号阵列（· / ×）
         const spacing = 40;
-        const symbolColor = field.strength > 0 ?
-            'rgba(100, 150, 255, 0.8)' : 'rgba(255, 100, 100, 0.8)';
-        this.fieldCtx.fillStyle = symbolColor;
+        const dotRadius = 3;
+        const crossOffset = 4.5;
+
+        // Clip to shape so symbols won't leak outside circle/triangle.
+        beginShapePath();
+        this.fieldCtx.save();
+        this.fieldCtx.clip();
+
         this.fieldCtx.strokeStyle = symbolColor;
-        
-        for (let x = field.x + spacing / 2; x < field.x + field.width; x += spacing) {
-            for (let y = field.y + spacing / 2; y < field.y + field.height; y += spacing) {
-                if (field.strength > 0) {
-                    // 向外（点）
+        this.fieldCtx.fillStyle = symbolColor;
+        this.fieldCtx.lineWidth = 1.8;
+
+        for (let x = bounds.minX + spacing / 2; x < bounds.maxX; x += spacing) {
+            for (let y = bounds.minY + spacing / 2; y < bounds.maxY; y += spacing) {
+                if (strength >= 0) {
+                    // ·：指向屏幕外
                     this.fieldCtx.beginPath();
-                    this.fieldCtx.arc(x, y, 3, 0, Math.PI * 2);
+                    this.fieldCtx.arc(x, y, dotRadius, 0, Math.PI * 2);
                     this.fieldCtx.fill();
                 } else {
-                    // 向内（叉）
+                    // ×：指向屏幕内
                     this.fieldCtx.beginPath();
-                    this.fieldCtx.moveTo(x - 5, y - 5);
-                    this.fieldCtx.lineTo(x + 5, y + 5);
-                    this.fieldCtx.moveTo(x + 5, y - 5);
-                    this.fieldCtx.lineTo(x - 5, y + 5);
+                    this.fieldCtx.moveTo(x - crossOffset, y - crossOffset);
+                    this.fieldCtx.lineTo(x + crossOffset, y + crossOffset);
+                    this.fieldCtx.moveTo(x + crossOffset, y - crossOffset);
+                    this.fieldCtx.lineTo(x - crossOffset, y + crossOffset);
                     this.fieldCtx.stroke();
                 }
             }
         }
+
+        this.fieldCtx.restore();
+
+        // 选中高亮 + 缩放控制点（仅磁场）
+        if (scene && field === scene.selectedObject) {
+            // 选中边界
+            beginShapePath();
+            this.fieldCtx.strokeStyle = '#0e639c';
+            this.fieldCtx.lineWidth = 2.5;
+            this.fieldCtx.setLineDash([5, 5]);
+            this.fieldCtx.stroke();
+            this.fieldCtx.setLineDash([]);
+
+            // 缩放控制点
+            const handles = [];
+            if (shape === 'circle') {
+                const r = Math.max(0, field.radius ?? 0);
+                handles.push({ key: 'radius', x: field.x + r, y: field.y });
+            } else if (shape === 'triangle') {
+                const x = field.x;
+                const y = field.y;
+                const w = field.width ?? 0;
+                const h = field.height ?? 0;
+                handles.push({ key: 'apex', x: x + w / 2, y });
+                handles.push({ key: 'bl', x, y: y + h });
+                handles.push({ key: 'br', x: x + w, y: y + h });
+            } else {
+                const x = field.x;
+                const y = field.y;
+                const w = field.width ?? 0;
+                const h = field.height ?? 0;
+                handles.push({ key: 'nw', x, y });
+                handles.push({ key: 'ne', x: x + w, y });
+                handles.push({ key: 'sw', x, y: y + h });
+                handles.push({ key: 'se', x: x + w, y: y + h });
+            }
+
+            const size = 10;
+            this.fieldCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.fieldCtx.strokeStyle = '#0e639c';
+            this.fieldCtx.lineWidth = 2;
+            for (const handle of handles) {
+                this.fieldCtx.beginPath();
+                this.fieldCtx.rect(handle.x - size / 2, handle.y - size / 2, size, size);
+                this.fieldCtx.fill();
+                this.fieldCtx.stroke();
+            }
+        }
         
+        this.fieldCtx.restore();
+    }
+
+    drawDisappearZone(zone, scene) {
+        this.fieldCtx.save();
+
+        const isDarkTheme = document.body.classList.contains('dark-theme') ||
+            (!document.body.classList.contains('light-theme'));
+        const color = isDarkTheme ? 'rgba(255, 120, 120, 0.9)' : 'rgba(220, 60, 60, 0.9)';
+
+        const length = Number.isFinite(zone.length) ? zone.length : 0;
+        const lineWidth = Number.isFinite(zone.lineWidth) ? zone.lineWidth : 6;
+        const angle = (Number.isFinite(zone.angle) ? zone.angle : 0) * Math.PI / 180;
+
+        this.fieldCtx.translate(zone.x, zone.y);
+        this.fieldCtx.rotate(angle);
+
+        this.fieldCtx.strokeStyle = color;
+        this.fieldCtx.lineWidth = lineWidth;
+        this.fieldCtx.lineCap = 'round';
+        this.fieldCtx.setLineDash([12, 8]);
+        this.fieldCtx.beginPath();
+        this.fieldCtx.moveTo(-length / 2, 0);
+        this.fieldCtx.lineTo(length / 2, 0);
+        this.fieldCtx.stroke();
+        this.fieldCtx.setLineDash([]);
+
+        // 选中高亮
+        if (scene && zone === scene.selectedObject) {
+            this.fieldCtx.strokeStyle = '#0e639c';
+            this.fieldCtx.lineWidth = 2;
+            this.fieldCtx.setLineDash([5, 5]);
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(-length / 2, 0);
+            this.fieldCtx.lineTo(length / 2, 0);
+            this.fieldCtx.stroke();
+            this.fieldCtx.setLineDash([]);
+
+            // 端点提示
+            const size = 10;
+            this.fieldCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.fieldCtx.strokeStyle = '#0e639c';
+            this.fieldCtx.lineWidth = 2;
+            for (const x of [-length / 2, length / 2]) {
+                this.fieldCtx.beginPath();
+                this.fieldCtx.rect(x - size / 2, -size / 2, size, size);
+                this.fieldCtx.fill();
+                this.fieldCtx.stroke();
+            }
+        }
+
         this.fieldCtx.restore();
     }
 
@@ -482,6 +640,9 @@ export class Renderer {
 
         // 叠加显示（速度/能量）
         if (emitter.showVelocity || emitter.showEnergy) {
+            const pixelsPerMeter = Number.isFinite(scene?.settings?.pixelsPerMeter) && scene.settings.pixelsPerMeter > 0
+                ? scene.settings.pixelsPerMeter
+                : 1;
             const angle = emitter.direction * Math.PI / 180;
             const barrelLength = emitter.barrelLength ?? 25;
             const originX = emitter.x + Math.cos(angle) * barrelLength;
@@ -489,11 +650,12 @@ export class Renderer {
 
             if (emitter.showVelocity) {
                 if (emitter.velocityDisplayMode === 'speed') {
+                    const speed = (Number.isFinite(emitter.emissionSpeed) ? emitter.emissionSpeed : 0) / pixelsPerMeter;
                     this.drawTextBadge(
                         this.fieldCtx,
                         emitter.x + 18,
                         emitter.y - 18,
-                        `v0: ${this.formatNumber(emitter.emissionSpeed)} m/s`
+                        `v0: ${this.formatNumber(speed)} m/s`
                     );
                 } else {
                     const vScale = 0.08;
@@ -517,7 +679,7 @@ export class Renderer {
             }
 
             if (emitter.showEnergy) {
-                const speed = Number.isFinite(emitter.emissionSpeed) ? emitter.emissionSpeed : 0;
+                const speed = (Number.isFinite(emitter.emissionSpeed) ? emitter.emissionSpeed : 0) / pixelsPerMeter;
                 const mass = Number.isFinite(emitter.particleMass) ? emitter.particleMass : 0;
                 const Ek = 0.5 * mass * speed * speed;
                 this.drawTextBadge(
@@ -528,6 +690,57 @@ export class Renderer {
                 );
             }
         }
+
+        // 选中高亮
+        if (emitter === scene.selectedObject) {
+            this.fieldCtx.save();
+            this.fieldCtx.strokeStyle = '#0e639c';
+            this.fieldCtx.lineWidth = 2.5;
+            this.fieldCtx.setLineDash([5, 5]);
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(emitter.x, emitter.y, 18, 0, Math.PI * 2);
+            this.fieldCtx.stroke();
+            this.fieldCtx.restore();
+        }
+    }
+
+    drawProgrammableEmitter(emitter, scene) {
+        this.fieldCtx.save();
+        this.fieldCtx.translate(emitter.x, emitter.y);
+
+        const baseDirection = Number.isFinite(emitter.direction) ? emitter.direction : 0;
+        this.fieldCtx.rotate(baseDirection * Math.PI / 180);
+
+        const bodyLen = 26;
+        const bodyWidth = 14;
+
+        this.fieldCtx.fillStyle = '#7bd389';
+        this.fieldCtx.strokeStyle = '#2e7d32';
+        this.fieldCtx.lineWidth = 2;
+
+        this.fieldCtx.beginPath();
+        this.fieldCtx.rect(-bodyLen / 2, -bodyWidth / 2, bodyLen, bodyWidth);
+        this.fieldCtx.fill();
+        this.fieldCtx.stroke();
+
+        // 发射口箭头
+        const tipX = bodyLen / 2 + 12;
+        this.fieldCtx.strokeStyle = '#2e7d32';
+        this.fieldCtx.lineWidth = 2;
+        this.fieldCtx.beginPath();
+        this.fieldCtx.moveTo(bodyLen / 2, 0);
+        this.fieldCtx.lineTo(tipX - 4, 0);
+        this.fieldCtx.stroke();
+
+        this.fieldCtx.fillStyle = '#2e7d32';
+        this.fieldCtx.beginPath();
+        this.fieldCtx.moveTo(tipX, 0);
+        this.fieldCtx.lineTo(tipX - 6, -4);
+        this.fieldCtx.lineTo(tipX - 6, 4);
+        this.fieldCtx.closePath();
+        this.fieldCtx.fill();
+
+        this.fieldCtx.restore();
 
         // 选中高亮
         if (emitter === scene.selectedObject) {
@@ -684,7 +897,10 @@ export class Renderer {
     }
 
     drawSpeedInfo(particle) {
-        const speed = particle.velocity.magnitude();
+        const pixelsPerMeter = Number.isFinite(particle.scene?.settings?.pixelsPerMeter) && particle.scene.settings.pixelsPerMeter > 0
+            ? particle.scene.settings.pixelsPerMeter
+            : 1;
+        const speed = particle.velocity.magnitude() / pixelsPerMeter;
         const x = particle.position.x + 15;
         const y = particle.position.y + 20;
         this.drawTextBadge(this.particleCtx, x, y, `v: ${this.formatNumber(speed)} m/s`);

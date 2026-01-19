@@ -3,11 +3,13 @@
  */
 
 import { CircleElectricField } from '../objects/CircleElectricField.js';
+import { DisappearZone } from '../objects/DisappearZone.js';
 import { ElectronGun } from '../objects/ElectronGun.js';
 import { FluorescentScreen } from '../objects/FluorescentScreen.js';
 import { MagneticField } from '../objects/MagneticField.js';
 import { ParallelPlateCapacitor } from '../objects/ParallelPlateCapacitor.js';
 import { Particle } from '../objects/Particle.js';
+import { ProgrammableEmitter } from '../objects/ProgrammableEmitter.js';
 import { RectElectricField } from '../objects/RectElectricField.js';
 import { SemiCircleElectricField } from '../objects/SemiCircleElectricField.js';
 import { VerticalParallelPlateCapacitor } from '../objects/VerticalParallelPlateCapacitor.js';
@@ -16,6 +18,7 @@ export class Scene {
     constructor() {
         this.electricFields = [];
         this.magneticFields = [];
+        this.disappearZones = [];
         this.emitters = [];
         this.screens = [];
         this.particles = [];
@@ -30,7 +33,10 @@ export class Scene {
             gridSize: 50,
             showTrajectories: true,
             showEnergy: true,
-            showFieldVectors: true
+            showFieldVectors: true,
+            pixelsPerMeter: 1, // 比例尺：1m = pixelsPerMeter px
+            boundaryMode: 'margin', // remove | bounce | wrap | margin
+            boundaryMargin: 200 // px（仅 margin 模式使用）
         };
     }
 
@@ -54,7 +60,9 @@ export class Scene {
             this.electricFields.push(object);
         } else if (object.type.includes('magnetic')) {
             this.magneticFields.push(object);
-        } else if (object.type === 'electron-gun') {
+        } else if (object.type === 'disappear-zone') {
+            this.disappearZones.push(object);
+        } else if (object.type === 'electron-gun' || object.type === 'programmable-emitter') {
             this.emitters.push(object);
         } else if (object.type === 'fluorescent-screen') {
             this.screens.push(object);
@@ -80,7 +88,10 @@ export class Scene {
         } else if (object.type.includes('magnetic')) {
             const index = this.magneticFields.indexOf(object);
             if (index > -1) this.magneticFields.splice(index, 1);
-        } else if (object.type === 'electron-gun') {
+        } else if (object.type === 'disappear-zone') {
+            const index = this.disappearZones.indexOf(object);
+            if (index > -1) this.disappearZones.splice(index, 1);
+        } else if (object.type === 'electron-gun' || object.type === 'programmable-emitter') {
             const index = this.emitters.indexOf(object);
             if (index > -1) this.emitters.splice(index, 1);
         } else if (object.type === 'fluorescent-screen') {
@@ -101,6 +112,7 @@ export class Scene {
         return [
             ...this.electricFields,
             ...this.magneticFields,
+            ...this.disappearZones,
             ...this.emitters,
             ...this.screens,
             ...this.particles
@@ -130,6 +142,7 @@ export class Scene {
     clear() {
         this.electricFields = [];
         this.magneticFields = [];
+        this.disappearZones = [];
         this.emitters = [];
         this.screens = [];
         this.particles = [];
@@ -175,6 +188,7 @@ export class Scene {
             settings: { ...this.settings },
             electricFields: this.electricFields.map(obj => obj.serialize()),
             magneticFields: this.magneticFields.map(obj => obj.serialize()),
+            disappearZones: this.disappearZones.map(obj => obj.serialize()),
             emitters: this.emitters.map(obj => obj.serialize()),
             screens: this.screens.map(obj => obj.serialize()),
             particles: this.particles.map(obj => obj.serialize())
@@ -217,11 +231,25 @@ export class Scene {
             }
         }
 
+        // 加载消失区域
+        if (Array.isArray(data.disappearZones)) {
+            for (const zoneData of data.disappearZones) {
+                if (zoneData.type !== 'disappear-zone') continue;
+                const zone = new DisappearZone(zoneData);
+                zone.deserialize(zoneData);
+                this.addObject(zone);
+            }
+        }
+
         // 加载发射器
         if (Array.isArray(data.emitters)) {
             for (const emitterData of data.emitters) {
                 if (emitterData.type === 'electron-gun') {
                     const emitter = new ElectronGun(emitterData);
+                    emitter.deserialize(emitterData);
+                    this.addObject(emitter);
+                } else if (emitterData.type === 'programmable-emitter') {
+                    const emitter = new ProgrammableEmitter(emitterData);
                     emitter.deserialize(emitterData);
                     this.addObject(emitter);
                 }

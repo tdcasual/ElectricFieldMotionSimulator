@@ -7,8 +7,8 @@ import { BaseObject } from './BaseObject.js';
 export class ElectricField extends BaseObject {
     constructor(config = {}) {
         super(config);
-        this.strength = config.strength || 1000; // N/C
-        this.direction = config.direction || 90; // 度（0=右，90=下）
+        this.strength = config.strength ?? 1000; // N/C
+        this.direction = config.direction ?? 90; // 度（0=右，90=下）
     }
     
     /**

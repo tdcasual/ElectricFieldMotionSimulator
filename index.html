@@ -31,6 +31,25 @@
                     <input type="checkbox" id="toggle-energy-overlay" checked>
                 </label>
                 <label class="control-label">
+                    <span>比例尺: 1m =</span>
+                    <input type="number" id="scale-px-per-meter" min="0.0001" step="1" value="1">
+                    <span>px</span>
+                </label>
+                <label class="control-label">
+                    <span>边界:</span>
+                    <select id="boundary-mode-select" aria-label="边界处理方式">
+                        <option value="margin">缓冲消失</option>
+                        <option value="remove">出界消失</option>
+                        <option value="bounce">反弹</option>
+                        <option value="wrap">穿越</option>
+                    </select>
+                </label>
+                <label class="control-label" id="boundary-margin-control">
+                    <span>缓冲:</span>
+                    <input type="number" id="boundary-margin-input" min="0" step="10" value="200">
+                    <span>px</span>
+                </label>
+                <label class="control-label">
                     <span>时间步长:</span>
                     <input type="range" id="timestep-slider" min="0.001" max="0.05" step="0.001" value="0.016">
                     <span id="timestep-value">16ms</span>
@@ -85,14 +104,38 @@
 
             <div class="tool-section">
                 <h3>磁场</h3>
-                <div class="tool-item" draggable="true" data-type="magnetic-field" title="均匀磁场">
+                <div class="tool-item" draggable="true" data-type="magnetic-field" title="匀强磁场（矩形）">
                     <svg viewBox="0 0 24 24" width="24" height="24">
-                        <circle cx="8" cy="8" r="2" fill="currentColor"/>
-                        <circle cx="16" cy="8" r="2" fill="currentColor"/>
-                        <circle cx="8" cy="16" r="2" fill="currentColor"/>
-                        <circle cx="16" cy="16" r="2" fill="currentColor"/>
+                        <rect x="4" y="5" width="16" height="14" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <circle cx="9" cy="10" r="1.7" fill="currentColor"/>
+                        <circle cx="15" cy="10" r="1.7" fill="currentColor"/>
+                        <circle cx="9" cy="15" r="1.7" fill="currentColor"/>
+                        <circle cx="15" cy="15" r="1.7" fill="currentColor"/>
                     </svg>
-                    <span>均匀磁场</span>
+                    <span>匀强磁场（矩形）</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="magnetic-field-long" title="匀强磁场（长条）">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <rect x="3" y="8" width="18" height="8" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <circle cx="7" cy="12" r="1.6" fill="currentColor"/>
+                        <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
+                        <circle cx="17" cy="12" r="1.6" fill="currentColor"/>
+                    </svg>
+                    <span>匀强磁场（长条）</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="magnetic-field-circle" title="匀强磁场（圆形）">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <circle cx="12" cy="12" r="8" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                    </svg>
+                    <span>匀强磁场（圆形）</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="magnetic-field-triangle" title="匀强磁场（三角形）">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path d="M12 5 L4 19 H20 Z" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="1.7" fill="currentColor"/>
+                    </svg>
+                    <span>匀强磁场（三角形）</span>
                 </div>
             </div>
 
@@ -105,6 +148,15 @@
                         <circle cx="6" cy="12" r="1.5" fill="currentColor"/>
                     </svg>
                     <span>电子枪</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="programmable-emitter" title="可编程粒子发射器">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <rect x="4" y="8" width="6" height="8" stroke="currentColor" fill="none" stroke-width="2"/>
+                        <path d="M11 12h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16 9l4 3-4 3" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="7" cy="12" r="1.3" fill="currentColor"/>
+                    </svg>
+                    <span>粒子发射器</span>
                 </div>
                 <div class="tool-item" draggable="true" data-type="particle" title="带电粒子">
                     <svg viewBox="0 0 24 24" width="24" height="24">
@@ -123,6 +175,14 @@
                         <circle cx="16" cy="12" r="2" fill="currentColor"/>
                     </svg>
                     <span>荧光屏</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="disappear-zone" title="消失区域">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+                        <path d="M9 8l-2 2 2 2" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M15 8l2 2-2 2" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>消失区域</span>
                 </div>
             </div>
 
