@@ -204,6 +204,21 @@
     color: var(--text-muted);
 }
 
+.form-row .expression-hint {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-muted);
+}
+
+.form-row .expression-hint.ok {
+    color: var(--success-green);
+}
+
+.form-row .expression-hint.error {
+    color: var(--error-red);
+}
+
 .form-group {
     display: flex;
     gap: var(--spacing-sm);

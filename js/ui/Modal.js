@@ -31,8 +31,10 @@ export class Modal {
         this.overlay.style.display = 'flex';
         
         this.confirmBtn.onclick = () => {
-            if (onConfirm) onConfirm();
-            this.hide();
+            const result = onConfirm ? onConfirm() : undefined;
+            if (result !== false) {
+                this.hide();
+            }
         };
     }
     

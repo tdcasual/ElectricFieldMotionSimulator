@@ -240,25 +240,38 @@ export class ProgrammableEmitter extends BaseObject {
     }
 
     emitParticle(scene, plannedCount) {
+        const baseX = Number.isFinite(this.x) ? this.x : null;
+        const baseY = Number.isFinite(this.y) ? this.y : null;
+        if (baseX === null || baseY === null) return;
+
         const angleDeg = this.pickAngleDeg();
         const angle = angleDeg * Math.PI / 180;
 
         const barrel = Number.isFinite(this.barrelLength) ? this.barrelLength : 0;
-        const spawnX = this.x + Math.cos(angle) * barrel;
-        const spawnY = this.y + Math.sin(angle) * barrel;
+        const spawnX = baseX + Math.cos(angle) * barrel;
+        const spawnY = baseY + Math.sin(angle) * barrel;
 
         const speed = this.pickSpeedPx(plannedCount);
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;
+
+        if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY) || !Number.isFinite(vx) || !Number.isFinite(vy)) {
+            return;
+        }
+
+        const mass = Number.isFinite(this.particleMass) && this.particleMass > 0 ? this.particleMass : null;
+        if (mass === null) return;
+        const charge = Number.isFinite(this.particleCharge) ? this.particleCharge : 0;
+        const radius = Number.isFinite(this.particleRadius) && this.particleRadius > 0 ? this.particleRadius : 6;
 
         const particle = new Particle({
             x: spawnX,
             y: spawnY,
             vx,
             vy,
-            mass: this.particleMass,
-            charge: this.particleCharge,
-            radius: this.particleRadius,
+            mass,
+            charge,
+            radius,
             ignoreGravity: this.ignoreGravity,
             showTrajectory: this.keepTrajectory,
             maxTrajectoryLength: Infinity

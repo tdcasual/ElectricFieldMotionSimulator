@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compileSafeMathExpression } from '../js/utils/SafeExpression.js';
+import { compileSafeExpression, compileSafeMathExpression } from '../js/utils/SafeExpression.js';
 
 test('compileSafeMathExpression supports Math.sin and Math.PI', () => {
     const fn = compileSafeMathExpression('Math.sin(2 * Math.PI * 50 * t)');
@@ -33,3 +33,16 @@ test('compileSafeMathExpression rejects non-math property access', () => {
     );
 });
 
+test('compileSafeExpression supports custom variables', () => {
+    const fn = compileSafeExpression('v0 / sqrt(2)', ['v0']);
+    const v0 = 200;
+    const out = fn({ v0 });
+    assert.ok(Math.abs(out - v0 / Math.sqrt(2)) < 1e-12);
+});
+
+test('compileSafeExpression rejects unknown variables', () => {
+    assert.throws(
+        () => compileSafeExpression('v0 + 1', []),
+        /Unknown identifier/
+    );
+});

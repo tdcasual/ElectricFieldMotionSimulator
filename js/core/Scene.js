@@ -39,6 +39,9 @@ export class Scene {
             boundaryMode: 'margin', // remove | bounce | wrap | margin
             boundaryMargin: 200 // px（仅 margin 模式使用）
         };
+
+        // 场景变量（用于表达式引用）
+        this.variables = {};
     }
 
     setViewport(width, height) {
@@ -149,6 +152,7 @@ export class Scene {
         this.particles = [];
         this.selectedObject = null;
         this.time = 0;
+        this.variables = {};
     }
     
     /**
@@ -187,6 +191,7 @@ export class Scene {
             version: '1.0',
             timestamp: Date.now(),
             settings: { ...this.settings },
+            variables: { ...(this.variables || {}) },
             electricFields: this.electricFields.map(obj => obj.serialize()),
             magneticFields: this.magneticFields.map(obj => obj.serialize()),
             disappearZones: this.disappearZones.map(obj => obj.serialize()),
@@ -199,10 +204,13 @@ export class Scene {
     /**
      * 从数据加载场景
      */
-    loadFromData(data) {
-        // 加载电场
-        if (Array.isArray(data.electricFields)) {
-            for (const fieldData of data.electricFields) {
+	    loadFromData(data) {
+	        // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表
+	        this.variables = {};
+
+	        // 加载电场
+	        if (Array.isArray(data.electricFields)) {
+	            for (const fieldData of data.electricFields) {
                 let field = null;
                 if (fieldData.type === 'electric-field-rect') {
                     field = new RectElectricField(fieldData);
@@ -277,14 +285,29 @@ export class Scene {
             }
         }
         
-        // 加载设置
-        if (data.settings) {
-            Object.assign(this.settings, data.settings);
-        }
+	        // 加载设置
+	        if (data.settings) {
+	            Object.assign(this.settings, data.settings);
+	        }
 
-        // 重置时间轴
-        this.time = 0;
-    }
+	        // 加载变量（可选）
+	        if (data.variables && typeof data.variables === 'object' && !Array.isArray(data.variables)) {
+	            const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+	            const RESERVED = new Set(['__proto__', 'prototype', 'constructor']);
+	            const next = Object.create(null);
+	            for (const [rawName, rawValue] of Object.entries(data.variables)) {
+	                const name = String(rawName ?? '').trim();
+	                if (!name || !NAME_RE.test(name) || RESERVED.has(name)) continue;
+	                const value = Number(rawValue);
+	                if (!Number.isFinite(value)) continue;
+	                next[name] = value;
+	            }
+	            this.variables = { ...next };
+	        }
+
+	        // 重置时间轴
+	        this.time = 0;
+	    }
     
     /**
      * 获取电场强度（所有电场叠加）

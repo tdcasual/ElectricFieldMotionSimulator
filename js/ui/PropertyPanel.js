@@ -2,6 +2,25 @@
  * 属性面板
  */
 
+import { compileSafeExpression } from '../utils/SafeExpression.js';
+
+function escapeAttr(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function readFiniteNumber(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const raw = el.value;
+    if (typeof raw === 'string' && raw.trim() === '') return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+}
+
 export class PropertyPanel {
     constructor(scene) {
         this.scene = scene;
@@ -13,6 +32,14 @@ export class PropertyPanel {
         // 监听显示属性事件
         document.addEventListener('show-properties', (e) => {
             this.show(e.detail.object);
+        });
+
+        // 变量变更时，刷新当前面板（用于表达式预览）
+        document.addEventListener('scene-variables-changed', () => {
+            if (!this.currentObject) return;
+            const panel = document.getElementById('property-panel');
+            if (!panel || panel.style.display === 'none') return;
+            this.show(this.currentObject);
         });
     }
     
@@ -83,36 +110,44 @@ export class PropertyPanel {
         window.app?.handleResize?.();
     }
     
-    renderParticleProperties(container, particle) {
-        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
-            ? this.scene.settings.pixelsPerMeter
-            : 1;
+	    renderParticleProperties(container, particle) {
+	        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+	            ? this.scene.settings.pixelsPerMeter
+	            : 1;
         const gravity = Number.isFinite(this.scene?.settings?.gravity) ? this.scene.settings.gravity : 10;
         const trajectoryRetention = particle.trajectoryRetention === 'seconds' ? 'seconds' : 'infinite';
-        const trajectorySeconds = Number.isFinite(particle.trajectorySeconds) && particle.trajectorySeconds > 0
-            ? particle.trajectorySeconds
-            : 8;
-        container.innerHTML = `
-            <h4>粒子属性</h4>
-            <div class="form-row">
-                <label>质量 (kg)</label>
-                <input type="number" id="prop-mass" value="${particle.mass}" step="1e-31">
-            </div>
-            <div class="form-row">
-                <label>电荷量 (C)</label>
-                <input type="number" id="prop-charge" value="${particle.charge}" step="1e-19">
-            </div>
-            <div class="form-row">
-                <label>当前速度 vx (m/s)</label>
-                <input type="number" id="prop-vx" value="${particle.velocity.x / pixelsPerMeter}" step="10">
-            </div>
-            <div class="form-row">
-                <label>当前速度 vy (m/s)</label>
-                <input type="number" id="prop-vy" value="${particle.velocity.y / pixelsPerMeter}" step="10">
-            </div>
-            <div class="form-row">
-                <label>半径 (px)</label>
-                <input type="number" id="prop-radius" value="${particle.radius}" min="2" max="20">
+	        const trajectorySeconds = Number.isFinite(particle.trajectorySeconds) && particle.trajectorySeconds > 0
+	            ? particle.trajectorySeconds
+	            : 8;
+	        const vxDisplay = typeof particle.vxExpr === 'string' && particle.vxExpr.trim()
+	            ? particle.vxExpr.trim()
+	            : String((Number.isFinite(particle.velocity?.x) ? particle.velocity.x : 0) / pixelsPerMeter);
+	        const vyDisplay = typeof particle.vyExpr === 'string' && particle.vyExpr.trim()
+	            ? particle.vyExpr.trim()
+	            : String((Number.isFinite(particle.velocity?.y) ? particle.velocity.y : 0) / pixelsPerMeter);
+	        container.innerHTML = `
+	            <h4>粒子属性</h4>
+	            <div class="form-row">
+	                <label>质量 (kg)</label>
+	                <input type="number" id="prop-mass" value="${particle.mass}" step="1e-31">
+	            </div>
+	            <div class="form-row">
+	                <label>电荷量 (C)</label>
+	                <input type="number" id="prop-charge" value="${particle.charge}" step="1e-19">
+	            </div>
+	            <div class="form-row">
+	                <label>当前速度 vx (m/s)</label>
+	                <input type="text" id="prop-vx" value="${escapeAttr(vxDisplay)}" placeholder="例如：v0/sqrt(2)" inputmode="decimal">
+	                <div class="expression-hint" id="prop-vx-preview"></div>
+	            </div>
+	            <div class="form-row">
+	                <label>当前速度 vy (m/s)</label>
+	                <input type="text" id="prop-vy" value="${escapeAttr(vyDisplay)}" placeholder="例如：-v0/sqrt(2)" inputmode="decimal">
+	                <div class="expression-hint" id="prop-vy-preview"></div>
+	            </div>
+	            <div class="form-row">
+	                <label>半径 (px)</label>
+	                <input type="number" id="prop-radius" value="${particle.radius}" min="2" max="20">
             </div>
             <div class="form-row">
                 <label>
@@ -227,8 +262,8 @@ export class PropertyPanel {
         showTrajectoryInput?.addEventListener('change', syncTrajectoryState);
         retentionSelect?.addEventListener('change', syncTrajectoryState);
 
-        const showForcesInput = document.getElementById('prop-show-forces');
-        const forceOptionsRow = document.getElementById('row-force-options');
+	        const showForcesInput = document.getElementById('prop-show-forces');
+	        const forceOptionsRow = document.getElementById('row-force-options');
         const syncForceState = () => {
             if (!showForcesInput || !forceOptionsRow) return;
             const enabled = !!showForcesInput.checked;
@@ -236,34 +271,116 @@ export class PropertyPanel {
                 input.disabled = !enabled;
             });
         };
-        syncForceState();
-        showForcesInput?.addEventListener('change', syncForceState);
-        
-        document.getElementById('apply-particle-props').addEventListener('click', () => {
-            const mass = parseFloat(document.getElementById('prop-mass')?.value);
-            if (Number.isFinite(mass) && mass > 0) {
-                particle.mass = mass;
-            }
+	        syncForceState();
+	        showForcesInput?.addEventListener('change', syncForceState);
+
+	        const NUMBER_FULL_RE = /^[+-]?(?:\d+\.\d*|\d+|\.\d+)(?:[eE][+-]?\d+)?$/;
+	        const getAllowedVariableNames = () => {
+	            const vars = this.scene?.variables;
+	            if (!vars || typeof vars !== 'object' || Array.isArray(vars)) return [];
+	            return Object.keys(vars);
+	        };
+	        const buildEvalContext = () => {
+	            const ctx = Object.create(null);
+	            ctx.t = Number.isFinite(this.scene?.time) ? this.scene.time : 0;
+	            const vars = this.scene?.variables;
+	            if (vars && typeof vars === 'object' && !Array.isArray(vars)) {
+	                for (const [key, value] of Object.entries(vars)) {
+	                    ctx[key] = value;
+	                }
+	            }
+	            return ctx;
+	        };
+	        const parseMpsOrExpression = (raw) => {
+	            const text = String(raw ?? '').trim();
+	            if (!text) return { ok: true, empty: true, value: null, expr: null };
+	            if (NUMBER_FULL_RE.test(text)) {
+	                const value = Number(text);
+	                return Number.isFinite(value) ? { ok: true, empty: false, value, expr: null } : { ok: false, error: '数值无效' };
+	            }
+	            try {
+	                const fn = compileSafeExpression(text, getAllowedVariableNames());
+	                const value = fn(buildEvalContext());
+	                if (!Number.isFinite(value)) return { ok: false, error: '结果不是有限数' };
+	                return { ok: true, empty: false, value, expr: text };
+	            } catch (error) {
+	                return { ok: false, error: error?.message || '表达式解析失败' };
+	            }
+	        };
+	        const formatPreviewNumber = (value) => {
+	            if (!Number.isFinite(value)) return '0';
+	            const abs = Math.abs(value);
+	            if (abs !== 0 && (abs >= 1e6 || abs < 1e-3)) return value.toExponential(3);
+	            return String(Math.round(value * 1000) / 1000);
+	        };
+	        const updatePreview = (inputEl, previewEl) => {
+	            if (!inputEl || !previewEl) return;
+	            const parsed = parseMpsOrExpression(inputEl.value);
+	            if (!parsed.ok) {
+	                previewEl.textContent = `错误：${parsed.error}`;
+	                previewEl.classList.add('error');
+	                previewEl.classList.remove('ok');
+	                return;
+	            }
+	            if (parsed.empty) {
+	                previewEl.textContent = '可填“数值”或“表达式”，变量在顶部“ƒx 变量表”中设置';
+	                previewEl.classList.remove('error');
+	                previewEl.classList.remove('ok');
+	                return;
+	            }
+	            previewEl.textContent = `预览：${formatPreviewNumber(parsed.value)} m/s`;
+	            previewEl.classList.remove('error');
+	            previewEl.classList.add('ok');
+	        };
+
+	        const vxInputEl = document.getElementById('prop-vx');
+	        const vyInputEl = document.getElementById('prop-vy');
+	        const vxPreviewEl = document.getElementById('prop-vx-preview');
+	        const vyPreviewEl = document.getElementById('prop-vy-preview');
+	        updatePreview(vxInputEl, vxPreviewEl);
+	        updatePreview(vyInputEl, vyPreviewEl);
+	        vxInputEl?.addEventListener('input', () => updatePreview(vxInputEl, vxPreviewEl));
+	        vyInputEl?.addEventListener('input', () => updatePreview(vyInputEl, vyPreviewEl));
+	        
+	        document.getElementById('apply-particle-props').addEventListener('click', () => {
+	            const mass = parseFloat(document.getElementById('prop-mass')?.value);
+	            if (Number.isFinite(mass) && mass > 0) {
+	                particle.mass = mass;
+	            }
 
             const charge = parseFloat(document.getElementById('prop-charge')?.value);
-            if (Number.isFinite(charge)) {
-                particle.charge = charge;
-            }
+	            if (Number.isFinite(charge)) {
+	                particle.charge = charge;
+	            }
 
-            const vx = parseFloat(document.getElementById('prop-vx')?.value);
-            if (Number.isFinite(vx)) {
-                particle.velocity.x = vx * pixelsPerMeter;
-            }
+	            const vxParsed = parseMpsOrExpression(document.getElementById('prop-vx')?.value);
+	            if (!vxParsed.ok) {
+	                window.app?.showNotification?.(`vx 设置失败：${vxParsed.error}`, 'error');
+	                return;
+	            }
+	            if (vxParsed.empty) {
+	                particle.vxExpr = null;
+	            } else {
+	                particle.velocity.x = vxParsed.value * pixelsPerMeter;
+	                particle.vxExpr = vxParsed.expr;
+	            }
 
-            const vy = parseFloat(document.getElementById('prop-vy')?.value);
-            if (Number.isFinite(vy)) {
-                particle.velocity.y = vy * pixelsPerMeter;
-            }
+	            const vyParsed = parseMpsOrExpression(document.getElementById('prop-vy')?.value);
+	            if (!vyParsed.ok) {
+	                window.app?.showNotification?.(`vy 设置失败：${vyParsed.error}`, 'error');
+	                return;
+	            }
+	            if (vyParsed.empty) {
+	                particle.vyExpr = null;
+	            } else {
+	                particle.velocity.y = vyParsed.value * pixelsPerMeter;
+	                particle.vyExpr = vyParsed.expr;
+	            }
 
-            const radius = parseFloat(document.getElementById('prop-radius')?.value);
-            if (Number.isFinite(radius) && radius > 0) {
-                particle.radius = radius;
-            }
+	            const radius = parseFloat(document.getElementById('prop-radius')?.value);
+	            if (Number.isFinite(radius) && radius > 0) {
+	                particle.radius = radius;
+	            }
 
             particle.ignoreGravity = document.getElementById('prop-ignore-gravity')?.checked ?? particle.ignoreGravity;
             if (!particle.ignoreGravity) {
@@ -443,79 +560,72 @@ export class PropertyPanel {
             sourceTypeSelect.addEventListener('change', toggleAcFields);
         }
         
-        document.getElementById('apply-field-props').addEventListener('click', () => {
-            field.x = parseFloat(document.getElementById('prop-x').value);
-            field.y = parseFloat(document.getElementById('prop-y').value);
-            if (field.width !== undefined && field.height !== undefined && field.type !== 'vertical-parallel-plate-capacitor') {
-                field.width = parseFloat(document.getElementById('prop-width').value);
-                field.height = parseFloat(document.getElementById('prop-height').value);
-            }
-            if (field.type === 'vertical-parallel-plate-capacitor') {
-                field.height = parseFloat(document.getElementById('prop-height').value);
-            }
-            if (field.radius !== undefined) {
-                field.radius = parseFloat(document.getElementById('prop-radius').value);
-            }
-            field.strength = parseFloat(document.getElementById('prop-strength').value);
-            const directionInput = document.getElementById('prop-direction');
-            if (directionInput) {
-                field.direction = parseFloat(directionInput.value);
-            }
-            
-            // 处理特定属性
-            if (field.type === 'semicircle-electric-field') {
-                const orientationInput = document.getElementById('prop-orientation');
-                if (orientationInput) {
-                    field.orientation = parseFloat(orientationInput.value);
-                }
-            }
-            
-            if (field.type === 'parallel-plate-capacitor' || field.type === 'vertical-parallel-plate-capacitor') {
-                const plateWidthInput = document.getElementById('prop-plate-width');
-                const plateDistanceInput = document.getElementById('prop-plate-distance');
-                const polarityInput = document.getElementById('prop-polarity');
-                const sourceTypeInput = document.getElementById('prop-source-type');
-                const acAmplitudeInput = document.getElementById('prop-ac-amplitude');
-                const acFrequencyInput = document.getElementById('prop-ac-frequency');
-                const acPhaseInput = document.getElementById('prop-ac-phase');
-                const dcBiasInput = document.getElementById('prop-dc-bias');
-                const waveformInput = document.getElementById('prop-waveform');
-                const customExprInput = document.getElementById('prop-custom-expression');
-                if (plateWidthInput) {
-                    field.width = parseFloat(plateWidthInput.value);
-                }
-                if (plateDistanceInput) {
-                    field.plateDistance = parseFloat(plateDistanceInput.value);
-                }
-                if (polarityInput) {
-                    field.polarity = parseInt(polarityInput.value);
-                }
-                if (sourceTypeInput) {
-                    field.sourceType = sourceTypeInput.value;
-                }
-                if (acAmplitudeInput) {
-                    field.acAmplitude = parseFloat(acAmplitudeInput.value);
-                }
-                if (acFrequencyInput) {
-                    field.acFrequency = parseFloat(acFrequencyInput.value);
-                }
-                if (acPhaseInput) {
-                    field.acPhase = parseFloat(acPhaseInput.value);
-                }
-                if (dcBiasInput) {
-                    field.dcBias = parseFloat(dcBiasInput.value);
-                }
-                if (waveformInput) {
-                    field.waveform = waveformInput.value;
-                }
-                if (customExprInput) {
-                    field.customExpression = customExprInput.value || '0';
-                    field.compileCustomExpression?.();
-                }
-            }
-            
-            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
-        });
+	        document.getElementById('apply-field-props').addEventListener('click', () => {
+	            const x = readFiniteNumber('prop-x');
+	            if (x !== null) field.x = x;
+	            const y = readFiniteNumber('prop-y');
+	            if (y !== null) field.y = y;
+	            if (field.width !== undefined && field.height !== undefined && field.type !== 'vertical-parallel-plate-capacitor') {
+	                const width = readFiniteNumber('prop-width');
+	                if (width !== null && width > 0) field.width = width;
+	                const height = readFiniteNumber('prop-height');
+	                if (height !== null && height > 0) field.height = height;
+	            }
+	            if (field.type === 'vertical-parallel-plate-capacitor') {
+	                const height = readFiniteNumber('prop-height');
+	                if (height !== null && height > 0) field.height = height;
+	            }
+	            if (field.radius !== undefined) {
+	                const radius = readFiniteNumber('prop-radius');
+	                if (radius !== null && radius > 0) field.radius = radius;
+	            }
+	            const strength = readFiniteNumber('prop-strength');
+	            if (strength !== null) field.strength = strength;
+	            const direction = readFiniteNumber('prop-direction');
+	            if (direction !== null) field.direction = direction;
+	            
+	            // 处理特定属性
+	            if (field.type === 'semicircle-electric-field') {
+	                const orientation = readFiniteNumber('prop-orientation');
+	                if (orientation !== null) field.orientation = orientation;
+	            }
+	            
+	            if (field.type === 'parallel-plate-capacitor' || field.type === 'vertical-parallel-plate-capacitor') {
+	                const plateWidth = readFiniteNumber('prop-plate-width');
+	                if (plateWidth !== null && plateWidth > 0) field.width = plateWidth;
+	                const plateDistance = readFiniteNumber('prop-plate-distance');
+	                if (plateDistance !== null && plateDistance > 0) field.plateDistance = plateDistance;
+
+	                const polarityInput = document.getElementById('prop-polarity');
+	                if (polarityInput) {
+	                    const polarity = parseInt(polarityInput.value, 10);
+	                    if (Number.isFinite(polarity)) field.polarity = polarity;
+	                }
+
+	                const sourceTypeInput = document.getElementById('prop-source-type');
+	                if (sourceTypeInput) field.sourceType = sourceTypeInput.value;
+
+	                const acAmplitude = readFiniteNumber('prop-ac-amplitude');
+	                if (acAmplitude !== null) field.acAmplitude = acAmplitude;
+	                const acFrequency = readFiniteNumber('prop-ac-frequency');
+	                if (acFrequency !== null) field.acFrequency = acFrequency;
+	                const acPhase = readFiniteNumber('prop-ac-phase');
+	                if (acPhase !== null) field.acPhase = acPhase;
+	                const dcBias = readFiniteNumber('prop-dc-bias');
+	                if (dcBias !== null) field.dcBias = dcBias;
+
+	                const waveformInput = document.getElementById('prop-waveform');
+	                if (waveformInput) field.waveform = waveformInput.value;
+
+	                const customExprInput = document.getElementById('prop-custom-expression');
+	                if (customExprInput) {
+	                    field.customExpression = customExprInput.value || '0';
+	                    field.compileCustomExpression?.();
+	                }
+	            }
+	            
+	            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+	        });
     }
 
     renderElectronGunProperties(container, emitter) {
@@ -640,30 +750,38 @@ export class PropertyPanel {
         syncGravityState();
         ignoreGravityInput?.addEventListener('change', syncGravityState);
 
-        document.getElementById('apply-gun-props').addEventListener('click', () => {
-            emitter.x = parseFloat(document.getElementById('prop-gun-x').value);
-            emitter.y = parseFloat(document.getElementById('prop-gun-y').value);
-            emitter.direction = parseFloat(document.getElementById('prop-gun-direction').value);
-            emitter.emissionRate = parseFloat(document.getElementById('prop-gun-rate').value);
-            emitter.emissionSpeed = parseFloat(document.getElementById('prop-gun-speed').value) * pixelsPerMeter;
+	        document.getElementById('apply-gun-props').addEventListener('click', () => {
+	            const x = readFiniteNumber('prop-gun-x');
+	            if (x !== null) emitter.x = x;
+	            const y = readFiniteNumber('prop-gun-y');
+	            if (y !== null) emitter.y = y;
+	            const direction = readFiniteNumber('prop-gun-direction');
+	            if (direction !== null) emitter.direction = direction;
+	            const rate = readFiniteNumber('prop-gun-rate');
+	            if (rate !== null && rate >= 0) emitter.emissionRate = rate;
+	            const speed = readFiniteNumber('prop-gun-speed');
+	            if (speed !== null && speed >= 0) emitter.emissionSpeed = speed * pixelsPerMeter;
 
-            const chosenType = typeSelect.value;
-            emitter.particleType = chosenType;
-            if (presets[chosenType]) {
+	            const chosenType = typeSelect.value;
+	            emitter.particleType = chosenType;
+	            if (presets[chosenType]) {
                 applyPreset();
             }
 
-            emitter.particleCharge = parseFloat(chargeInput.value);
-            emitter.particleMass = parseFloat(massInput.value);
-            emitter.particleRadius = parseFloat(document.getElementById('prop-gun-radius').value);
-            emitter.ignoreGravity = document.getElementById('prop-gun-ignore-gravity').checked;
-            if (!emitter.ignoreGravity) {
-                const g = parseFloat(document.getElementById('prop-gun-gravity').value);
-                if (Number.isFinite(g) && g >= 0) {
-                    this.scene.settings.gravity = g;
-                    window.app?.syncHeaderControlsFromScene?.();
-                }
-            }
+	            const charge = readFiniteNumber('prop-gun-charge');
+	            if (charge !== null) emitter.particleCharge = charge;
+	            const mass = readFiniteNumber('prop-gun-mass');
+	            if (mass !== null && mass > 0) emitter.particleMass = mass;
+	            const radius = readFiniteNumber('prop-gun-radius');
+	            if (radius !== null && radius > 0) emitter.particleRadius = radius;
+	            emitter.ignoreGravity = document.getElementById('prop-gun-ignore-gravity').checked;
+	            if (!emitter.ignoreGravity) {
+	                const g = readFiniteNumber('prop-gun-gravity');
+	                if (g !== null && g >= 0) {
+	                    this.scene.settings.gravity = g;
+	                    window.app?.syncHeaderControlsFromScene?.();
+	                }
+	            }
 
             emitter.showVelocity = document.getElementById('prop-gun-show-velocity').checked;
             emitter.velocityDisplayMode = document.getElementById('prop-gun-velocity-display-mode').value;
@@ -941,49 +1059,64 @@ export class PropertyPanel {
         syncGravityState();
         ignoreGravityInput?.addEventListener('change', syncGravityState);
 
-        document.getElementById('apply-pe-props').addEventListener('click', () => {
-            emitter.x = parseFloat(document.getElementById('prop-pe-x').value);
-            emitter.y = parseFloat(document.getElementById('prop-pe-y').value);
+	        document.getElementById('apply-pe-props').addEventListener('click', () => {
+	            const x = readFiniteNumber('prop-pe-x');
+	            if (x !== null) emitter.x = x;
+	            const y = readFiniteNumber('prop-pe-y');
+	            if (y !== null) emitter.y = y;
 
-            emitter.startTime = parseFloat(document.getElementById('prop-pe-start-time').value);
-            emitter.emissionMode = modeSelect.value;
-            emitter.emissionCount = parseFloat(document.getElementById('prop-pe-count').value);
-            emitter.emissionInterval = parseFloat(document.getElementById('prop-pe-interval')?.value ?? emitter.emissionInterval ?? 0.2);
-            emitter.timeList = parseNumberList(document.getElementById('prop-pe-time-list')?.value ?? '').map(v => Math.max(0, v));
+	            const startTime = readFiniteNumber('prop-pe-start-time');
+	            if (startTime !== null && startTime >= 0) emitter.startTime = startTime;
+	            emitter.emissionMode = modeSelect.value;
+	            const emissionCount = readFiniteNumber('prop-pe-count');
+	            if (emissionCount !== null && emissionCount >= 0) emitter.emissionCount = emissionCount;
+	            const emissionInterval = readFiniteNumber('prop-pe-interval');
+	            if (emissionInterval !== null && emissionInterval >= 0) emitter.emissionInterval = emissionInterval;
+	            emitter.timeList = parseNumberList(document.getElementById('prop-pe-time-list')?.value ?? '').map(v => Math.max(0, v));
 
-            emitter.speedMode = speedModeSelect.value;
-            emitter.emissionSpeed = parseFloat(document.getElementById('prop-pe-speed-fixed')?.value ?? speedFixedValue) * pixelsPerMeter;
-            emitter.speedMin = parseFloat(document.getElementById('prop-pe-speed-min')?.value ?? speedMinValue) * pixelsPerMeter;
-            emitter.speedMax = parseFloat(document.getElementById('prop-pe-speed-max')?.value ?? speedMaxValue) * pixelsPerMeter;
-            emitter.speedList = parseNumberList(document.getElementById('prop-pe-speed-list')?.value ?? '').map(v => Math.max(0, v) * pixelsPerMeter);
-            emitter.speedListMode = document.getElementById('prop-pe-speed-list-mode')?.value || emitter.speedListMode || 'sequential';
-            emitter.speedListLoop = document.getElementById('prop-pe-speed-list-loop')?.checked ?? true;
-            emitter.barrelLength = parseFloat(document.getElementById('prop-pe-barrel').value);
-            emitter.keepTrajectory = document.getElementById('prop-pe-keep-trajectory').checked;
+	            emitter.speedMode = speedModeSelect.value;
+	            const speedFixed = readFiniteNumber('prop-pe-speed-fixed');
+	            if (speedFixed !== null && speedFixed >= 0) emitter.emissionSpeed = speedFixed * pixelsPerMeter;
+	            const speedMin = readFiniteNumber('prop-pe-speed-min');
+	            if (speedMin !== null && speedMin >= 0) emitter.speedMin = speedMin * pixelsPerMeter;
+	            const speedMax = readFiniteNumber('prop-pe-speed-max');
+	            if (speedMax !== null && speedMax >= 0) emitter.speedMax = speedMax * pixelsPerMeter;
+	            emitter.speedList = parseNumberList(document.getElementById('prop-pe-speed-list')?.value ?? '').map(v => Math.max(0, v) * pixelsPerMeter);
+	            emitter.speedListMode = document.getElementById('prop-pe-speed-list-mode')?.value || emitter.speedListMode || 'sequential';
+	            emitter.speedListLoop = document.getElementById('prop-pe-speed-list-loop')?.checked ?? true;
+	            const barrelLength = readFiniteNumber('prop-pe-barrel');
+	            if (barrelLength !== null && barrelLength >= 0) emitter.barrelLength = barrelLength;
+	            emitter.keepTrajectory = document.getElementById('prop-pe-keep-trajectory').checked;
 
-            emitter.angleMode = angleModeSelect.value;
-            emitter.direction = parseFloat(document.getElementById('prop-pe-direction')?.value ?? emitter.direction ?? 0);
-            emitter.angleMin = parseFloat(document.getElementById('prop-pe-angle-min')?.value ?? emitter.angleMin ?? 0);
-            emitter.angleMax = parseFloat(document.getElementById('prop-pe-angle-max')?.value ?? emitter.angleMax ?? 360);
-            emitter.angleList = parseNumberList(document.getElementById('prop-pe-angle-list')?.value ?? '');
-            emitter.angleListMode = document.getElementById('prop-pe-angle-list-mode')?.value || emitter.angleListMode || 'sequential';
-            emitter.angleListLoop = document.getElementById('prop-pe-angle-list-loop')?.checked ?? true;
+	            emitter.angleMode = angleModeSelect.value;
+	            const direction = readFiniteNumber('prop-pe-direction');
+	            if (direction !== null) emitter.direction = direction;
+	            const angleMin = readFiniteNumber('prop-pe-angle-min');
+	            if (angleMin !== null) emitter.angleMin = angleMin;
+	            const angleMax = readFiniteNumber('prop-pe-angle-max');
+	            if (angleMax !== null) emitter.angleMax = angleMax;
+	            emitter.angleList = parseNumberList(document.getElementById('prop-pe-angle-list')?.value ?? '');
+	            emitter.angleListMode = document.getElementById('prop-pe-angle-list-mode')?.value || emitter.angleListMode || 'sequential';
+	            emitter.angleListLoop = document.getElementById('prop-pe-angle-list-loop')?.checked ?? true;
 
             emitter.particleType = typeSelect.value;
             if (presets[emitter.particleType]) {
                 applyPreset();
             }
-            emitter.particleCharge = parseFloat(chargeInput.value);
-            emitter.particleMass = parseFloat(massInput.value);
-            emitter.particleRadius = parseFloat(document.getElementById('prop-pe-radius').value);
-            emitter.ignoreGravity = document.getElementById('prop-pe-ignore-gravity').checked;
-            if (!emitter.ignoreGravity) {
-                const g = parseFloat(document.getElementById('prop-pe-gravity').value);
-                if (Number.isFinite(g) && g >= 0) {
-                    this.scene.settings.gravity = g;
-                    window.app?.syncHeaderControlsFromScene?.();
-                }
-            }
+	            const charge = readFiniteNumber('prop-pe-charge');
+	            if (charge !== null) emitter.particleCharge = charge;
+	            const mass = readFiniteNumber('prop-pe-mass');
+	            if (mass !== null && mass > 0) emitter.particleMass = mass;
+	            const radius = readFiniteNumber('prop-pe-radius');
+	            if (radius !== null && radius > 0) emitter.particleRadius = radius;
+	            emitter.ignoreGravity = document.getElementById('prop-pe-ignore-gravity').checked;
+	            if (!emitter.ignoreGravity) {
+	                const g = readFiniteNumber('prop-pe-gravity');
+	                if (g !== null && g >= 0) {
+	                    this.scene.settings.gravity = g;
+	                    window.app?.syncHeaderControlsFromScene?.();
+	                }
+	            }
 
             emitter.resetRuntime?.();
             window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
@@ -1091,27 +1224,41 @@ export class PropertyPanel {
             syncUiForShape();
         });
 
-        document.getElementById('apply-magnetic-props').addEventListener('click', () => {
-            const selectedShape = shapeSelect.value;
-            field.shape = selectedShape;
-            field.strength = parseFloat(document.getElementById('prop-strength').value);
+	        document.getElementById('apply-magnetic-props').addEventListener('click', () => {
+	            const selectedShape = shapeSelect.value;
+	            field.shape = selectedShape;
+	            const strength = readFiniteNumber('prop-strength');
+	            if (strength !== null) field.strength = strength;
 
-            if (selectedShape === 'circle') {
-                field.x = parseFloat(document.getElementById('prop-x').value);
-                field.y = parseFloat(document.getElementById('prop-y').value);
-                field.radius = parseFloat(document.getElementById('prop-radius').value);
-                field.width = field.radius * 2;
-                field.height = field.radius * 2;
-            } else {
-                field.x = parseFloat(document.getElementById('prop-x').value);
-                field.y = parseFloat(document.getElementById('prop-y').value);
-                field.width = parseFloat(document.getElementById('prop-width').value);
-                field.height = parseFloat(document.getElementById('prop-height').value);
-                field.radius = Math.min(field.width, field.height) / 2;
-            }
+	            if (selectedShape === 'circle') {
+	                const x = readFiniteNumber('prop-x');
+	                if (x !== null) field.x = x;
+	                const y = readFiniteNumber('prop-y');
+	                if (y !== null) field.y = y;
+	                const radius = readFiniteNumber('prop-radius');
+	                if (radius !== null && radius > 0) {
+	                    field.radius = radius;
+	                    field.width = radius * 2;
+	                    field.height = radius * 2;
+	                }
+	            } else {
+	                const x = readFiniteNumber('prop-x');
+	                if (x !== null) field.x = x;
+	                const y = readFiniteNumber('prop-y');
+	                if (y !== null) field.y = y;
+	                const width = readFiniteNumber('prop-width');
+	                if (width !== null && width > 0) field.width = width;
+	                const height = readFiniteNumber('prop-height');
+	                if (height !== null && height > 0) field.height = height;
+	                const w = Number.isFinite(field.width) ? field.width : 0;
+	                const h = Number.isFinite(field.height) ? field.height : 0;
+	                if (w > 0 && h > 0) {
+	                    field.radius = Math.min(w, h) / 2;
+	                }
+	            }
 
-            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
-        });
+	            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+	        });
     }
 
     renderDisappearZoneProperties(container, zone) {
@@ -1136,13 +1283,17 @@ export class PropertyPanel {
             <button class="btn btn-primary" id="apply-zone-props">应用</button>
         `;
 
-        document.getElementById('apply-zone-props').addEventListener('click', () => {
-            zone.x = parseFloat(document.getElementById('prop-zone-x').value);
-            zone.y = parseFloat(document.getElementById('prop-zone-y').value);
-            zone.length = parseFloat(document.getElementById('prop-zone-length').value);
-            zone.angle = parseFloat(document.getElementById('prop-zone-angle').value);
-            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
-        });
+	        document.getElementById('apply-zone-props').addEventListener('click', () => {
+	            const x = readFiniteNumber('prop-zone-x');
+	            if (x !== null) zone.x = x;
+	            const y = readFiniteNumber('prop-zone-y');
+	            if (y !== null) zone.y = y;
+	            const length = readFiniteNumber('prop-zone-length');
+	            if (length !== null && length > 0) zone.length = length;
+	            const angle = readFiniteNumber('prop-zone-angle');
+	            if (angle !== null) zone.angle = angle;
+	            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+	        });
     }
 
     renderScreenProperties(container, screen) {
@@ -1184,17 +1335,25 @@ export class PropertyPanel {
             <button class="btn" id="clear-screen-spots">清除光斑</button>
         `;
 
-        document.getElementById('apply-screen-props').addEventListener('click', () => {
-            screen.x = parseFloat(document.getElementById('prop-screen-x').value);
-            screen.y = parseFloat(document.getElementById('prop-screen-y').value);
-            screen.width = parseFloat(document.getElementById('prop-screen-width').value);
-            screen.height = parseFloat(document.getElementById('prop-screen-height').value);
-            screen.depth = parseFloat(document.getElementById('prop-screen-depth').value);
-            screen.viewGap = parseFloat(document.getElementById('prop-screen-gap').value);
-            screen.spotSize = parseFloat(document.getElementById('prop-screen-spot').value);
-            screen.persistence = parseFloat(document.getElementById('prop-screen-persistence').value);
-            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
-        });
+	        document.getElementById('apply-screen-props').addEventListener('click', () => {
+	            const x = readFiniteNumber('prop-screen-x');
+	            if (x !== null) screen.x = x;
+	            const y = readFiniteNumber('prop-screen-y');
+	            if (y !== null) screen.y = y;
+	            const width = readFiniteNumber('prop-screen-width');
+	            if (width !== null && width > 0) screen.width = width;
+	            const height = readFiniteNumber('prop-screen-height');
+	            if (height !== null && height > 0) screen.height = height;
+	            const depth = readFiniteNumber('prop-screen-depth');
+	            if (depth !== null && depth > 0) screen.depth = depth;
+	            const gap = readFiniteNumber('prop-screen-gap');
+	            if (gap !== null && gap >= 0) screen.viewGap = gap;
+	            const spot = readFiniteNumber('prop-screen-spot');
+	            if (spot !== null && spot > 0) screen.spotSize = spot;
+	            const persistence = readFiniteNumber('prop-screen-persistence');
+	            if (persistence !== null && persistence >= 0) screen.persistence = persistence;
+	            window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+	        });
 
         document.getElementById('clear-screen-spots').addEventListener('click', () => {
             screen.hits = [];

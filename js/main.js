@@ -10,8 +10,10 @@ import { DragDropManager } from './interactions/DragDropManager.js';
 import { ContextMenu } from './ui/ContextMenu.js';
 import { PropertyPanel } from './ui/PropertyPanel.js';
 import { MarkdownBoard } from './ui/MarkdownBoard.js';
+import { VariableEditor } from './ui/VariableEditor.js';
 import { Modal } from './ui/Modal.js';
 import { Serializer } from './utils/Serializer.js';
+import { compileSafeExpression } from './utils/SafeExpression.js';
 import { PerformanceMonitor } from './utils/PerformanceMonitor.js';
 import { ThemeManager } from './utils/ThemeManager.js';
 import { Presets } from './presets/Presets.js';
@@ -26,6 +28,7 @@ class Application {
         this.contextMenu = null;
         this.propertyPanel = null;
         this.markdownBoard = null;
+        this.variableEditor = null;
         this.modal = null;
         this.performanceMonitor = new PerformanceMonitor();
         this.themeManager = new ThemeManager();
@@ -96,6 +99,7 @@ class Application {
         this.propertyPanel = new PropertyPanel(this.scene);
         this.markdownBoard = new MarkdownBoard();
         this.modal = new Modal();
+        this.variableEditor = new VariableEditor(this.scene, this.modal);
         
         // 初始化拖拽系统
         this.dragDropManager = new DragDropManager(this.scene, this.renderer);
@@ -141,11 +145,22 @@ class Application {
         }
     }
     
-    bindEvents() {
+	    bindEvents() {
         // 主题切换按钮
         document.getElementById('theme-toggle-btn').addEventListener('click', () => {
             this.toggleTheme();
         });
+
+	        // 变量表
+	        document.getElementById('variables-btn')?.addEventListener('click', () => {
+	            this.variableEditor?.show?.();
+	        });
+
+	        // 变量变更后，自动应用到已绑定表达式的对象（如粒子 vx/vy）
+	        document.addEventListener('scene-variables-changed', () => {
+	            this.applySceneVariableExpressions();
+	            this.requestRender({ updateUI: false });
+	        });
         
         // 播放/暂停按钮
         document.getElementById('play-pause-btn').addEventListener('click', () => {
@@ -197,17 +212,17 @@ class Application {
 
         // 能量显示开关
         const energyToggle = document.getElementById('toggle-energy-overlay');
-        if (energyToggle) {
-            energyToggle.checked = this.scene.settings.showEnergy;
-            energyToggle.addEventListener('change', (e) => {
-                this.scene.settings.showEnergy = e.target.checked;
-                this.requestRender({ updateUI: false });
-            });
-        }
+	        if (energyToggle) {
+	            energyToggle.checked = this.scene.settings.showEnergy;
+	            energyToggle.addEventListener('change', (e) => {
+	                this.scene.settings.showEnergy = e.target.checked;
+	                this.requestRender({ updateUI: false });
+	            });
+	        }
 
-        // 比例尺（px ↔ m）
-        const scaleInput = document.getElementById('scale-px-per-meter');
-        if (scaleInput) {
+	        // 比例尺（px ↔ m）
+	        const scaleInput = document.getElementById('scale-px-per-meter');
+	        if (scaleInput) {
             scaleInput.value = String(this.scene.settings.pixelsPerMeter ?? 1);
             const applyScale = () => {
                 const value = parseFloat(scaleInput.value);
@@ -278,14 +293,62 @@ class Application {
         });
         
         // 键盘快捷键
-        document.addEventListener('keydown', (e) => {
-            this.handleKeydown(e);
-        });
-    }
-    
-    handleKeydown(e) {
-        // Space: 播放/暂停
-        if (e.code === 'Space') {
+	        document.addEventListener('keydown', (e) => {
+	            this.handleKeydown(e);
+	        });
+	    }
+
+	    applySceneVariableExpressions() {
+	        const scene = this.scene;
+	        if (!scene) return;
+
+	        const pixelsPerMeter = Number.isFinite(scene.settings?.pixelsPerMeter) && scene.settings.pixelsPerMeter > 0
+	            ? scene.settings.pixelsPerMeter
+	            : 1;
+
+	        const vars = (scene.variables && typeof scene.variables === 'object' && !Array.isArray(scene.variables))
+	            ? scene.variables
+	            : {};
+	        const allowedNames = Object.keys(vars);
+	        const ctx = Object.create(null);
+	        ctx.t = Number.isFinite(scene.time) ? scene.time : 0;
+	        for (const [key, value] of Object.entries(vars)) {
+	            ctx[key] = value;
+	        }
+
+	        let failed = 0;
+	        for (const particle of scene.particles || []) {
+	            if (!particle || particle.type !== 'particle') continue;
+
+	            const vxExpr = typeof particle.vxExpr === 'string' ? particle.vxExpr.trim() : '';
+	            if (vxExpr) {
+	                try {
+	                    const vx = compileSafeExpression(vxExpr, allowedNames)(ctx);
+	                    if (Number.isFinite(vx)) particle.velocity.x = vx * pixelsPerMeter;
+	                } catch {
+	                    failed += 1;
+	                }
+	            }
+
+	            const vyExpr = typeof particle.vyExpr === 'string' ? particle.vyExpr.trim() : '';
+	            if (vyExpr) {
+	                try {
+	                    const vy = compileSafeExpression(vyExpr, allowedNames)(ctx);
+	                    if (Number.isFinite(vy)) particle.velocity.y = vy * pixelsPerMeter;
+	                } catch {
+	                    failed += 1;
+	                }
+	            }
+	        }
+
+	        if (failed) {
+	            this.showNotification(`有 ${failed} 个速度表达式无法计算`, 'warning');
+	        }
+	    }
+	    
+	    handleKeydown(e) {
+	        // Space: 播放/暂停
+	        if (e.code === 'Space') {
             e.preventDefault();
             this.togglePlayPause();
         }

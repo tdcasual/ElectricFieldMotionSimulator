@@ -94,7 +94,8 @@ const ALLOWED_CONSTANTS = {
     TAU: Math.PI * 2
 };
 
-const ALLOWED_VARIABLES = new Set(['t']);
+const DEFAULT_ALLOWED_VARIABLES = new Set(['t']);
+const VARIABLE_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function syntaxError(message, position) {
     const err = new SyntaxError(message);
@@ -271,8 +272,10 @@ class Parser {
     }
 }
 
-function validateAst(node) {
+function validateAst(node, allowedVariables = DEFAULT_ALLOWED_VARIABLES) {
     if (!node || typeof node !== 'object') throw new TypeError('Invalid AST node');
+
+    const allowed = allowedVariables instanceof Set ? allowedVariables : DEFAULT_ALLOWED_VARIABLES;
 
     switch (node.type) {
         case 'number':
@@ -282,7 +285,7 @@ function validateAst(node) {
             return;
         case 'identifier': {
             const name = node.name;
-            if (ALLOWED_VARIABLES.has(name)) return;
+            if (allowed.has(name)) return;
             if (Object.prototype.hasOwnProperty.call(ALLOWED_CONSTANTS, name)) return;
             if (Object.prototype.hasOwnProperty.call(ALLOWED_FUNCTIONS, name)) {
                 throw syntaxError(`Function "${name}" must be called with ()`, node.position ?? 0);
@@ -293,19 +296,19 @@ function validateAst(node) {
             if (!['+', '-', '!'].includes(node.op)) {
                 throw syntaxError(`Unsupported operator "${node.op}"`, node.position ?? 0);
             }
-            validateAst(node.expr);
+            validateAst(node.expr, allowed);
             return;
         case 'binary':
             if (!(node.op in PRECEDENCE)) {
                 throw syntaxError(`Unsupported operator "${node.op}"`, node.position ?? 0);
             }
-            validateAst(node.left);
-            validateAst(node.right);
+            validateAst(node.left, allowed);
+            validateAst(node.right, allowed);
             return;
         case 'ternary':
-            validateAst(node.condition);
-            validateAst(node.consequent);
-            validateAst(node.alternate);
+            validateAst(node.condition, allowed);
+            validateAst(node.consequent, allowed);
+            validateAst(node.alternate, allowed);
             return;
         case 'call': {
             if (node.callee?.type !== 'identifier') {
@@ -315,7 +318,7 @@ function validateAst(node) {
             if (!Object.prototype.hasOwnProperty.call(ALLOWED_FUNCTIONS, name)) {
                 throw syntaxError(`Unknown function "${name}"`, node.position ?? 0);
             }
-            for (const arg of node.args) validateAst(arg);
+            for (const arg of node.args) validateAst(arg, allowed);
             return;
         }
         default:
@@ -329,17 +332,18 @@ function toNumber(value) {
     return Number(value);
 }
 
-function evaluateAst(node, variables) {
+function evaluateAst(node, variables, allowedVariables = DEFAULT_ALLOWED_VARIABLES) {
+    const allowed = allowedVariables instanceof Set ? allowedVariables : DEFAULT_ALLOWED_VARIABLES;
     switch (node.type) {
         case 'number':
             return node.value;
         case 'identifier': {
-            if (ALLOWED_VARIABLES.has(node.name)) return toNumber(variables[node.name] ?? 0);
+            if (allowed.has(node.name)) return toNumber(variables[node.name] ?? 0);
             if (Object.prototype.hasOwnProperty.call(ALLOWED_CONSTANTS, node.name)) return ALLOWED_CONSTANTS[node.name];
             throw syntaxError(`Unknown identifier "${node.name}"`, node.position ?? 0);
         }
         case 'unary': {
-            const v = toNumber(evaluateAst(node.expr, variables));
+            const v = toNumber(evaluateAst(node.expr, variables, allowed));
             if (node.op === '+') return +v;
             if (node.op === '-') return -v;
             if (node.op === '!') return v === 0 ? 1 : 0;
@@ -348,16 +352,16 @@ function evaluateAst(node, variables) {
         case 'binary': {
             const op = node.op;
             if (op === '&&') {
-                const left = toNumber(evaluateAst(node.left, variables));
-                return left !== 0 ? toNumber(evaluateAst(node.right, variables)) : left;
+                const left = toNumber(evaluateAst(node.left, variables, allowed));
+                return left !== 0 ? toNumber(evaluateAst(node.right, variables, allowed)) : left;
             }
             if (op === '||') {
-                const left = toNumber(evaluateAst(node.left, variables));
-                return left !== 0 ? left : toNumber(evaluateAst(node.right, variables));
+                const left = toNumber(evaluateAst(node.left, variables, allowed));
+                return left !== 0 ? left : toNumber(evaluateAst(node.right, variables, allowed));
             }
 
-            const left = toNumber(evaluateAst(node.left, variables));
-            const right = toNumber(evaluateAst(node.right, variables));
+            const left = toNumber(evaluateAst(node.left, variables, allowed));
+            const right = toNumber(evaluateAst(node.right, variables, allowed));
 
             if (op === '+') return left + right;
             if (op === '-') return left - right;
@@ -375,16 +379,16 @@ function evaluateAst(node, variables) {
             throw syntaxError(`Unsupported operator "${op}"`, node.position ?? 0);
         }
         case 'ternary': {
-            const cond = toNumber(evaluateAst(node.condition, variables));
+            const cond = toNumber(evaluateAst(node.condition, variables, allowed));
             return cond !== 0
-                ? toNumber(evaluateAst(node.consequent, variables))
-                : toNumber(evaluateAst(node.alternate, variables));
+                ? toNumber(evaluateAst(node.consequent, variables, allowed))
+                : toNumber(evaluateAst(node.alternate, variables, allowed));
         }
         case 'call': {
             const fnName = node.callee.name;
             const fn = ALLOWED_FUNCTIONS[fnName];
             if (!fn) throw syntaxError(`Unknown function "${fnName}"`, node.position ?? 0);
-            const args = node.args.map(arg => toNumber(evaluateAst(arg, variables)));
+            const args = node.args.map(arg => toNumber(evaluateAst(arg, variables, allowed)));
             return toNumber(fn(...args));
         }
         default:
@@ -392,7 +396,20 @@ function evaluateAst(node, variables) {
     }
 }
 
-export function compileSafeMathExpression(expression) {
+function normalizeAllowedVariableNames(variableNames) {
+    const set = new Set(DEFAULT_ALLOWED_VARIABLES);
+    if (!Array.isArray(variableNames)) return set;
+    for (const name of variableNames) {
+        if (typeof name !== 'string') continue;
+        const trimmed = name.trim();
+        if (!trimmed) continue;
+        if (!VARIABLE_NAME_RE.test(trimmed)) continue;
+        set.add(trimmed);
+    }
+    return set;
+}
+
+export function compileSafeExpression(expression, allowedVariableNames = []) {
     const source = String(expression ?? '').trim();
     if (!source) return () => 0;
 
@@ -400,11 +417,21 @@ export function compileSafeMathExpression(expression) {
     const parser = new Parser(tokens);
     const ast = parser.parseExpression(0);
     parser.expectEof();
-    validateAst(ast);
+    const allowed = normalizeAllowedVariableNames(allowedVariableNames);
+    validateAst(ast, allowed);
 
-    return (t) => {
-        const value = evaluateAst(ast, { t });
+    return (variables = {}) => {
+        const input = variables && typeof variables === 'object' ? variables : {};
+        const safe = Object.create(null);
+        for (const name of allowed) {
+            safe[name] = input[name];
+        }
+        const value = evaluateAst(ast, safe, allowed);
         return Number.isFinite(value) ? value : 0;
     };
 }
 
+export function compileSafeMathExpression(expression) {
+    const fn = compileSafeExpression(expression, ['t']);
+    return (t) => fn({ t });
+}

@@ -15,6 +15,10 @@ export class Particle extends BaseObject {
         this.velocity = new Vector(config.vx || 0, config.vy || 0, 0);
         this.mass = config.mass ?? 9.109e-31; // 默认电子质量(kg)
         this.charge = config.charge ?? -1.602e-19; // 默认电子电荷(C)
+
+        // 可选：速度表达式（单位：m/s，UI 使用，按需求值）
+        this.vxExpr = typeof config.vxExpr === 'string' ? config.vxExpr : null;
+        this.vyExpr = typeof config.vyExpr === 'string' ? config.vyExpr : null;
         
         // 显示属性
         this.radius = config.radius || 6;
@@ -159,6 +163,8 @@ export class Particle extends BaseObject {
             y: this.position.y,
             position: this.position.toArray(),
             velocity: this.velocity.toArray(),
+            vxExpr: this.vxExpr,
+            vyExpr: this.vyExpr,
             mass: this.mass,
             charge: this.charge,
             radius: this.radius,
@@ -193,6 +199,8 @@ export class Particle extends BaseObject {
         this.velocity = Vector.fromArray(velocity);
         this.x = this.position.x;
         this.y = this.position.y;
+        this.vxExpr = typeof data.vxExpr === 'string' ? data.vxExpr : (this.vxExpr ?? null);
+        this.vyExpr = typeof data.vyExpr === 'string' ? data.vyExpr : (this.vyExpr ?? null);
         this.mass = data.mass ?? this.mass;
         this.charge = data.charge ?? this.charge;
         this.radius = data.radius ?? this.radius;
