@@ -45,7 +45,8 @@ export class Integrator {
         
         // 记录轨迹
         if (particle.showTrajectory) {
-            particle.addTrajectoryPoint(particle.position.x, particle.position.y);
+            const t = Number.isFinite(scene?.time) ? scene.time : undefined;
+            particle.addTrajectoryPoint(particle.position.x, particle.position.y, t);
         }
     }
     

@@ -24,13 +24,26 @@ export class Particle extends BaseObject {
         this.showVelocity = config.showVelocity !== undefined ? config.showVelocity : true;
         const velocityMode = config.velocityDisplayMode || config.velocityDisplay || 'vector';
         this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
+
+        // 受力分析显示
+        this.showForces = config.showForces ?? false;
+        this.showForceElectric = config.showForceElectric ?? false;
+        this.showForceMagnetic = config.showForceMagnetic ?? false;
+        this.showForceGravity = config.showForceGravity ?? false;
+        this.showForceNet = config.showForceNet ?? true;
         
         // 轨迹数据
         this.trajectory = [];
+        const retention = config.trajectoryRetention;
+        this.trajectoryRetention = retention === 'seconds' ? 'seconds' : 'infinite';
+        this.trajectorySeconds = Number.isFinite(config.trajectorySeconds) && config.trajectorySeconds > 0
+            ? config.trajectorySeconds
+            : 8;
         const maxLen = config.maxTrajectoryLength;
         this.maxTrajectoryLength = maxLen === Infinity
             ? Infinity
-            : (Number.isFinite(maxLen) && maxLen > 0 ? maxLen : 500);
+            : (Number.isFinite(maxLen) && maxLen > 0 ? maxLen : Infinity);
+        this._trajectoryHardLimit = 20000;
         
         // 状态
         this.active = true;
@@ -40,10 +53,54 @@ export class Particle extends BaseObject {
     /**
      * 添加轨迹点
      */
-    addTrajectoryPoint(x, y) {
-        this.trajectory.push({ x, y });
-        if (this.trajectory.length > this.maxTrajectoryLength) {
-            this.trajectory.shift();
+    addTrajectoryPoint(x, y, time) {
+        const t = Number.isFinite(time)
+            ? time
+            : (Number.isFinite(this.scene?.time) ? this.scene.time : 0);
+        this.trajectory.push({ x, y, t });
+        this.pruneTrajectory(t);
+    }
+
+    pruneTrajectory(time) {
+        const t = Number.isFinite(time)
+            ? time
+            : (Number.isFinite(this.scene?.time) ? this.scene.time : 0);
+
+        if (this.trajectoryRetention === 'seconds') {
+            const seconds = Number.isFinite(this.trajectorySeconds) && this.trajectorySeconds > 0
+                ? this.trajectorySeconds
+                : 1;
+            const cutoff = t - seconds;
+            while (this.trajectory.length && (this.trajectory[0]?.t ?? 0) < cutoff) {
+                this.trajectory.shift();
+            }
+        }
+
+        if (Number.isFinite(this.maxTrajectoryLength) && this.maxTrajectoryLength > 0) {
+            while (this.trajectory.length > this.maxTrajectoryLength) {
+                this.trajectory.shift();
+            }
+            return;
+        }
+
+        this.downsampleTrajectoryIfNeeded();
+    }
+
+    downsampleTrajectoryIfNeeded() {
+        const hardLimit = Number.isFinite(this._trajectoryHardLimit) ? this._trajectoryHardLimit : 20000;
+        if (this.trajectory.length <= hardLimit) return;
+
+        // 保留尾部更高分辨率（最近的点），对更早的点做抽稀，避免内存无限增长。
+        while (this.trajectory.length > hardLimit) {
+            const keepTail = Math.max(2000, Math.floor(hardLimit * 0.6));
+            const tailStart = Math.max(0, this.trajectory.length - keepTail);
+            const head = this.trajectory.slice(0, tailStart);
+            const tail = this.trajectory.slice(tailStart);
+            const sampledHead = [];
+            for (let i = 0; i < head.length; i += 2) {
+                sampledHead.push(head[i]);
+            }
+            this.trajectory = sampledHead.concat(tail);
         }
     }
     
@@ -61,8 +118,11 @@ export class Particle extends BaseObject {
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
             : 1;
-        const v = this.velocity.magnitude() / pixelsPerMeter;
-        return 0.5 * this.mass * v * v;
+        const mass = Number.isFinite(this.mass) && this.mass > 0 ? this.mass : 0;
+        const vx = (Number.isFinite(this.velocity?.x) ? this.velocity.x : 0) / pixelsPerMeter;
+        const vy = (Number.isFinite(this.velocity?.y) ? this.velocity.y : 0) / pixelsPerMeter;
+        const v2 = vx * vx + vy * vy;
+        return 0.5 * mass * v2;
     }
     
     /**
@@ -104,9 +164,16 @@ export class Particle extends BaseObject {
             radius: this.radius,
             ignoreGravity: this.ignoreGravity,
             showTrajectory: this.showTrajectory,
+            trajectoryRetention: this.trajectoryRetention,
+            trajectorySeconds: this.trajectoryRetention === 'seconds' ? this.trajectorySeconds : null,
             showEnergy: this.showEnergy,
             showVelocity: this.showVelocity,
-            velocityDisplayMode: this.velocityDisplayMode
+            velocityDisplayMode: this.velocityDisplayMode,
+            showForces: this.showForces,
+            showForceElectric: this.showForceElectric,
+            showForceMagnetic: this.showForceMagnetic,
+            showForceGravity: this.showForceGravity,
+            showForceNet: this.showForceNet
         };
     }
     
@@ -131,9 +198,18 @@ export class Particle extends BaseObject {
         this.radius = data.radius ?? this.radius;
         this.ignoreGravity = data.ignoreGravity ?? this.ignoreGravity;
         this.showTrajectory = data.showTrajectory ?? this.showTrajectory;
+        this.trajectoryRetention = data.trajectoryRetention === 'seconds' ? 'seconds' : (this.trajectoryRetention || 'infinite');
+        this.trajectorySeconds = Number.isFinite(data.trajectorySeconds) && data.trajectorySeconds > 0
+            ? data.trajectorySeconds
+            : (this.trajectorySeconds ?? 8);
         this.showEnergy = data.showEnergy ?? this.showEnergy;
         this.showVelocity = data.showVelocity ?? this.showVelocity;
         const velocityMode = data.velocityDisplayMode || data.velocityDisplay || this.velocityDisplayMode || 'vector';
         this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
+        this.showForces = data.showForces ?? this.showForces ?? false;
+        this.showForceElectric = data.showForceElectric ?? this.showForceElectric ?? false;
+        this.showForceMagnetic = data.showForceMagnetic ?? this.showForceMagnetic ?? false;
+        this.showForceGravity = data.showForceGravity ?? this.showForceGravity ?? false;
+        this.showForceNet = data.showForceNet ?? this.showForceNet ?? true;
     }
 }

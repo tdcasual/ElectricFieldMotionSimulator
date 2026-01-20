@@ -87,6 +87,11 @@ export class PropertyPanel {
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
             : 1;
+        const gravity = Number.isFinite(this.scene?.settings?.gravity) ? this.scene.settings.gravity : 10;
+        const trajectoryRetention = particle.trajectoryRetention === 'seconds' ? 'seconds' : 'infinite';
+        const trajectorySeconds = Number.isFinite(particle.trajectorySeconds) && particle.trajectorySeconds > 0
+            ? particle.trajectorySeconds
+            : 8;
         container.innerHTML = `
             <h4>粒子属性</h4>
             <div class="form-row">
@@ -98,11 +103,11 @@ export class PropertyPanel {
                 <input type="number" id="prop-charge" value="${particle.charge}" step="1e-19">
             </div>
             <div class="form-row">
-                <label>初始速度 vx (m/s)</label>
+                <label>当前速度 vx (m/s)</label>
                 <input type="number" id="prop-vx" value="${particle.velocity.x / pixelsPerMeter}" step="10">
             </div>
             <div class="form-row">
-                <label>初始速度 vy (m/s)</label>
+                <label>当前速度 vy (m/s)</label>
                 <input type="number" id="prop-vy" value="${particle.velocity.y / pixelsPerMeter}" step="10">
             </div>
             <div class="form-row">
@@ -116,10 +121,25 @@ export class PropertyPanel {
                 </label>
             </div>
             <div class="form-row">
+                <label>重力加速度 g (m/s²)</label>
+                <input type="number" id="prop-gravity" value="${gravity}" min="0" step="0.1" ${particle.ignoreGravity ? 'disabled' : ''}>
+            </div>
+            <div class="form-row">
                 <label>
                     <input type="checkbox" id="prop-show-trajectory" ${particle.showTrajectory ? 'checked' : ''}>
                     显示轨迹
                 </label>
+            </div>
+            <div class="form-row" id="row-trajectory-retention">
+                <label>轨迹保留</label>
+                <select id="prop-trajectory-retention">
+                    <option value="infinite" ${trajectoryRetention !== 'seconds' ? 'selected' : ''}>永久</option>
+                    <option value="seconds" ${trajectoryRetention === 'seconds' ? 'selected' : ''}>最近 N 秒</option>
+                </select>
+            </div>
+            <div class="form-row" id="row-trajectory-seconds" style="${trajectoryRetention === 'seconds' ? '' : 'display:none;'}">
+                <label>显示最近 (s)</label>
+                <input type="number" id="prop-trajectory-seconds" value="${trajectorySeconds}" min="0.1" step="0.1">
             </div>
             <div class="form-row">
                 <label>
@@ -140,6 +160,32 @@ export class PropertyPanel {
                     显示能量
                 </label>
             </div>
+            <hr>
+            <h4>受力分析</h4>
+            <div class="form-row">
+                <label>
+                    <input type="checkbox" id="prop-show-forces" ${particle.showForces ? 'checked' : ''}>
+                    显示受力
+                </label>
+            </div>
+            <div class="form-row" id="row-force-options">
+                <label>
+                    <input type="checkbox" id="prop-force-electric" ${particle.showForceElectric ? 'checked' : ''}>
+                    电场力 Fe
+                </label>
+                <label>
+                    <input type="checkbox" id="prop-force-magnetic" ${particle.showForceMagnetic ? 'checked' : ''}>
+                    磁场力 Fm
+                </label>
+                <label>
+                    <input type="checkbox" id="prop-force-gravity" ${particle.showForceGravity ? 'checked' : ''}>
+                    重力 Fg
+                </label>
+                <label>
+                    <input type="checkbox" id="prop-force-net" ${particle.showForceNet ? 'checked' : ''}>
+                    合力 ΣF
+                </label>
+            </div>
             <button class="btn btn-primary" id="apply-particle-props">应用</button>
             <button class="btn" id="clear-trajectory">清空轨迹</button>
         `;
@@ -153,18 +199,98 @@ export class PropertyPanel {
         };
         syncVelocityModeState();
         showVelocityInput?.addEventListener('change', syncVelocityModeState);
+
+        const ignoreGravityInput = document.getElementById('prop-ignore-gravity');
+        const gravityInput = document.getElementById('prop-gravity');
+        const syncGravityState = () => {
+            if (!ignoreGravityInput || !gravityInput) return;
+            gravityInput.disabled = !!ignoreGravityInput.checked;
+        };
+        syncGravityState();
+        ignoreGravityInput?.addEventListener('change', syncGravityState);
+
+        const showTrajectoryInput = document.getElementById('prop-show-trajectory');
+        const retentionSelect = document.getElementById('prop-trajectory-retention');
+        const secondsRow = document.getElementById('row-trajectory-seconds');
+        const secondsInput = document.getElementById('prop-trajectory-seconds');
+        const syncTrajectoryState = () => {
+            if (!showTrajectoryInput || !retentionSelect || !secondsRow) return;
+            const enabled = !!showTrajectoryInput.checked;
+            retentionSelect.disabled = !enabled;
+            const retention = retentionSelect.value;
+            secondsRow.style.display = enabled && retention === 'seconds' ? '' : 'none';
+            if (secondsInput) {
+                secondsInput.disabled = !enabled || retention !== 'seconds';
+            }
+        };
+        syncTrajectoryState();
+        showTrajectoryInput?.addEventListener('change', syncTrajectoryState);
+        retentionSelect?.addEventListener('change', syncTrajectoryState);
+
+        const showForcesInput = document.getElementById('prop-show-forces');
+        const forceOptionsRow = document.getElementById('row-force-options');
+        const syncForceState = () => {
+            if (!showForcesInput || !forceOptionsRow) return;
+            const enabled = !!showForcesInput.checked;
+            forceOptionsRow.querySelectorAll('input[type="checkbox"]').forEach(input => {
+                input.disabled = !enabled;
+            });
+        };
+        syncForceState();
+        showForcesInput?.addEventListener('change', syncForceState);
         
         document.getElementById('apply-particle-props').addEventListener('click', () => {
-            particle.mass = parseFloat(document.getElementById('prop-mass').value);
-            particle.charge = parseFloat(document.getElementById('prop-charge').value);
-            particle.velocity.x = parseFloat(document.getElementById('prop-vx').value) * pixelsPerMeter;
-            particle.velocity.y = parseFloat(document.getElementById('prop-vy').value) * pixelsPerMeter;
-            particle.radius = parseFloat(document.getElementById('prop-radius').value);
-            particle.ignoreGravity = document.getElementById('prop-ignore-gravity').checked;
-            particle.showTrajectory = document.getElementById('prop-show-trajectory').checked;
-            particle.showVelocity = document.getElementById('prop-show-velocity').checked;
-            particle.velocityDisplayMode = document.getElementById('prop-velocity-display-mode').value;
-            particle.showEnergy = document.getElementById('prop-show-energy').checked;
+            const mass = parseFloat(document.getElementById('prop-mass')?.value);
+            if (Number.isFinite(mass) && mass > 0) {
+                particle.mass = mass;
+            }
+
+            const charge = parseFloat(document.getElementById('prop-charge')?.value);
+            if (Number.isFinite(charge)) {
+                particle.charge = charge;
+            }
+
+            const vx = parseFloat(document.getElementById('prop-vx')?.value);
+            if (Number.isFinite(vx)) {
+                particle.velocity.x = vx * pixelsPerMeter;
+            }
+
+            const vy = parseFloat(document.getElementById('prop-vy')?.value);
+            if (Number.isFinite(vy)) {
+                particle.velocity.y = vy * pixelsPerMeter;
+            }
+
+            const radius = parseFloat(document.getElementById('prop-radius')?.value);
+            if (Number.isFinite(radius) && radius > 0) {
+                particle.radius = radius;
+            }
+
+            particle.ignoreGravity = document.getElementById('prop-ignore-gravity')?.checked ?? particle.ignoreGravity;
+            if (!particle.ignoreGravity) {
+                const g = parseFloat(document.getElementById('prop-gravity')?.value);
+                if (Number.isFinite(g) && g >= 0) {
+                    this.scene.settings.gravity = g;
+                    window.app?.syncHeaderControlsFromScene?.();
+                }
+            }
+            particle.showTrajectory = document.getElementById('prop-show-trajectory')?.checked ?? particle.showTrajectory;
+            particle.trajectoryRetention = document.getElementById('prop-trajectory-retention')?.value === 'seconds'
+                ? 'seconds'
+                : 'infinite';
+
+            const nextSeconds = parseFloat(document.getElementById('prop-trajectory-seconds')?.value);
+            if (Number.isFinite(nextSeconds) && nextSeconds > 0) {
+                particle.trajectorySeconds = nextSeconds;
+            }
+            particle.pruneTrajectory?.(this.scene?.time);
+            particle.showVelocity = document.getElementById('prop-show-velocity')?.checked ?? particle.showVelocity;
+            particle.velocityDisplayMode = document.getElementById('prop-velocity-display-mode')?.value ?? particle.velocityDisplayMode;
+            particle.showEnergy = document.getElementById('prop-show-energy')?.checked ?? particle.showEnergy;
+            particle.showForces = document.getElementById('prop-show-forces')?.checked ?? particle.showForces;
+            particle.showForceElectric = document.getElementById('prop-force-electric')?.checked ?? particle.showForceElectric;
+            particle.showForceMagnetic = document.getElementById('prop-force-magnetic')?.checked ?? particle.showForceMagnetic;
+            particle.showForceGravity = document.getElementById('prop-force-gravity')?.checked ?? particle.showForceGravity;
+            particle.showForceNet = document.getElementById('prop-force-net')?.checked ?? particle.showForceNet;
             window.app?.requestRender?.({ updateUI: false });
         });
         
@@ -396,6 +522,7 @@ export class PropertyPanel {
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
             : 1;
+        const gravity = Number.isFinite(this.scene?.settings?.gravity) ? this.scene.settings.gravity : 10;
         const presets = emitter.constructor?.PARTICLE_PRESETS || {};
         const presetOptions = Object.entries(presets).map(
             ([key, value]) => `<option value="${key}" ${emitter.particleType === key ? 'selected' : ''}>${value.label || key}</option>`
@@ -445,6 +572,10 @@ export class PropertyPanel {
                     <input type="checkbox" id="prop-gun-ignore-gravity" ${emitter.ignoreGravity ? 'checked' : ''}>
                     忽略重力
                 </label>
+            </div>
+            <div class="form-row">
+                <label>重力加速度 g (m/s²)</label>
+                <input type="number" id="prop-gun-gravity" value="${gravity}" min="0" step="0.1" ${emitter.ignoreGravity ? 'disabled' : ''}>
             </div>
             <hr>
             <h4>显示</h4>
@@ -500,6 +631,15 @@ export class PropertyPanel {
         syncGunVelocityModeState();
         showGunVelocityInput?.addEventListener('change', syncGunVelocityModeState);
 
+        const ignoreGravityInput = document.getElementById('prop-gun-ignore-gravity');
+        const gravityInput = document.getElementById('prop-gun-gravity');
+        const syncGravityState = () => {
+            if (!ignoreGravityInput || !gravityInput) return;
+            gravityInput.disabled = !!ignoreGravityInput.checked;
+        };
+        syncGravityState();
+        ignoreGravityInput?.addEventListener('change', syncGravityState);
+
         document.getElementById('apply-gun-props').addEventListener('click', () => {
             emitter.x = parseFloat(document.getElementById('prop-gun-x').value);
             emitter.y = parseFloat(document.getElementById('prop-gun-y').value);
@@ -517,6 +657,13 @@ export class PropertyPanel {
             emitter.particleMass = parseFloat(massInput.value);
             emitter.particleRadius = parseFloat(document.getElementById('prop-gun-radius').value);
             emitter.ignoreGravity = document.getElementById('prop-gun-ignore-gravity').checked;
+            if (!emitter.ignoreGravity) {
+                const g = parseFloat(document.getElementById('prop-gun-gravity').value);
+                if (Number.isFinite(g) && g >= 0) {
+                    this.scene.settings.gravity = g;
+                    window.app?.syncHeaderControlsFromScene?.();
+                }
+            }
 
             emitter.showVelocity = document.getElementById('prop-gun-show-velocity').checked;
             emitter.velocityDisplayMode = document.getElementById('prop-gun-velocity-display-mode').value;
@@ -531,6 +678,7 @@ export class PropertyPanel {
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
             : 1;
+        const gravity = Number.isFinite(this.scene?.settings?.gravity) ? this.scene.settings.gravity : 10;
 
         const presets = emitter.constructor?.PARTICLE_PRESETS || {};
         const presetOptions = Object.entries(presets).map(
@@ -700,6 +848,10 @@ export class PropertyPanel {
                     忽略重力
                 </label>
             </div>
+            <div class="form-row">
+                <label>重力加速度 g (m/s²)</label>
+                <input type="number" id="prop-pe-gravity" value="${gravity}" min="0" step="0.1" ${emitter.ignoreGravity ? 'disabled' : ''}>
+            </div>
             <button class="btn btn-primary" id="apply-pe-props">应用</button>
         `;
 
@@ -780,6 +932,15 @@ export class PropertyPanel {
             }
         });
 
+        const ignoreGravityInput = document.getElementById('prop-pe-ignore-gravity');
+        const gravityInput = document.getElementById('prop-pe-gravity');
+        const syncGravityState = () => {
+            if (!ignoreGravityInput || !gravityInput) return;
+            gravityInput.disabled = !!ignoreGravityInput.checked;
+        };
+        syncGravityState();
+        ignoreGravityInput?.addEventListener('change', syncGravityState);
+
         document.getElementById('apply-pe-props').addEventListener('click', () => {
             emitter.x = parseFloat(document.getElementById('prop-pe-x').value);
             emitter.y = parseFloat(document.getElementById('prop-pe-y').value);
@@ -816,6 +977,13 @@ export class PropertyPanel {
             emitter.particleMass = parseFloat(massInput.value);
             emitter.particleRadius = parseFloat(document.getElementById('prop-pe-radius').value);
             emitter.ignoreGravity = document.getElementById('prop-pe-ignore-gravity').checked;
+            if (!emitter.ignoreGravity) {
+                const g = parseFloat(document.getElementById('prop-pe-gravity').value);
+                if (Number.isFinite(g) && g >= 0) {
+                    this.scene.settings.gravity = g;
+                    window.app?.syncHeaderControlsFromScene?.();
+                }
+            }
 
             emitter.resetRuntime?.();
             window.app?.requestRender?.({ invalidateFields: true, updateUI: false });

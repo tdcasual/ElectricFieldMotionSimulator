@@ -323,6 +323,22 @@ export class DragDropManager {
                 }
             }
 
+            if (this.dragMode === 'move' && this.isElectricResizable(clickedObject)) {
+                const handle = this.getElectricResizeHandle(clickedObject, this.pointerDownPos);
+                if (handle) {
+                    this.dragMode = 'resize';
+                    this.resizeHandle = handle;
+                    this.resizeStart = {
+                        x: clickedObject.x,
+                        y: clickedObject.y,
+                        width: clickedObject.width ?? 0,
+                        height: clickedObject.height ?? 0,
+                        radius: clickedObject.radius ?? 0,
+                        type: clickedObject.type
+                    };
+                }
+            }
+
             if (clickedObject.type === 'particle') {
                 clickedObject.stuckToCapacitor = false;
                 this.dragOffset = {
@@ -392,9 +408,14 @@ export class DragDropManager {
             this.clearLongPressTimer();
         }
 
-        if (this.dragMode === 'resize' && this.draggingObject.type === 'magnetic-field') {
-            this.resizeMagneticField(this.draggingObject, pos);
-            this.renderer.invalidateFields();
+        if (this.dragMode === 'resize') {
+            if (this.draggingObject.type === 'magnetic-field') {
+                this.resizeMagneticField(this.draggingObject, pos);
+                this.renderer.invalidateFields();
+            } else if (this.isElectricResizable(this.draggingObject)) {
+                this.resizeElectricField(this.draggingObject, pos);
+                this.renderer.invalidateFields();
+            }
         } else if (this.draggingObject.type === 'particle') {
             this.draggingObject.position.x = pos.x - this.dragOffset.x;
             this.draggingObject.position.y = pos.y - this.dragOffset.y;
@@ -509,6 +530,22 @@ export class DragDropManager {
                     };
                 }
             }
+
+            if (this.dragMode === 'move' && this.isElectricResizable(clickedObject)) {
+                const handle = this.getElectricResizeHandle(clickedObject, pos);
+                if (handle) {
+                    this.dragMode = 'resize';
+                    this.resizeHandle = handle;
+                    this.resizeStart = {
+                        x: clickedObject.x,
+                        y: clickedObject.y,
+                        width: clickedObject.width ?? 0,
+                        height: clickedObject.height ?? 0,
+                        radius: clickedObject.radius ?? 0,
+                        type: clickedObject.type
+                    };
+                }
+            }
             
             if (clickedObject.type === 'particle') {
                 // 解除贴板状态以允许重新拖动
@@ -548,9 +585,14 @@ export class DragDropManager {
         
         const pos = this.getMousePos(e);
 
-        if (this.dragMode === 'resize' && this.draggingObject.type === 'magnetic-field') {
-            this.resizeMagneticField(this.draggingObject, pos);
-            this.renderer.invalidateFields();
+        if (this.dragMode === 'resize') {
+            if (this.draggingObject.type === 'magnetic-field') {
+                this.resizeMagneticField(this.draggingObject, pos);
+                this.renderer.invalidateFields();
+            } else if (this.isElectricResizable(this.draggingObject)) {
+                this.resizeElectricField(this.draggingObject, pos);
+                this.renderer.invalidateFields();
+            }
         } else if (this.draggingObject.type === 'particle') {
             this.draggingObject.position.x = pos.x - this.dragOffset.x;
             this.draggingObject.position.y = pos.y - this.dragOffset.y;
@@ -707,6 +749,107 @@ export class DragDropManager {
         }
 
         // se (default)
+        const newW = Math.max(minSize, pos.x - startX);
+        const newH = Math.max(minSize, pos.y - startY);
+        setRect({ x: startX, y: startY, width: newW, height: newH });
+    }
+
+    isElectricResizable(object) {
+        if (!object) return false;
+        return object.type === 'electric-field-rect' ||
+            object.type === 'electric-field-circle' ||
+            object.type === 'semicircle-electric-field';
+    }
+
+    getElectricResizeHandles(field) {
+        if (!field) return [];
+        if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
+            const r = Math.max(0, field.radius ?? 0);
+            return [{ key: 'radius', x: field.x + r, y: field.y }];
+        }
+        // rect (默认)
+        const x = field.x;
+        const y = field.y;
+        const w = field.width ?? 0;
+        const h = field.height ?? 0;
+        return [
+            { key: 'nw', x, y },
+            { key: 'ne', x: x + w, y },
+            { key: 'sw', x, y: y + h },
+            { key: 'se', x: x + w, y: y + h }
+        ];
+    }
+
+    getElectricResizeHandle(field, pos) {
+        const handles = this.getElectricResizeHandles(field);
+        const tolerance = 10;
+        const tolSq = tolerance * tolerance;
+        for (const handle of handles) {
+            const dx = pos.x - handle.x;
+            const dy = pos.y - handle.y;
+            if ((dx * dx + dy * dy) <= tolSq) {
+                return handle.key;
+            }
+        }
+        return null;
+    }
+
+    resizeElectricField(field, pos) {
+        if (!this.resizeHandle || !this.resizeStart) return;
+
+        const minSize = 30;
+        const minRadius = 15;
+        const start = this.resizeStart;
+
+        if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
+            const cx = start.x;
+            const cy = start.y;
+            const r = Math.max(minRadius, Math.hypot(pos.x - cx, pos.y - cy));
+            field.x = cx;
+            field.y = cy;
+            field.radius = r;
+            return;
+        }
+
+        // rect
+        const startX = start.x;
+        const startY = start.y;
+        const startW = start.width;
+        const startH = start.height;
+        const startRight = startX + startW;
+        const startBottom = startY + startH;
+
+        const setRect = ({ x, y, width, height }) => {
+            field.x = x;
+            field.y = y;
+            field.width = width;
+            field.height = height;
+        };
+
+        if (this.resizeHandle === 'nw') {
+            const newX = Math.min(pos.x, startRight - minSize);
+            const newY = Math.min(pos.y, startBottom - minSize);
+            const newW = Math.max(minSize, startRight - newX);
+            const newH = Math.max(minSize, startBottom - newY);
+            setRect({ x: newX, y: newY, width: newW, height: newH });
+            return;
+        }
+        if (this.resizeHandle === 'ne') {
+            const newY = Math.min(pos.y, startBottom - minSize);
+            const newW = Math.max(minSize, pos.x - startX);
+            const newH = Math.max(minSize, startBottom - newY);
+            setRect({ x: startX, y: newY, width: newW, height: newH });
+            return;
+        }
+        if (this.resizeHandle === 'sw') {
+            const newX = Math.min(pos.x, startRight - minSize);
+            const newW = Math.max(minSize, startRight - newX);
+            const newH = Math.max(minSize, pos.y - startY);
+            setRect({ x: newX, y: startY, width: newW, height: newH });
+            return;
+        }
+
+        // se
         const newW = Math.max(minSize, pos.x - startX);
         const newH = Math.max(minSize, pos.y - startY);
         setRect({ x: startX, y: startY, width: newW, height: newH });

@@ -9,7 +9,7 @@ export class PhysicsEngine {
     constructor() {
         this.forceCalculator = new ForceCalculator();
         this.integrator = new Integrator();
-        this.gravity = 9.8; // m/s^2
+        this.gravity = 10; // m/s^2
         this.restitution = 0.9; // 边界反弹恢复系数
     }
     
@@ -18,6 +18,7 @@ export class PhysicsEngine {
      */
     update(scene, dt) {
         const toRemove = [];
+        const gravity = Number.isFinite(scene?.settings?.gravity) ? scene.settings.gravity : this.gravity;
         let boundsWidth = scene.viewport?.width ?? 0;
         let boundsHeight = scene.viewport?.height ?? 0;
 
@@ -60,7 +61,7 @@ export class PhysicsEngine {
                 particle.prevY = particle.position.y;
 
                 // Integrate motion
-                this.integrator.updateParticle(particle, scene, stepDt, this.gravity);
+                this.integrator.updateParticle(particle, scene, stepDt, gravity);
 
                 // Collisions and boundaries.
                 this.handleCapacitorCollision(particle, scene);

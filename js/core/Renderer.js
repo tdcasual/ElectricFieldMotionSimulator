@@ -5,6 +5,7 @@
 import { GridRenderer } from '../rendering/GridRenderer.js';
 import { FieldVisualizer } from '../rendering/FieldVisualizer.js';
 import { TrajectoryRenderer } from '../rendering/TrajectoryRenderer.js';
+import { ForceCalculator } from '../physics/ForceCalculator.js';
 
 export class Renderer {
     constructor() {
@@ -23,6 +24,7 @@ export class Renderer {
         this.gridRenderer = new GridRenderer();
         this.fieldVisualizer = new FieldVisualizer();
         this.trajectoryRenderer = new TrajectoryRenderer();
+        this.forceCalculator = new ForceCalculator();
         
         this.needFieldRedraw = true;
     }
@@ -291,6 +293,21 @@ export class Renderer {
             this.fieldCtx.closePath();
             this.fieldCtx.fill();
         }
+
+        // 显示场强（便于查看）
+        if (field.type === 'electric-field-rect' ||
+            field.type === 'electric-field-circle' ||
+            field.type === 'semicircle-electric-field') {
+            const strength = Number.isFinite(field.strength) ? field.strength : 0;
+            let labelX = field.x + 8;
+            let labelY = field.y + 18;
+            if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
+                const r = Number.isFinite(field.radius) ? field.radius : 0;
+                labelX = field.x - r + 8;
+                labelY = field.y - r + 18;
+            }
+            this.drawTextBadge(this.fieldCtx, labelX, labelY, `E: ${this.formatNumber(strength)} N/C`);
+        }
         
         // 绘制选中高亮
         if (field === scene.selectedObject) {
@@ -347,6 +364,33 @@ export class Renderer {
             }
             
             this.fieldCtx.setLineDash([]);
+
+            // 缩放控制点（仅匀强电场）
+            if (field.type === 'electric-field-rect' ||
+                field.type === 'electric-field-circle' ||
+                field.type === 'semicircle-electric-field') {
+                const handles = [];
+                if (field.type === 'electric-field-rect') {
+                    handles.push({ x: field.x, y: field.y });
+                    handles.push({ x: field.x + field.width, y: field.y });
+                    handles.push({ x: field.x, y: field.y + field.height });
+                    handles.push({ x: field.x + field.width, y: field.y + field.height });
+                } else {
+                    const r = Math.max(0, field.radius ?? 0);
+                    handles.push({ x: field.x + r, y: field.y });
+                }
+
+                const size = 10;
+                this.fieldCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                this.fieldCtx.strokeStyle = '#0e639c';
+                this.fieldCtx.lineWidth = 2;
+                for (const handle of handles) {
+                    this.fieldCtx.beginPath();
+                    this.fieldCtx.rect(handle.x - size / 2, handle.y - size / 2, size, size);
+                    this.fieldCtx.fill();
+                    this.fieldCtx.stroke();
+                }
+            }
         }
         
         this.fieldCtx.restore();
@@ -484,6 +528,10 @@ export class Renderer {
                 this.fieldCtx.stroke();
             }
         }
+
+        // 显示场强（便于查看）
+        const bVal = Number.isFinite(field.strength) ? field.strength : 0;
+        this.drawTextBadge(this.fieldCtx, bounds.minX + 8, bounds.minY + 18, `B: ${this.formatNumber(bVal)} T`);
         
         this.fieldCtx.restore();
     }
@@ -797,6 +845,11 @@ export class Renderer {
                 this.drawEnergyInfo(particle);
             }
 
+            // 受力分析（可选）
+            if (particle.showForces) {
+                this.drawForceAnalysis(particle, scene);
+            }
+
             // 选中高亮
             if (particle === scene.selectedObject) {
                 this.drawParticleSelection(particle);
@@ -912,6 +965,69 @@ export class Renderer {
         const y = particle.position.y - 15;
 
         this.drawTextBadge(this.particleCtx, x, y, `Ek: ${this.formatNumber(Ek * 1e9)} nJ`);
+    }
+
+    forceVectorToArrow(force) {
+        const fx = Number.isFinite(force?.x) ? force.x : 0;
+        const fy = Number.isFinite(force?.y) ? force.y : 0;
+        const mag = Math.hypot(fx, fy);
+        if (!Number.isFinite(mag) || mag <= 0) {
+            return null;
+        }
+
+        // N -> 像素箭头长度：按对数缩放，保证小量也不至于全是0
+        const log = Math.log10(mag);
+        const len = Math.max(0, Math.min(90, (log + 30) * 4));
+        if (len < 4) return null;
+        return { dx: (fx / mag) * len, dy: (fy / mag) * len, mag };
+    }
+
+    drawForceAnalysis(particle, scene) {
+        if (!this.particleCtx || !this.forceCalculator) return;
+        const gravity = Number.isFinite(scene?.settings?.gravity) ? scene.settings.gravity : 10;
+        const breakdown = this.forceCalculator.calculateForceBreakdown(particle, scene, gravity);
+
+        const items = [];
+        if (particle.showForceElectric) {
+            items.push({ key: 'Fe', force: breakdown.electric, color: 'rgba(255, 200, 0, 0.95)' });
+        }
+        if (particle.showForceMagnetic) {
+            items.push({ key: 'Fm', force: breakdown.magnetic, color: 'rgba(160, 120, 255, 0.95)' });
+        }
+        if (particle.showForceGravity) {
+            items.push({ key: 'Fg', force: breakdown.gravity, color: 'rgba(120, 255, 160, 0.95)' });
+        }
+        if (particle.showForceNet || (!particle.showForceElectric && !particle.showForceMagnetic && !particle.showForceGravity)) {
+            items.push({ key: 'ΣF', force: breakdown.total, color: 'rgba(255, 255, 255, 0.95)' });
+        }
+
+        const originX = particle.position.x;
+        const originY = particle.position.y;
+
+        let textY = originY + 45;
+        const textX = originX + 15;
+
+        for (const item of items) {
+            const arrow = this.forceVectorToArrow(item.force);
+            if (arrow) {
+                this.drawArrow(this.particleCtx, originX, originY, arrow.dx, arrow.dy, item.color, 2);
+                this.drawTextBadge(
+                    this.particleCtx,
+                    textX,
+                    textY,
+                    `${item.key}: ${this.formatNumber(arrow.mag)} N`
+                );
+            } else {
+                const mag = Math.hypot(item.force?.x ?? 0, item.force?.y ?? 0);
+                this.drawTextBadge(
+                    this.particleCtx,
+                    textX,
+                    textY,
+                    `${item.key}: ${this.formatNumber(mag)} N`
+                );
+            }
+            textY += 18;
+        }
     }
     
     /**

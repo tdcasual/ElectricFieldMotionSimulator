@@ -35,6 +35,7 @@ export class Scene {
             showEnergy: true,
             showFieldVectors: true,
             pixelsPerMeter: 1, // 比例尺：1m = pixelsPerMeter px
+            gravity: 10, // m/s^2
             boundaryMode: 'margin', // remove | bounce | wrap | margin
             boundaryMargin: 200 // px（仅 margin 模式使用）
         };

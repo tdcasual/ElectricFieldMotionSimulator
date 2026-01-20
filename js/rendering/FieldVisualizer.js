@@ -5,7 +5,9 @@
 export class FieldVisualizer {
     render(ctx, scene, width, height) {
         const spacing = 50;
-        const arrowScale = 0.02;
+        const arrowScale = 0.03; // 场强到箭头长度的比例
+        const minArrowLen = 6;
+        const maxArrowLen = 22;
         
         ctx.save();
         
@@ -14,9 +16,13 @@ export class FieldVisualizer {
                 const E = scene.getElectricField(x, y);
                 const magnitude = Math.sqrt(E.x * E.x + E.y * E.y);
                 
-                if (magnitude > 10) {
-                    this.drawFieldArrow(ctx, x, y, E.x * arrowScale, E.y * arrowScale);
-                }
+                if (magnitude <= 0) continue;
+
+                // 对于小场强也显示箭头（保证可见），长度随场强变化并限制上下限
+                const len = Math.min(maxArrowLen, Math.max(minArrowLen, magnitude * arrowScale));
+                const dx = (E.x / magnitude) * len;
+                const dy = (E.y / magnitude) * len;
+                this.drawFieldArrow(ctx, x, y, dx, dy);
             }
         }
         
@@ -25,7 +31,7 @@ export class FieldVisualizer {
     
     drawFieldArrow(ctx, x, y, dx, dy) {
         const length = Math.sqrt(dx * dx + dy * dy);
-        if (length < 2) return;
+        if (length < 0.5) return;
         
         const angle = Math.atan2(dy, dx);
         const headLen = 6;

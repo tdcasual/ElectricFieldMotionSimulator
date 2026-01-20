@@ -261,7 +261,7 @@ export class ProgrammableEmitter extends BaseObject {
             radius: this.particleRadius,
             ignoreGravity: this.ignoreGravity,
             showTrajectory: this.keepTrajectory,
-            maxTrajectoryLength: this.keepTrajectory ? Infinity : 500
+            maxTrajectoryLength: Infinity
         });
 
         scene.addObject(particle);

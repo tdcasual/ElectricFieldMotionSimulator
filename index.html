@@ -25,6 +25,7 @@
                 <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景">📤</button>
                 <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景">📥</button>
                 <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题">🌙</button>
+                <button id="markdown-toggle-btn" class="btn" title="题目板" aria-label="题目板">📝</button>
                 <input type="file" id="import-file-input" accept=".json" style="display: none;">
                 <label class="control-label">
                     <span>显示能量:</span>
@@ -34,6 +35,11 @@
                     <span>比例尺: 1m =</span>
                     <input type="number" id="scale-px-per-meter" min="0.0001" step="1" value="1">
                     <span>px</span>
+                </label>
+                <label class="control-label">
+                    <span>重力 g:</span>
+                    <input type="number" id="gravity-input" min="0" step="0.1" value="10">
+                    <span>m/s²</span>
                 </label>
                 <label class="control-label">
                     <span>边界:</span>
@@ -202,6 +208,24 @@
                 <canvas id="particle-canvas"></canvas>
             </div>
             <div id="fps-counter"></div>
+
+            <!-- Markdown 题目板（可拖拽） -->
+            <div id="markdown-board" class="markdown-board" style="display: none;">
+                <div class="markdown-board-header" id="markdown-board-header">
+                    <div class="markdown-board-title">题目板</div>
+                    <div class="markdown-board-actions">
+                        <button id="markdown-edit-btn" class="btn-icon markdown-tab" title="编辑" aria-label="编辑">✎</button>
+                        <button id="markdown-preview-btn" class="btn-icon markdown-tab" title="预览" aria-label="预览">👁</button>
+                        <input id="markdown-font-size" class="markdown-font-input" type="number" min="10" max="32" step="1" value="13" title="字号 (px)" aria-label="字号 (px)">
+                        <button id="markdown-clear-btn" class="btn-icon" title="清空" aria-label="清空">🧹</button>
+                        <button id="markdown-close-btn" class="btn-icon" title="关闭" aria-label="关闭">✖</button>
+                    </div>
+                </div>
+                <div class="markdown-board-body" id="markdown-board-body">
+                    <textarea id="markdown-input" class="markdown-input" placeholder="在这里粘贴 Markdown 题目…"></textarea>
+                    <div id="markdown-preview" class="markdown-preview"></div>
+                </div>
+            </div>
         </main>
 
         <!-- 右侧属性面板 -->

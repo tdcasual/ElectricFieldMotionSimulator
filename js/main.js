@@ -9,6 +9,7 @@ import { EventManager } from './core/EventManager.js';
 import { DragDropManager } from './interactions/DragDropManager.js';
 import { ContextMenu } from './ui/ContextMenu.js';
 import { PropertyPanel } from './ui/PropertyPanel.js';
+import { MarkdownBoard } from './ui/MarkdownBoard.js';
 import { Modal } from './ui/Modal.js';
 import { Serializer } from './utils/Serializer.js';
 import { PerformanceMonitor } from './utils/PerformanceMonitor.js';
@@ -24,6 +25,7 @@ class Application {
         this.dragDropManager = null;
         this.contextMenu = null;
         this.propertyPanel = null;
+        this.markdownBoard = null;
         this.modal = null;
         this.performanceMonitor = new PerformanceMonitor();
         this.themeManager = new ThemeManager();
@@ -32,6 +34,22 @@ class Application {
         this.timeStep = 0.016; // 默认16ms (60fps)
         
         this.init();
+    }
+
+    buildSceneData() {
+        const data = this.scene.serialize();
+        const markdownState = this.markdownBoard?.getSceneState?.();
+        if (markdownState) {
+            data.ui = { ...(data.ui || {}), markdownBoard: markdownState };
+        }
+        return data;
+    }
+
+    applyUIFromSceneData(data) {
+        const markdownState = data?.ui?.markdownBoard;
+        if (markdownState) {
+            this.markdownBoard?.applySceneState?.(markdownState);
+        }
     }
 
     syncHeaderControlsFromScene() {
@@ -43,6 +61,11 @@ class Application {
         const scaleInput = document.getElementById('scale-px-per-meter');
         if (scaleInput && document.activeElement !== scaleInput) {
             scaleInput.value = String(this.scene.settings.pixelsPerMeter ?? 1);
+        }
+
+        const gravityInput = document.getElementById('gravity-input');
+        if (gravityInput && document.activeElement !== gravityInput) {
+            gravityInput.value = String(this.scene.settings.gravity ?? 10);
         }
 
         const boundarySelect = document.getElementById('boundary-mode-select');
@@ -71,6 +94,7 @@ class Application {
         // 初始化UI组件
         this.contextMenu = new ContextMenu(this.scene);
         this.propertyPanel = new PropertyPanel(this.scene);
+        this.markdownBoard = new MarkdownBoard();
         this.modal = new Modal();
         
         // 初始化拖拽系统
@@ -192,6 +216,17 @@ class Application {
                 this.requestRender({ invalidateFields: true, updateUI: false });
             };
             scaleInput.addEventListener('change', applyScale);
+        }
+
+        // 重力加速度 g（m/s²）
+        const gravityInput = document.getElementById('gravity-input');
+        if (gravityInput) {
+            gravityInput.value = String(this.scene.settings.gravity ?? 10);
+            gravityInput.addEventListener('change', () => {
+                const value = parseFloat(gravityInput.value);
+                if (!Number.isFinite(value) || value < 0) return;
+                this.scene.settings.gravity = value;
+            });
         }
 
         // 边界处理
@@ -361,7 +396,7 @@ class Application {
     saveScene() {
         const sceneName = prompt('请输入场景名称:', 'my-scene');
         if (sceneName) {
-            Serializer.saveScene(this.scene, sceneName);
+            Serializer.saveSceneData(this.buildSceneData(), sceneName);
             this.showNotification(`场景 "${sceneName}" 已保存`, 'success');
         }
     }
@@ -375,6 +410,7 @@ class Application {
                     // 重用现有 scene 实例以保持 UI 组件引用
                     this.scene.clear();
                     this.scene.loadFromData(loadedData);
+                    this.applyUIFromSceneData(loadedData);
                     this.propertyPanel.hide();
                     this.requestRender({ invalidateFields: true });
                     this.showNotification(`场景 "${sceneName}" 已加载`, 'success');
@@ -410,7 +446,7 @@ class Application {
     
     exportScene() {
         try {
-            const sceneData = this.scene.serialize();
+            const sceneData = this.buildSceneData();
             const jsonStr = JSON.stringify(sceneData, null, 2);
             const blob = new Blob([jsonStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -447,6 +483,7 @@ class Application {
                 // 清空当前场景并加载新数据
                 this.scene.clear();
                 this.scene.loadFromData(data);
+                this.applyUIFromSceneData(data);
                 this.propertyPanel.hide();
                 this.requestRender({ invalidateFields: true });
                 

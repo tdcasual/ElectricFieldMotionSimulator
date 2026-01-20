@@ -7,8 +7,15 @@ export class Serializer {
      * 保存场景到localStorage
      */
     static saveScene(scene, name) {
-        const data = JSON.stringify(scene.serialize());
-        localStorage.setItem(`scene_${name}`, data);
+        return Serializer.saveSceneData(scene.serialize(), name);
+    }
+
+    /**
+     * 保存任意场景数据到localStorage（可包含 UI 扩展字段）
+     */
+    static saveSceneData(data, name) {
+        const json = JSON.stringify(data);
+        localStorage.setItem(`scene_${name}`, json);
     }
     
     /**
