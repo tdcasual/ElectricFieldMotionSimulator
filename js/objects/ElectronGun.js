@@ -6,6 +6,68 @@ import { BaseObject } from './BaseObject.js';
 import { Particle } from './Particle.js';
 
 export class ElectronGun extends BaseObject {
+    static defaults() {
+        return {
+            type: 'electron-gun',
+            x: 0,
+            y: 0,
+            direction: 0,
+            emissionRate: 1,
+            emissionSpeed: 200,
+            barrelLength: 25,
+            showVelocity: false,
+            velocityDisplayMode: 'vector',
+            showEnergy: false,
+            particleType: 'electron',
+            particleCharge: -1.602e-19,
+            particleMass: 9.109e-31,
+            particleRadius: 6,
+            ignoreGravity: true
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '电子枪属性',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'direction', label: '发射方向 (度)', type: 'number', min: 0, max: 360 },
+                    { key: 'emissionRate', label: '发射频率 (个/秒)', type: 'number', min: 0, step: 0.5 },
+                    { key: 'emissionSpeed', label: '发射初速度 (px/s)', type: 'number', min: 0, step: 10 },
+                    { key: 'barrelLength', label: '枪管长度', type: 'number', min: 0, step: 1 }
+                ]
+            },
+            {
+                title: '粒子属性',
+                fields: [
+                    { key: 'particleType', label: '粒子类型', type: 'select', options: [
+                        { value: 'electron', label: '电子' },
+                        { value: 'proton', label: '质子' },
+                        { value: 'alpha', label: 'α粒子' },
+                        { value: 'custom', label: '自定义' }
+                    ] },
+                    { key: 'particleCharge', label: '粒子电荷 (C)', type: 'number', step: 1e-20 },
+                    { key: 'particleMass', label: '粒子质量 (kg)', type: 'number', step: 1e-30 },
+                    { key: 'particleRadius', label: '粒子半径 (px)', type: 'number', min: 2, max: 20 },
+                    { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' }
+                ]
+            },
+            {
+                title: '显示',
+                fields: [
+                    { key: 'showVelocity', label: '显示发射速度', type: 'checkbox' },
+                    { key: 'velocityDisplayMode', label: '速度显示方式', type: 'select', options: [
+                        { value: 'vector', label: '矢量' },
+                        { value: 'speed', label: '数值' }
+                    ], visibleWhen: (obj) => !!obj.showVelocity },
+                    { key: 'showEnergy', label: '显示能量', type: 'checkbox' }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         this.type = 'electron-gun';

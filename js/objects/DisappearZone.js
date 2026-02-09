@@ -5,6 +5,32 @@
 import { BaseObject } from './BaseObject.js';
 
 export class DisappearZone extends BaseObject {
+    static defaults() {
+        return {
+            type: 'disappear-zone',
+            x: 0,
+            y: 0,
+            length: 320,
+            angle: 0,
+            lineWidth: 6
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '消失区域',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'length', label: '长度', type: 'number', min: 1, step: 10 },
+                    { key: 'angle', label: '角度 (度)', type: 'number', step: 1 },
+                    { key: 'lineWidth', label: '线宽 (px)', type: 'number', min: 1, step: 1 }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         this.type = 'disappear-zone';
@@ -63,4 +89,3 @@ export class DisappearZone extends BaseObject {
         this.lineWidth = data.lineWidth ?? this.lineWidth;
     }
 }
-

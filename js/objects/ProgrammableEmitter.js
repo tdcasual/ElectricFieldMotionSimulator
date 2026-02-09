@@ -6,6 +6,144 @@ import { BaseObject } from './BaseObject.js';
 import { Particle } from './Particle.js';
 
 export class ProgrammableEmitter extends BaseObject {
+    static defaults() {
+        return {
+            type: 'programmable-emitter',
+            x: 0,
+            y: 0,
+            direction: 0,
+            emissionSpeed: 200,
+            barrelLength: 25,
+            startTime: 0,
+            emissionMode: 'burst',
+            emissionCount: 6,
+            emissionInterval: 0.2,
+            timeList: [],
+            angleMode: 'fixed',
+            angleMin: 0,
+            angleMax: 360,
+            angleList: [],
+            angleListMode: 'sequential',
+            angleListLoop: true,
+            speedMode: 'fixed',
+            speedMin: 200,
+            speedMax: 200,
+            speedList: [],
+            speedListMode: 'sequential',
+            speedListLoop: true,
+            particleType: 'electron',
+            particleCharge: -1.602e-19,
+            particleMass: 9.109e-31,
+            particleRadius: 6,
+            ignoreGravity: true,
+            keepTrajectory: true
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '发射器',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 },
+                    { key: 'barrelLength', label: '喷口偏移', type: 'number', min: 0, step: 1 }
+                ]
+            },
+            {
+                title: '发射计划',
+                fields: [
+                    { key: 'startTime', label: '开始时间 (s)', type: 'number', min: 0, step: 0.1 },
+                    { key: 'emissionMode', label: '发射模式', type: 'select', options: [
+                        { value: 'burst', label: '一次性' },
+                        { value: 'sequence', label: '等间隔' },
+                        { value: 'time-list', label: '时间列表' }
+                    ] },
+                    { key: 'emissionCount', label: '发射数量', type: 'number', min: 0, step: 1 },
+                    { key: 'emissionInterval', label: '发射间隔 (s)', type: 'number', min: 0, step: 0.05,
+                        visibleWhen: (obj) => obj.emissionMode === 'sequence'
+                    },
+                    { key: 'timeList', label: '时间列表', type: 'text',
+                        visibleWhen: (obj) => obj.emissionMode === 'time-list'
+                    }
+                ]
+            },
+            {
+                title: '速度计划',
+                fields: [
+                    { key: 'speedMode', label: '速度模式', type: 'select', options: [
+                        { value: 'fixed', label: '固定' },
+                        { value: 'random', label: '随机' },
+                        { value: 'list', label: '列表' },
+                        { value: 'arithmetic', label: '等差' }
+                    ] },
+                    { key: 'emissionSpeed', label: '默认速度 (px/s)', type: 'number', min: 0, step: 10,
+                        visibleWhen: (obj) => obj.speedMode === 'fixed'
+                    },
+                    { key: 'speedMin', label: '最小速度 (px/s)', type: 'number', min: 0, step: 10,
+                        visibleWhen: (obj) => obj.speedMode === 'random' || obj.speedMode === 'arithmetic'
+                    },
+                    { key: 'speedMax', label: '最大速度 (px/s)', type: 'number', min: 0, step: 10,
+                        visibleWhen: (obj) => obj.speedMode === 'random' || obj.speedMode === 'arithmetic'
+                    },
+                    { key: 'speedList', label: '速度列表', type: 'text',
+                        visibleWhen: (obj) => obj.speedMode === 'list'
+                    },
+                    { key: 'speedListMode', label: '列表模式', type: 'select', options: [
+                        { value: 'sequential', label: '顺序' },
+                        { value: 'random', label: '随机' }
+                    ], visibleWhen: (obj) => obj.speedMode === 'list' },
+                    { key: 'speedListLoop', label: '循环列表', type: 'checkbox',
+                        visibleWhen: (obj) => obj.speedMode === 'list'
+                    }
+                ]
+            },
+            {
+                title: '角度计划',
+                fields: [
+                    { key: 'angleMode', label: '角度模式', type: 'select', options: [
+                        { value: 'fixed', label: '固定' },
+                        { value: 'random', label: '随机' },
+                        { value: 'list', label: '列表' }
+                    ] },
+                    { key: 'angleMin', label: '最小角度', type: 'number', step: 1,
+                        visibleWhen: (obj) => obj.angleMode === 'random'
+                    },
+                    { key: 'angleMax', label: '最大角度', type: 'number', step: 1,
+                        visibleWhen: (obj) => obj.angleMode === 'random'
+                    },
+                    { key: 'angleList', label: '角度列表', type: 'text',
+                        visibleWhen: (obj) => obj.angleMode === 'list'
+                    },
+                    { key: 'angleListMode', label: '列表模式', type: 'select', options: [
+                        { value: 'sequential', label: '顺序' },
+                        { value: 'random', label: '随机' }
+                    ], visibleWhen: (obj) => obj.angleMode === 'list' },
+                    { key: 'angleListLoop', label: '循环列表', type: 'checkbox',
+                        visibleWhen: (obj) => obj.angleMode === 'list'
+                    }
+                ]
+            },
+            {
+                title: '粒子属性',
+                fields: [
+                    { key: 'particleType', label: '粒子类型', type: 'select', options: [
+                        { value: 'electron', label: '电子' },
+                        { value: 'proton', label: '质子' },
+                        { value: 'alpha', label: 'α粒子' },
+                        { value: 'custom', label: '自定义' }
+                    ] },
+                    { key: 'particleCharge', label: '粒子电荷 (C)', type: 'number', step: 1e-20 },
+                    { key: 'particleMass', label: '粒子质量 (kg)', type: 'number', step: 1e-30 },
+                    { key: 'particleRadius', label: '粒子半径 (px)', type: 'number', min: 2, max: 20 },
+                    { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' },
+                    { key: 'keepTrajectory', label: '保留轨迹', type: 'checkbox' }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         this.type = 'programmable-emitter';

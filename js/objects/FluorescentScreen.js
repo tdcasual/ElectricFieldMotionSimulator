@@ -5,6 +5,38 @@
 import { BaseObject } from './BaseObject.js';
 
 export class FluorescentScreen extends BaseObject {
+    static defaults() {
+        return {
+            type: 'fluorescent-screen',
+            x: 0,
+            y: 0,
+            width: 150,
+            height: 150,
+            depth: 30,
+            viewGap: 12,
+            spotSize: 6,
+            persistence: 0.5
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '荧光屏',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'width', label: '宽度', type: 'number', min: 1, step: 10 },
+                    { key: 'height', label: '高度', type: 'number', min: 1, step: 10 },
+                    { key: 'depth', label: '厚度', type: 'number', min: 0, step: 1 },
+                    { key: 'viewGap', label: '侧视间隔', type: 'number', min: 0, step: 1 },
+                    { key: 'spotSize', label: '光斑尺寸', type: 'number', min: 1, step: 1 },
+                    { key: 'persistence', label: '余辉 (s)', type: 'number', min: 0, step: 0.1 }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         this.type = 'fluorescent-screen';
