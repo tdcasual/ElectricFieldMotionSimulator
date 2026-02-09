@@ -46,7 +46,14 @@ registry.register('parallel-plate-capacitor', {
   category: 'electric',
   defaults: ParallelPlateCapacitor.defaults,
   schema: ParallelPlateCapacitor.schema,
-  rendererKey: 'electric'
+  rendererKey: 'electric',
+  physicsHooks: {
+    stage: 10,
+    onParticleStep: (engine, scene, particle, object) => {
+      engine.handleCapacitorCollision(particle, scene, object);
+      return false;
+    }
+  }
 });
 
 registry.register('vertical-parallel-plate-capacitor', {
@@ -82,7 +89,12 @@ registry.register('electron-gun', {
   category: 'particle',
   defaults: ElectronGun.defaults,
   schema: ElectronGun.schema,
-  rendererKey: 'device'
+  rendererKey: 'device',
+  physicsHooks: {
+    onUpdate: (engine, scene, object, dt) => {
+      object.update?.(dt, scene);
+    }
+  }
 });
 
 registry.register('programmable-emitter', {
@@ -91,7 +103,12 @@ registry.register('programmable-emitter', {
   category: 'particle',
   defaults: ProgrammableEmitter.defaults,
   schema: ProgrammableEmitter.schema,
-  rendererKey: 'device'
+  rendererKey: 'device',
+  physicsHooks: {
+    onUpdate: (engine, scene, object, dt) => {
+      object.update?.(dt, scene);
+    }
+  }
 });
 
 registry.register('fluorescent-screen', {
@@ -100,7 +117,12 @@ registry.register('fluorescent-screen', {
   category: 'display',
   defaults: FluorescentScreen.defaults,
   schema: FluorescentScreen.schema,
-  rendererKey: 'device'
+  rendererKey: 'device',
+  physicsHooks: {
+    stage: 30,
+    onParticleStep: (engine, scene, particle, object) =>
+      engine.handleScreenHit(particle, scene, object)
+  }
 });
 
 registry.register('disappear-zone', {
@@ -109,5 +131,10 @@ registry.register('disappear-zone', {
   category: 'display',
   defaults: DisappearZone.defaults,
   schema: DisappearZone.schema,
-  rendererKey: 'device'
+  rendererKey: 'device',
+  physicsHooks: {
+    stage: 20,
+    onParticleStep: (engine, scene, particle, object) =>
+      engine.handleDisappearZoneHit(particle, scene, object)
+  }
 });

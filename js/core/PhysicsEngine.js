@@ -4,6 +4,7 @@
 
 import { ForceCalculator } from '../physics/ForceCalculator.js';
 import { Integrator } from '../physics/Integrator.js';
+import { registry } from './registerObjects.js';
 
 export class PhysicsEngine {
     constructor() {
@@ -28,18 +29,36 @@ export class PhysicsEngine {
             boundsHeight = canvasContainer?.clientHeight ?? 0;
         }
 
-        // Emitters
-        if (scene.emitters && scene.emitters.length) {
-            for (const emitter of scene.emitters) {
-                if (typeof emitter.update === 'function') {
-                    emitter.update(dt, scene);
-                }
+        const objects = scene.objects || scene.getAllObjects();
+        const updateHooks = [];
+        const particleHooks = [];
+
+        for (const object of objects) {
+            const entry = registry.get(object?.type);
+            const hooks = entry?.physicsHooks;
+            if (!hooks) continue;
+            if (typeof hooks.onUpdate === 'function') {
+                updateHooks.push({ fn: hooks.onUpdate, object });
+            }
+            if (typeof hooks.onParticleStep === 'function') {
+                particleHooks.push({
+                    stage: Number.isFinite(hooks.stage) ? hooks.stage : 0,
+                    fn: hooks.onParticleStep,
+                    object
+                });
             }
         }
 
-        const hasContinuousColliders =
-            (scene.disappearZones && scene.disappearZones.length) ||
-            (scene.screens && scene.screens.length);
+        particleHooks.sort((a, b) => a.stage - b.stage);
+
+        // Update hooks (emitters, etc.)
+        if (updateHooks.length) {
+            for (const hook of updateHooks) {
+                hook.fn(this, scene, hook.object, dt);
+            }
+        }
+
+        const hasContinuousColliders = particleHooks.length > 0;
 
         for (const particle of scene.particles) {
             if (!particle.active) continue;
@@ -64,10 +83,12 @@ export class PhysicsEngine {
                 this.integrator.updateParticle(particle, scene, stepDt, gravity);
 
                 // Collisions and boundaries.
-                this.handleCapacitorCollision(particle, scene);
-                let removed = this.handleDisappearZoneHit(particle, scene);
-                if (!removed) {
-                    removed = this.handleScreenHit(particle, scene);
+                let removed = false;
+                for (const hook of particleHooks) {
+                    if (hook.fn(this, scene, particle, hook.object)) {
+                        removed = true;
+                        break;
+                    }
                 }
                 if (!removed) {
                     removed = this.handleBoundaries(particle, scene, boundsWidth, boundsHeight);
@@ -227,8 +248,9 @@ export class PhysicsEngine {
         return Math.min(d1, d2, d3, d4);
     }
 
-    handleDisappearZoneHit(particle, scene) {
-        if (!scene.disappearZones || !scene.disappearZones.length) return false;
+    handleDisappearZoneHit(particle, scene, zoneOverride = null) {
+        const zones = zoneOverride ? [zoneOverride] : (scene.disappearZones || []);
+        if (!zones.length) return false;
 
         const prevX = particle.prevX ?? particle.position.x;
         const prevY = particle.prevY ?? particle.position.y;
@@ -236,7 +258,7 @@ export class PhysicsEngine {
         const currY = particle.position.y;
         const radius = Number.isFinite(particle.radius) ? particle.radius : 0;
 
-        for (const zone of scene.disappearZones) {
+        for (const zone of zones) {
             if (!zone || zone.type !== 'disappear-zone') continue;
             const length = Number.isFinite(zone.length) ? zone.length : 0;
             if (length <= 0) continue;
@@ -262,10 +284,11 @@ export class PhysicsEngine {
     /**
      * Fluorescent screen hit handling: record hit and remove particle.
      */
-    handleScreenHit(particle, scene) {
-        if (!scene.screens || !scene.screens.length) return false;
+    handleScreenHit(particle, scene, screenOverride = null) {
+        const screens = screenOverride ? [screenOverride] : (scene.screens || []);
+        if (!screens.length) return false;
         const t = scene.time || 0;
-        for (const screen of scene.screens) {
+        for (const screen of screens) {
             const left = screen.x - screen.width / 2;
             const right = screen.x + screen.width / 2;
             const top = screen.y - screen.height / 2;
@@ -307,10 +330,11 @@ export class PhysicsEngine {
     /**
      * Parallel-plate capacitor collision: stop particle when it hits a plate.
      */
-    handleCapacitorCollision(particle, scene) {
+    handleCapacitorCollision(particle, scene, fieldOverride = null) {
         let collided = false;
 
-        for (const field of scene.electricFields) {
+        const fields = fieldOverride ? [fieldOverride] : (scene.electricFields || []);
+        for (const field of fields) {
             if (field.type !== 'parallel-plate-capacitor') continue;
 
             const dx = particle.position.x - field.x;
@@ -350,5 +374,7 @@ export class PhysicsEngine {
         if (!collided && particle.stuckToCapacitor) {
             particle.stuckToCapacitor = false;
         }
+
+        return collided;
     }
 }
