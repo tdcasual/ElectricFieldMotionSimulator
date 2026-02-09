@@ -8,7 +8,7 @@ export class Presets {
             name: '匀加速运动',
             description: '带电粒子在匀强电场中的匀加速直线运动',
             data: {
-                electricFields: [
+                objects: [
                     {
                         type: 'electric-field-rect',
                         x: 100,
@@ -17,10 +17,7 @@ export class Presets {
                         height: 400,
                         strength: 1000,
                         direction: 90
-                    }
-                ],
-                magneticFields: [],
-                particles: [
+                    },
                     {
                         type: 'particle',
                         x: 400,
@@ -39,8 +36,7 @@ export class Presets {
             name: '回旋运动',
             description: '带电粒子在磁场中的圆周运动',
             data: {
-                electricFields: [],
-                magneticFields: [
+                objects: [
                     {
                         type: 'magnetic-field',
                         x: 200,
@@ -48,9 +44,7 @@ export class Presets {
                         width: 400,
                         height: 300,
                         strength: 0.5
-                    }
-                ],
-                particles: [
+                    },
                     {
                         type: 'particle',
                         x: 400,
@@ -69,7 +63,7 @@ export class Presets {
             name: '电容器偏转',
             description: '带电粒子在平行板电容器中的偏转运动',
             data: {
-                electricFields: [
+                objects: [
                     {
                         type: 'electric-field-rect',
                         x: 300,
@@ -78,10 +72,7 @@ export class Presets {
                         height: 200,
                         strength: 2000,
                         direction: 90
-                    }
-                ],
-                magneticFields: [],
-                particles: [
+                    },
                     {
                         type: 'particle',
                         x: 200,

@@ -58,42 +58,23 @@ test('Scene.duplicateObject offsets x/y and preserves properties for fields', ()
   assert.equal(dup.direction, field.direction);
 });
 
-test('Serializer.validateSceneData fills missing required arrays', () => {
+test('Serializer.validateSceneData fills missing objects array', () => {
   const data = { version: '1.0' };
   const result = Serializer.validateSceneData(data);
 
   assert.equal(result.valid, true);
-  assert.deepEqual(data.electricFields, []);
-  assert.deepEqual(data.magneticFields, []);
-  assert.deepEqual(data.particles, []);
+  assert.deepEqual(data.objects, []);
 });
 
-test('Serializer.validateSceneData rejects invalid optional arrays', () => {
+test('Serializer.validateSceneData rejects invalid objects array', () => {
   const data = {
     version: '1.0',
-    electricFields: [],
-    magneticFields: [],
-    particles: [],
-    emitters: {}
+    objects: {}
   };
 
   const result = Serializer.validateSceneData(data);
   assert.equal(result.valid, false);
-  assert.equal(result.error, '发射器数据格式无效');
-});
-
-test('Serializer.validateSceneData rejects invalid disappearZones', () => {
-  const data = {
-    version: '1.0',
-    electricFields: [],
-    magneticFields: [],
-    particles: [],
-    disappearZones: {}
-  };
-
-  const result = Serializer.validateSceneData(data);
-  assert.equal(result.valid, false);
-  assert.equal(result.error, '消失区域数据格式无效');
+  assert.equal(result.error, '对象数据格式无效');
 });
 
 test('Particle.deserialize supports legacy x/y/vx/vy format', () => {
@@ -150,10 +131,7 @@ test('Scene.loadFromData loads programmable emitters', () => {
 
   scene.loadFromData({
     version: '1.0',
-    electricFields: [],
-    magneticFields: [],
-    particles: [],
-    emitters: [emitterData]
+    objects: [emitterData]
   });
 
   assert.equal(scene.emitters.length, 1);
@@ -177,8 +155,8 @@ test('Scene.loadFromData loads programmable emitters', () => {
   assert.equal(emitter.keepTrajectory, false);
 
   const saved = scene.serialize();
-  assert.equal(saved.emitters.length, 1);
-  assert.equal(saved.emitters[0].type, 'programmable-emitter');
-  assert.equal(saved.emitters[0].emissionMode, 'sequence');
-  assert.equal(saved.emitters[0].speedMode, 'arithmetic');
+  assert.equal(saved.objects.length, 1);
+  assert.equal(saved.objects[0].type, 'programmable-emitter');
+  assert.equal(saved.objects[0].emissionMode, 'sequence');
+  assert.equal(saved.objects[0].speedMode, 'arithmetic');
  });

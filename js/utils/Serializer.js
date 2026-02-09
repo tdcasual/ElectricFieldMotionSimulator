@@ -107,36 +107,13 @@ export class Serializer {
             return { valid: false, error: '缺少版本信息' };
         }
 
-        const ensureArray = (key) => {
-            if (data[key] == null) {
-                data[key] = [];
-                return true;
-            }
-            if (!Array.isArray(data[key])) {
-                return false;
-            }
-            return true;
-        };
-
-        if (!ensureArray('electricFields')) {
-            return { valid: false, error: '电场数据格式无效' };
-        }
-        if (!ensureArray('magneticFields')) {
-            return { valid: false, error: '磁场数据格式无效' };
-        }
-        if (!ensureArray('particles')) {
-            return { valid: false, error: '粒子数据格式无效' };
+        if (data.objects == null) {
+            data.objects = [];
+            return { valid: true };
         }
 
-        // 可选数组（旧版本可能不存在）
-        if (data.emitters != null && !Array.isArray(data.emitters)) {
-            return { valid: false, error: '发射器数据格式无效' };
-        }
-        if (data.screens != null && !Array.isArray(data.screens)) {
-            return { valid: false, error: '荧光屏数据格式无效' };
-        }
-        if (data.disappearZones != null && !Array.isArray(data.disappearZones)) {
-            return { valid: false, error: '消失区域数据格式无效' };
+        if (!Array.isArray(data.objects)) {
+            return { valid: false, error: '对象数据格式无效' };
         }
         
         return { valid: true };

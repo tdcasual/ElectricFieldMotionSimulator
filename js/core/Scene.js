@@ -2,20 +2,11 @@
  * 场景管理器 - 管理所有对象和状态
  */
 
-import { CircleElectricField } from '../objects/CircleElectricField.js';
-import { DisappearZone } from '../objects/DisappearZone.js';
-import { ElectronGun } from '../objects/ElectronGun.js';
-import { FluorescentScreen } from '../objects/FluorescentScreen.js';
-import { MagneticField } from '../objects/MagneticField.js';
-import { ParallelPlateCapacitor } from '../objects/ParallelPlateCapacitor.js';
-import { Particle } from '../objects/Particle.js';
-import { ProgrammableEmitter } from '../objects/ProgrammableEmitter.js';
-import { RectElectricField } from '../objects/RectElectricField.js';
-import { SemiCircleElectricField } from '../objects/SemiCircleElectricField.js';
-import { VerticalParallelPlateCapacitor } from '../objects/VerticalParallelPlateCapacitor.js';
+import { registry } from './registerObjects.js';
 
 export class Scene {
     constructor() {
+        this.objects = [];
         this.electricFields = [];
         this.magneticFields = [];
         this.disappearZones = [];
@@ -55,6 +46,10 @@ export class Scene {
      * 添加对象到场景
      */
     addObject(object) {
+        if (!object) return null;
+        if (!this.objects.includes(object)) {
+            this.objects.push(object);
+        }
         // 平行板和垂直平行板没有 electric 关键字，但在功能上属于电场对象
         const isElectric = object.type.includes('electric') ||
             object.type === 'parallel-plate-capacitor' ||
@@ -105,6 +100,9 @@ export class Scene {
             const index = this.particles.indexOf(object);
             if (index > -1) this.particles.splice(index, 1);
         }
+
+        const index = this.objects.indexOf(object);
+        if (index > -1) this.objects.splice(index, 1);
         
         return this;
     }
@@ -113,14 +111,7 @@ export class Scene {
      * 获取所有对象
      */
     getAllObjects() {
-        return [
-            ...this.electricFields,
-            ...this.magneticFields,
-            ...this.disappearZones,
-            ...this.emitters,
-            ...this.screens,
-            ...this.particles
-        ];
+        return [...this.objects];
     }
     
     /**
@@ -144,6 +135,7 @@ export class Scene {
      * 清空场景
      */
     clear() {
+        this.objects = [];
         this.electricFields = [];
         this.magneticFields = [];
         this.disappearZones = [];
@@ -192,12 +184,7 @@ export class Scene {
             timestamp: Date.now(),
             settings: { ...this.settings },
             variables: { ...(this.variables || {}) },
-            electricFields: this.electricFields.map(obj => obj.serialize()),
-            magneticFields: this.magneticFields.map(obj => obj.serialize()),
-            disappearZones: this.disappearZones.map(obj => obj.serialize()),
-            emitters: this.emitters.map(obj => obj.serialize()),
-            screens: this.screens.map(obj => obj.serialize()),
-            particles: this.particles.map(obj => obj.serialize())
+            objects: this.objects.map(obj => obj.serialize())
         };
     }
     
@@ -208,80 +195,21 @@ export class Scene {
 	        // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表
 	        this.variables = {};
 
-	        // 加载电场
-	        if (Array.isArray(data.electricFields)) {
-	            for (const fieldData of data.electricFields) {
-                let field = null;
-                if (fieldData.type === 'electric-field-rect') {
-                    field = new RectElectricField(fieldData);
-                } else if (fieldData.type === 'electric-field-circle') {
-                    field = new CircleElectricField(fieldData);
-                } else if (fieldData.type === 'semicircle-electric-field') {
-                    field = new SemiCircleElectricField(fieldData);
-                } else if (fieldData.type === 'parallel-plate-capacitor') {
-                    field = new ParallelPlateCapacitor(fieldData);
-                } else if (fieldData.type === 'vertical-parallel-plate-capacitor') {
-                    field = new VerticalParallelPlateCapacitor(fieldData);
-                }
+        // 清空对象
+        this.objects = [];
+        this.electricFields = [];
+        this.magneticFields = [];
+        this.disappearZones = [];
+        this.emitters = [];
+        this.screens = [];
+        this.particles = [];
 
-                if (field) {
-                    field.deserialize(fieldData);
-                    this.addObject(field);
-                }
-            }
-        }
-
-        // 加载磁场
-        if (Array.isArray(data.magneticFields)) {
-            for (const fieldData of data.magneticFields) {
-                const field = new MagneticField(fieldData);
-                field.deserialize(fieldData);
-                this.addObject(field);
-            }
-        }
-
-        // 加载消失区域
-        if (Array.isArray(data.disappearZones)) {
-            for (const zoneData of data.disappearZones) {
-                if (zoneData.type !== 'disappear-zone') continue;
-                const zone = new DisappearZone(zoneData);
-                zone.deserialize(zoneData);
-                this.addObject(zone);
-            }
-        }
-
-        // 加载发射器
-        if (Array.isArray(data.emitters)) {
-            for (const emitterData of data.emitters) {
-                if (emitterData.type === 'electron-gun') {
-                    const emitter = new ElectronGun(emitterData);
-                    emitter.deserialize(emitterData);
-                    this.addObject(emitter);
-                } else if (emitterData.type === 'programmable-emitter') {
-                    const emitter = new ProgrammableEmitter(emitterData);
-                    emitter.deserialize(emitterData);
-                    this.addObject(emitter);
-                }
-            }
-        }
-
-        // 加载荧光屏
-        if (Array.isArray(data.screens)) {
-            for (const screenData of data.screens) {
-                if (screenData.type === 'fluorescent-screen') {
-                    const screen = new FluorescentScreen(screenData);
-                    screen.deserialize(screenData);
-                    this.addObject(screen);
-                }
-            }
-        }
-
-        // 加载粒子
-        if (Array.isArray(data.particles)) {
-            for (const particleData of data.particles) {
-                const particle = new Particle(particleData);
-                particle.deserialize(particleData);
-                this.addObject(particle);
+        if (Array.isArray(data.objects)) {
+            for (const objData of data.objects) {
+                const entry = registry.get(objData?.type);
+                if (!entry) continue;
+                const instance = registry.create(objData.type, objData);
+                this.addObject(instance);
             }
         }
         
