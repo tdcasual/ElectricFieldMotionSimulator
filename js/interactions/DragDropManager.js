@@ -2,17 +2,39 @@
  * 拖拽管理器
  */
 
-import { Particle } from '../objects/Particle.js';
-import { RectElectricField } from '../objects/RectElectricField.js';
-import { CircleElectricField } from '../objects/CircleElectricField.js';
-import { SemiCircleElectricField } from '../objects/SemiCircleElectricField.js';
-import { ParallelPlateCapacitor } from '../objects/ParallelPlateCapacitor.js';
-import { VerticalParallelPlateCapacitor } from '../objects/VerticalParallelPlateCapacitor.js';
-import { MagneticField } from '../objects/MagneticField.js';
-import { DisappearZone } from '../objects/DisappearZone.js';
-import { ElectronGun } from '../objects/ElectronGun.js';
-import { ProgrammableEmitter } from '../objects/ProgrammableEmitter.js';
-import { FluorescentScreen } from '../objects/FluorescentScreen.js';
+import { registry } from '../core/registerObjects.js';
+
+const TOOL_ALIASES = {
+    'electric-field-semicircle': { type: 'semicircle-electric-field' },
+    'capacitor': { type: 'parallel-plate-capacitor' },
+    'vertical-capacitor': { type: 'vertical-parallel-plate-capacitor' },
+    'magnetic-field-long': { type: 'magnetic-field', overrides: { shape: 'rect', width: 320, height: 90 } },
+    'magnetic-field-circle': { type: 'magnetic-field', overrides: { shape: 'circle', radius: 90 } },
+    'magnetic-field-triangle': { type: 'magnetic-field', overrides: { shape: 'triangle', width: 240, height: 180 } }
+};
+
+const CREATION_OVERRIDES = {
+    'particle': (pixelsPerMeter) => ({ vx: 50 * pixelsPerMeter, vy: 0 }),
+    'electron-gun': (pixelsPerMeter) => ({
+        emissionRate: 2,
+        emissionSpeed: 200 * pixelsPerMeter
+    }),
+    'programmable-emitter': (pixelsPerMeter) => ({
+        emissionSpeed: 200 * pixelsPerMeter,
+        speedMin: 200 * pixelsPerMeter,
+        speedMax: 200 * pixelsPerMeter,
+        emissionInterval: 0.15
+    })
+};
+
+export function resolveToolEntry(type) {
+    return TOOL_ALIASES[type] || { type, overrides: {} };
+}
+
+export function getCreationOverrides(type, pixelsPerMeter) {
+    if (!CREATION_OVERRIDES[type]) return {};
+    return CREATION_OVERRIDES[type](pixelsPerMeter);
+}
 
 export class DragDropManager {
     constructor(scene, renderer, options = {}) {
@@ -100,106 +122,20 @@ export class DragDropManager {
     }
     
     createObject(type, x, y) {
-        let object = null;
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
             : 1;
-        
-        switch (type) {
-            case 'electric-field-rect':
-                object = new RectElectricField({ x, y, width: 200, height: 150, strength: 1000, direction: 90 });
-                break;
-            case 'electric-field-circle':
-                object = new CircleElectricField({ x, y, radius: 100, strength: 1000, direction: 90 });
-                break;
-            case 'electric-field-semicircle':
-                object = new SemiCircleElectricField({ x, y, radius: 100, strength: 1000, direction: 90, orientation: 0 });
-                break;
-            case 'capacitor':
-                object = new ParallelPlateCapacitor({ x, y, width: 200, plateDistance: 80, strength: 1000, direction: 0, polarity: 1 });
-                break;
-            case 'vertical-capacitor':
-                object = new VerticalParallelPlateCapacitor({ x, y, height: 200, plateDistance: 80, strength: 1000, polarity: 1 });
-                break;
-            case 'magnetic-field':
-                object = new MagneticField({ x, y, shape: 'rect', width: 200, height: 150, strength: 0.5 });
-                break;
-            case 'magnetic-field-long':
-                object = new MagneticField({ x, y, shape: 'rect', width: 320, height: 90, strength: 0.5 });
-                break;
-            case 'magnetic-field-circle':
-                object = new MagneticField({ x, y, shape: 'circle', radius: 90, strength: 0.5 });
-                break;
-            case 'magnetic-field-triangle':
-                object = new MagneticField({ x, y, shape: 'triangle', width: 240, height: 180, strength: 0.5 });
-                break;
-            case 'electron-gun':
-                object = new ElectronGun({
-                    x, y,
-                    direction: 0,
-                    emissionRate: 2,
-                    emissionSpeed: 200 * pixelsPerMeter,
-                    particleType: 'electron'
-                });
-                break;
-            case 'programmable-emitter':
-                object = new ProgrammableEmitter({
-                    x,
-                    y,
-                    direction: 0,
-                    emissionSpeed: 200 * pixelsPerMeter,
-                    speedMode: 'fixed',
-                    speedMin: 200 * pixelsPerMeter,
-                    speedMax: 200 * pixelsPerMeter,
-                    speedListMode: 'sequential',
-                    speedListLoop: true,
-                    speedList: [],
-                    barrelLength: 25,
-                    startTime: 0,
-                    emissionMode: 'burst',
-                    emissionCount: 6,
-                    emissionInterval: 0.15,
-                    angleMode: 'fixed',
-                    angleMin: 0,
-                    angleMax: 360,
-                    angleListMode: 'sequential',
-                    angleListLoop: true,
-                    angleList: [],
-                    particleType: 'electron',
-                    keepTrajectory: true,
-                    ignoreGravity: true
-                });
-                break;
-            case 'fluorescent-screen':
-                object = new FluorescentScreen({
-                    x, y,
-                    width: 150,
-                    height: 150,
-                    depth: 30,
-                    spotSize: 6,
-                    persistence: 1.5
-                });
-                break;
-            case 'disappear-zone':
-                object = new DisappearZone({
-                    x,
-                    y,
-                    length: 360,
-                    angle: 0,
-                    lineWidth: 6
-                });
-                break;
-            case 'particle':
-                object = new Particle({ 
-                    x, y, 
-                    vx: 50 * pixelsPerMeter, vy: 0, 
-                    mass: 9.109e-31, 
-                    charge: -1.602e-19,
-                    ignoreGravity: true
-                });
-                break;
+        const alias = resolveToolEntry(type);
+        const resolvedType = alias.type || type;
+        const baseOverrides = { x, y, ...(alias.overrides || {}) };
+        const extraOverrides = getCreationOverrides(resolvedType, pixelsPerMeter);
+        let object = null;
+        try {
+            object = registry.create(resolvedType, { ...baseOverrides, ...extraOverrides });
+        } catch (error) {
+            console.warn('Unknown tool type:', resolvedType, error);
         }
-        
+
         if (object) {
             this.scene.addObject(object);
             const app = window.app;
