@@ -6,6 +6,79 @@ import { BaseObject } from './BaseObject.js';
 import { Vector } from '../physics/VectorMath.js';
 
 export class Particle extends BaseObject {
+    static defaults() {
+        return {
+            type: 'particle',
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            vxExpr: null,
+            vyExpr: null,
+            mass: 9.109e-31,
+            charge: -1.602e-19,
+            radius: 6,
+            ignoreGravity: true,
+            showTrajectory: true,
+            trajectoryRetention: 'infinite',
+            trajectorySeconds: 8,
+            maxTrajectoryLength: Infinity,
+            showEnergy: true,
+            showVelocity: true,
+            velocityDisplayMode: 'vector',
+            showForces: false,
+            showForceElectric: false,
+            showForceMagnetic: false,
+            showForceGravity: false,
+            showForceNet: true
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '粒子属性',
+                fields: [
+                    { key: 'mass', label: '质量 (kg)', type: 'number' },
+                    { key: 'charge', label: '电荷量 (C)', type: 'number' },
+                    { key: 'vx', label: '当前速度 vx (m/s)', type: 'expression' },
+                    { key: 'vy', label: '当前速度 vy (m/s)', type: 'expression' },
+                    { key: 'radius', label: '半径 (px)', type: 'number', min: 2, max: 20 }
+                ]
+            },
+            {
+                title: '显示',
+                fields: [
+                    { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' },
+                    { key: 'showTrajectory', label: '显示轨迹', type: 'checkbox' },
+                    { key: 'trajectoryRetention', label: '轨迹保留', type: 'select', options: [
+                        { value: 'infinite', label: '永久' },
+                        { value: 'seconds', label: '最近 N 秒' }
+                    ] },
+                    { key: 'trajectorySeconds', label: '显示最近 (s)', type: 'number', min: 0.1, step: 0.1,
+                        visibleWhen: (obj) => obj.trajectoryRetention === 'seconds'
+                    },
+                    { key: 'showVelocity', label: '显示速度', type: 'checkbox' },
+                    { key: 'velocityDisplayMode', label: '速度显示方式', type: 'select', options: [
+                        { value: 'vector', label: '矢量' },
+                        { value: 'speed', label: '数值' }
+                    ], visibleWhen: (obj) => !!obj.showVelocity },
+                    { key: 'showEnergy', label: '显示能量', type: 'checkbox' }
+                ]
+            },
+            {
+                title: '受力分析',
+                fields: [
+                    { key: 'showForces', label: '显示受力', type: 'checkbox' },
+                    { key: 'showForceElectric', label: '电场力 Fe', type: 'checkbox', visibleWhen: (obj) => !!obj.showForces },
+                    { key: 'showForceMagnetic', label: '磁场力 Fm', type: 'checkbox', visibleWhen: (obj) => !!obj.showForces },
+                    { key: 'showForceGravity', label: '重力 Fg', type: 'checkbox', visibleWhen: (obj) => !!obj.showForces },
+                    { key: 'showForceNet', label: '合力 ΣF', type: 'checkbox', visibleWhen: (obj) => !!obj.showForces }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         this.type = 'particle';
