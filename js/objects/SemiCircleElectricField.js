@@ -6,6 +6,34 @@ import { ElectricField } from './ElectricField.js';
 import { Vector } from '../physics/VectorMath.js';
 
 export class SemiCircleElectricField extends ElectricField {
+    static defaults() {
+        return {
+            type: 'semicircle-electric-field',
+            x: 0,
+            y: 0,
+            radius: 100,
+            strength: 1000,
+            direction: 90,
+            orientation: 0
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '电场属性',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'radius', label: '半径', type: 'number', min: 1, step: 10 },
+                    { key: 'strength', label: '场强 (N/C)', type: 'number', step: 100 },
+                    { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 },
+                    { key: 'orientation', label: '朝向 (度)', type: 'number', min: 0, max: 360 }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         

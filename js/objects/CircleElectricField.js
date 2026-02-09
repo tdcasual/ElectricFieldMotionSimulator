@@ -5,6 +5,32 @@
 import { ElectricField } from './ElectricField.js';
 
 export class CircleElectricField extends ElectricField {
+    static defaults() {
+        return {
+            type: 'electric-field-circle',
+            x: 0,
+            y: 0,
+            radius: 100,
+            strength: 1000,
+            direction: 90
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '电场属性',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'radius', label: '半径', type: 'number', min: 1, step: 10 },
+                    { key: 'strength', label: '场强 (N/C)', type: 'number', step: 100 },
+                    { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         this.type = 'electric-field-circle';

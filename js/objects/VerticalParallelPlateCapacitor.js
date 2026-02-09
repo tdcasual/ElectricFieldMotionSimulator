@@ -8,6 +8,74 @@ import { Vector } from '../physics/VectorMath.js';
 import { compileSafeMathExpression } from '../utils/SafeExpression.js';
 
 export class VerticalParallelPlateCapacitor extends ElectricField {
+    static defaults() {
+        return {
+            type: 'vertical-parallel-plate-capacitor',
+            x: 0,
+            y: 0,
+            height: 200,
+            plateDistance: 80,
+            strength: 1000,
+            polarity: 1,
+            sourceType: 'dc',
+            acAmplitude: 1000,
+            acFrequency: 50,
+            acPhase: 0,
+            dcBias: 0,
+            waveform: 'sine',
+            customExpression: 'Math.sin(2 * Math.PI * 50 * t)'
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '电场属性',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'height', label: '高度', type: 'number', min: 1, step: 10 },
+                    { key: 'plateDistance', label: '板间距离', type: 'number', min: 1, step: 10 },
+                    { key: 'strength', label: '场强 (N/C)', type: 'number', step: 100 },
+                    { key: 'polarity', label: '极性', type: 'select', options: [
+                        { value: 1, label: '向上' },
+                        { value: -1, label: '向下' }
+                    ] }
+                ]
+            },
+            {
+                title: '电源',
+                fields: [
+                    { key: 'sourceType', label: '电源类型', type: 'select', options: [
+                        { value: 'dc', label: '直流' },
+                        { value: 'ac', label: '交流' },
+                        { value: 'custom', label: '自定义' }
+                    ] },
+                    { key: 'acAmplitude', label: '交流幅值 (N/C)', type: 'number', step: 100,
+                        visibleWhen: (obj) => obj.sourceType === 'ac'
+                    },
+                    { key: 'acFrequency', label: '频率 (Hz)', type: 'number', min: 0, step: 1,
+                        visibleWhen: (obj) => obj.sourceType === 'ac'
+                    },
+                    { key: 'acPhase', label: '相位 (度)', type: 'number', step: 5,
+                        visibleWhen: (obj) => obj.sourceType === 'ac'
+                    },
+                    { key: 'dcBias', label: '直流偏置 (N/C)', type: 'number', step: 100,
+                        visibleWhen: (obj) => obj.sourceType === 'ac'
+                    },
+                    { key: 'waveform', label: '波形', type: 'select', options: [
+                        { value: 'sine', label: '正弦' },
+                        { value: 'square', label: '方波' },
+                        { value: 'triangle', label: '三角波' }
+                    ], visibleWhen: (obj) => obj.sourceType === 'ac' },
+                    { key: 'customExpression', label: '自定义 U(t)', type: 'text',
+                        visibleWhen: (obj) => obj.sourceType === 'custom'
+                    }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
 
