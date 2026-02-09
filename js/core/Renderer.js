@@ -6,6 +6,8 @@ import { GridRenderer } from '../rendering/GridRenderer.js';
 import { FieldVisualizer } from '../rendering/FieldVisualizer.js';
 import { TrajectoryRenderer } from '../rendering/TrajectoryRenderer.js';
 import { ForceCalculator } from '../physics/ForceCalculator.js';
+import { registry } from './registerObjects.js';
+import { getObjectRenderer } from '../rendering/ObjectRenderers.js';
 
 export class Renderer {
     constructor() {
@@ -102,40 +104,16 @@ export class Renderer {
     
     renderFields(scene) {
         this.fieldCtx.clearRect(0, 0, this.width, this.height);
-        
-        // 绘制电场
-        for (const field of scene.electricFields) {
-            this.drawElectricField(field, scene);
-        }
-        
-        // 绘制磁场
-        for (const field of scene.magneticFields) {
-            this.drawMagneticField(field, scene);
-        }
 
-        // 绘制消失区域
-        if (scene.disappearZones?.length) {
-            for (const zone of scene.disappearZones) {
-                this.drawDisappearZone(zone, scene);
-            }
-        }
-
-        // 绘制荧光屏
-        if (scene.screens?.length) {
-            for (const screen of scene.screens) {
-                this.drawFluorescentScreen(screen, scene);
-            }
-        }
-
-        // 绘制发射器
-        if (scene.emitters?.length) {
-            for (const emitter of scene.emitters) {
-                if (!emitter) continue;
-                if (emitter.type === 'electron-gun') {
-                    this.drawElectronGun(emitter, scene);
-                } else if (emitter.type === 'programmable-emitter') {
-                    this.drawProgrammableEmitter(emitter, scene);
-                }
+        const objects = scene.objects || scene.getAllObjects();
+        const renderOrder = ['electric', 'magnetic', 'device'];
+        for (const key of renderOrder) {
+            const renderer = getObjectRenderer(key);
+            if (!renderer) continue;
+            for (const object of objects) {
+                const entry = registry.get(object?.type);
+                if (!entry || entry.rendererKey !== key) continue;
+                renderer(this, object, scene);
             }
         }
 
