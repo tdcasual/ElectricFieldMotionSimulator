@@ -553,12 +553,7 @@ class Application {
                 this.propertyPanel.hide();
                 this.requestRender({ invalidateFields: true });
                 
-                const objectCount = (data.electricFields?.length || 0) +
-                                   (data.magneticFields?.length || 0) +
-                                   (data.disappearZones?.length || 0) +
-                                   (data.emitters?.length || 0) +
-                                   (data.screens?.length || 0) +
-                                   (data.particles?.length || 0);
+                const objectCount = Array.isArray(data.objects) ? data.objects.length : 0;
                 this.showNotification(`场景已导入 (${objectCount}个对象)`, 'success');
             } catch (error) {
                 console.error('导入失败:', error);
