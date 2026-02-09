@@ -12,6 +12,7 @@ import { PropertyPanel } from './ui/PropertyPanel.js';
 import { MarkdownBoard } from './ui/MarkdownBoard.js';
 import { VariableEditor } from './ui/VariableEditor.js';
 import { Modal } from './ui/Modal.js';
+import { Toolbar } from './ui/Toolbar.js';
 import { Serializer } from './utils/Serializer.js';
 import { compileSafeExpression } from './utils/SafeExpression.js';
 import { PerformanceMonitor } from './utils/PerformanceMonitor.js';
@@ -96,6 +97,7 @@ class Application {
         this.syncViewportFromRenderer();
         
         // 初始化UI组件
+        this.toolbar = new Toolbar();
         this.contextMenu = new ContextMenu(this.scene);
         this.propertyPanel = new PropertyPanel(this.scene);
         this.markdownBoard = new MarkdownBoard();
