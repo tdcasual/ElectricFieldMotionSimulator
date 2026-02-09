@@ -5,6 +5,46 @@
 import { BaseObject } from './BaseObject.js';
 
 export class MagneticField extends BaseObject {
+    static defaults() {
+        return {
+            type: 'magnetic-field',
+            x: 0,
+            y: 0,
+            shape: 'rect',
+            width: 200,
+            height: 150,
+            radius: 90,
+            strength: 0.5
+        };
+    }
+
+    static schema() {
+        return [
+            {
+                title: '磁场属性',
+                fields: [
+                    { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
+                    { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
+                    { key: 'shape', label: '形状', type: 'select', options: [
+                        { value: 'rect', label: '矩形' },
+                        { value: 'circle', label: '圆形' },
+                        { value: 'triangle', label: '三角形' }
+                    ] },
+                    { key: 'width', label: '宽度', type: 'number', min: 1, step: 10,
+                        visibleWhen: (obj) => obj.shape !== 'circle'
+                    },
+                    { key: 'height', label: '高度', type: 'number', min: 1, step: 10,
+                        visibleWhen: (obj) => obj.shape !== 'circle'
+                    },
+                    { key: 'radius', label: '半径', type: 'number', min: 1, step: 10,
+                        visibleWhen: (obj) => obj.shape === 'circle'
+                    },
+                    { key: 'strength', label: '磁感应强度 (T)', type: 'number', step: 0.1 }
+                ]
+            }
+        ];
+    }
+
     constructor(config = {}) {
         super(config);
         this.type = 'magnetic-field';
