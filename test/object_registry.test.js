@@ -24,3 +24,23 @@ test('ObjectRegistry register/get/create/listByCategory', () => {
   const cats = registry.listByCategory();
   assert.equal(cats.test[0].type, 'dummy');
 });
+
+test('registry registers all built-in types', async () => {
+  const { registry } = await import('../js/core/registerObjects.js');
+  const types = [
+    'electric-field-rect',
+    'electric-field-circle',
+    'semicircle-electric-field',
+    'parallel-plate-capacitor',
+    'vertical-parallel-plate-capacitor',
+    'magnetic-field',
+    'particle',
+    'electron-gun',
+    'programmable-emitter',
+    'fluorescent-screen',
+    'disappear-zone'
+  ];
+  for (const type of types) {
+    assert.ok(registry.get(type), `missing ${type}`);
+  }
+});

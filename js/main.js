@@ -17,6 +17,7 @@ import { compileSafeExpression } from './utils/SafeExpression.js';
 import { PerformanceMonitor } from './utils/PerformanceMonitor.js';
 import { ThemeManager } from './utils/ThemeManager.js';
 import { Presets } from './presets/Presets.js';
+import { registry } from './core/registerObjects.js';
 
 class Application {
     constructor() {
@@ -599,5 +600,6 @@ class Application {
 
 // 启动应用
 window.addEventListener('DOMContentLoaded', () => {
+    window.registry = registry;
     window.app = new Application();
 });
