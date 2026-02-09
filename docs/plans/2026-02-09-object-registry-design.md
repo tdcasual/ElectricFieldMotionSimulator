@@ -1,50 +1,91 @@
 # Object Registry + Schema-Driven Property Panel Design
 
 Date: 2026-02-09
-Status: Draft (approved by user)
+Status: Approved
 
-## Context
-The project currently requires editing multiple files to add or modify object types (toolbar, drag/drop creation, scene load, renderer, and property panel). The PropertyPanel is large and tightly coupled to object-specific templates. This design introduces a single registry and schema-driven UI to reduce duplication and centralize object metadata.
+## Decisions
+- Use a single ObjectRegistry as the authoritative source for object metadata.
+- Move PropertyPanel to a schema-driven renderer with full feature parity
+  (expression preview, validation, dynamic visibility, and error feedback).
+- Allow breaking changes to scene JSON and localStorage formats.
 
 ## Goals
-- Single entry point for object metadata (type, label, icon, defaults, schema).
-- Schema-driven PropertyPanel for all object types.
-- Remove switch-case dispersal across DragDrop, Scene load, and Renderer.
-- Allow breaking compatibility with existing scene JSON formats.
+- Add a new device/object type with a single registration entry.
+- Remove type switch-case sprawl across DragDrop, Scene load, Renderer,
+  and PropertyPanel.
+- Keep behavior and rendering fidelity unchanged while reducing coupling.
 
 ## Non-Goals
-- Backward compatibility with legacy scene files.
-- Full automatic migration of existing localStorage data.
-- Physics or rendering behavior changes beyond routing through the registry.
+- Backward compatibility with legacy scene files or localStorage entries.
+- Automatic migration of old scene data.
+- Changes to physics correctness or visual style beyond routing.
 
-## High-Level Architecture
-Introduce `ObjectRegistry` as the authoritative source for object types.
+## Architecture Overview
+Introduce ObjectRegistry as a centralized catalog of object types.
 
 - Each object class provides:
-  - `static defaults()` for initial values.
-  - `static schema()` to define UI groups and fields.
-- `ObjectRegistry` maps `type -> { class, label, icon, category, defaults, schema, rendererKey }`.
-- `PropertyPanel` renders forms based entirely on `schema()`.
-- `DragDropManager` and scene loading use registry factory methods.
-- `Renderer` dispatches drawing based on `rendererKey` or type mapping.
+  - static defaults() -> default configuration.
+  - static schema() -> UI schema for PropertyPanel.
+- ObjectRegistry maps:
+  type -> { class, label, icon, category, defaults, schema,
+            rendererKey, physicsHooks }
+- PropertyPanel delegates all UI to SchemaForm, which renders schema
+  groups and fields and applies validation and bind hooks.
+- Scene, Renderer, and PhysicsEngine use registry metadata to dispatch
+  behavior by capability rather than hard-coded type branches.
 
 ## Schema Model
-Schema is a list of groups, each with a title and field list. Each field supports:
-- `key`: storage key in the serialized object.
-- `label`: display label.
-- `type`: number | select | checkbox | text | color | angle | vec2 | expression.
-- `unit`: optional unit string.
-- `min`, `max`, `step`: numeric constraints.
-- `options`: for select.
-- `visibleWhen`: predicate `(object) => boolean`.
-- `validator`: function `(value, object) => errorString | null`.
-- `bind`: optional `{ get(object), set(object, value) }` to map UI values to internal state.
+Schema is a list of groups, each with a title and field list.
 
-The `bind` hook is required for composite fields (for example, Particle position/velocity vectors).
+Field shape:
+- key: storage key in serialized data.
+- label: display label.
+- type: number | select | checkbox | text | color | angle | vec2 | expression
+- unit: optional unit label.
+- min/max/step: numeric constraints.
+- options: select choices.
+- visibleWhen(object): boolean predicate.
+- validator(value, object): error string or null.
+- bind: { get(object), set(object, value) } for computed or composite fields.
+
+Notes:
+- Expression fields use compileSafeExpression and show live previews.
+- Hidden fields are not validated or overwritten.
+
+## Data Flow and Lifecycle
+Create -> Edit -> Save/Load
+
+- Creation: DragDropManager calls ObjectRegistry.create(type, overrides).
+  Registry merges defaults with overrides and instantiates the class.
+- Scene: addObject assigns scene refs and stores by category.
+- Editing: PropertyPanel invokes SchemaForm, which validates inputs,
+  shows per-field errors, and applies changes atomically via bind.set.
+- Serialization: objects serialize to flat structures with schema keys.
+- Loading: Scene.loadFromData uses registry type lookup, instantiates the
+  class with defaults, and calls deserialize() for internal state mapping.
+- Unknown types are skipped with a summary notification.
+
+## Error Handling and Consistency
+- SchemaForm blocks apply if any field fails validation or expression
+  compilation; no partial writes.
+- Expression errors show inline and in a summary notification.
+- Unknown fields in saved data are ignored safely.
+- Missing rendererKey or physicsHooks results in no-op behavior, not a
+  hard failure.
+
+## Component Changes
+- New: js/core/ObjectRegistry.js
+- New: js/ui/SchemaForm.js (or similar location under ui/)
+- DragDropManager: replace switch-case with registry.create().
+- Scene: load and classification via registry metadata; serialize via
+  object.serialize().
+- Renderer: dispatch to renderers via rendererKey map.
+- PhysicsEngine: invoke physicsHooks for devices (emit, collide, record).
+- PropertyPanel: fully schema-driven UI using SchemaForm.
 
 ## Serialization Format (Breaking Change)
-All objects serialize to a flat structure of schema keys. Example (Particle):
-```
+All objects serialize to flat key-value structures defined by schema.
+Example (Particle):
 {
   "type": "particle",
   "x": 120,
@@ -57,61 +98,22 @@ All objects serialize to a flat structure of schema keys. Example (Particle):
   "ignoreGravity": true,
   "showTrajectory": true
 }
-```
-Object classes remain responsible for mapping flat fields into internal state during `deserialize()`.
-
-## Component Changes
-### ObjectRegistry (new)
-- Location: `/Users/lvxiaoer/Documents/ElectricFieldMotionSimulator/js/core/ObjectRegistry.js`.
-- API:
-  - `register(type, meta)`
-  - `get(type)`
-  - `create(type, overrides)`
-  - `listByCategory()`
-
-### DragDropManager
-- Replace switch-case creation with `registry.create(type, { x, y })`.
-- Defaults come from `static defaults()`.
-
-### Scene
-- `loadFromData()` constructs objects via registry:
-  - `const entry = registry.get(obj.type)`
-  - `const instance = new entry.class(entry.defaults())`
-  - `instance.deserialize(obj)`
-- Serialization uses each instance `serialize()`.
-
-### Renderer
-- Add `ObjectRenderers` map keyed by `rendererKey` or type.
-- `Renderer.renderFields()` and `renderParticles()` use registry and renderers for dispatch.
-
-### PropertyPanel
-- Replace object-specific templates with schema renderer.
-- `SchemaForm` module:
-  - Renders groups/fields.
-  - Reads values and validates on submit.
-  - Writes back via `bind` or direct assignment by `key`.
-  - Emits notifications on validation errors.
-
-## Error Handling
-- Validation errors collected and shown via `showNotification`.
-- Expression fields compile with `compileSafeExpression` / `compileSafeMathExpression`.
-- Invalid expression blocks apply and reports error.
 
 ## Testing Plan
-- Unit tests for `ObjectRegistry`:
-  - `create()` returns correct defaults.
-  - `schema()` exists for all registered types.
-  - Serialization round trip for representative types.
-- UI logic tests for `SchemaForm` (validation + bind hooks).
-- Manual smoke: drag/drop, edit properties, save/export/import (new format).
+- Unit: ObjectRegistry register/get/create/listByCategory.
+- Unit: schema coverage and unique field keys for all types.
+- Unit: SchemaForm validation, visibleWhen, bind hooks, expression preview.
+- Round-trip: serialize -> deserialize -> serialize consistency tests.
+- Manual smoke: drag/drop, edit properties, save/load new format,
+  play/pause, selection, theme switch.
 
-## Risks
-- Large refactor in `PropertyPanel` may regress niche controls.
-- Schema coverage must be complete to avoid missing fields.
+## Migration Note
+Legacy scenes are not supported. Update README to note format break and
+advise users to re-export scenes with the new version.
 
 ## Milestones
-1. Introduce `ObjectRegistry` and register existing types.
-2. Refactor DragDrop and Scene loading to registry.
-3. Add ObjectRenderers map and refactor Renderer dispatch.
-4. Rewrite PropertyPanel to schema-driven form.
-5. Update tests and smoke-check.
+1. Introduce ObjectRegistry and register all existing types.
+2. Refactor DragDropManager and Scene loading to registry.
+3. Add renderer dispatch via rendererKey.
+4. Implement SchemaForm and refactor PropertyPanel.
+5. Update tests and manual smoke checks.
