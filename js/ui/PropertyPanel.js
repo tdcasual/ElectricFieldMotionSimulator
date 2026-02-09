@@ -3,6 +3,8 @@
  */
 
 import { compileSafeExpression } from '../utils/SafeExpression.js';
+import { registry } from '../core/registerObjects.js';
+import { SchemaForm } from './SchemaForm.js';
 
 function escapeAttr(value) {
     return String(value ?? '')
@@ -47,23 +49,62 @@ export class PropertyPanel {
         this.currentObject = object;
         const content = document.getElementById('property-content');
         content.innerHTML = '';
-        
-        if (object.type === 'particle') {
-            this.renderParticleProperties(content, object);
-        } else if (object.type.includes('electric') || object.type === 'parallel-plate-capacitor' || object.type === 'vertical-parallel-plate-capacitor') {
-            this.renderElectricFieldProperties(content, object);
-        } else if (object.type === 'magnetic-field') {
-            this.renderMagneticFieldProperties(content, object);
-        } else if (object.type === 'disappear-zone') {
-            this.renderDisappearZoneProperties(content, object);
-        } else if (object.type === 'electron-gun') {
-            this.renderElectronGunProperties(content, object);
-        } else if (object.type === 'programmable-emitter') {
-            this.renderProgrammableEmitterProperties(content, object);
-        } else if (object.type === 'fluorescent-screen') {
-            this.renderScreenProperties(content, object);
+
+        const entry = registry.get(object?.type);
+        if (!entry || typeof entry.schema !== 'function') {
+            content.textContent = '暂无可编辑属性';
+            this.openPanel();
+            return;
         }
-        
+
+        const form = new SchemaForm({
+            container: content,
+            schema: entry.schema(),
+            object,
+            scene: this.scene
+        });
+        this.schemaForm = form;
+        form.render();
+
+        const actions = document.createElement('div');
+        actions.className = 'form-row';
+        const applyBtn = document.createElement('button');
+        applyBtn.className = 'btn btn-primary';
+        applyBtn.textContent = '应用';
+        actions.appendChild(applyBtn);
+
+        const maybeClear = object.type === 'particle';
+        if (maybeClear) {
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'btn';
+            clearBtn.textContent = '清空轨迹';
+            clearBtn.addEventListener('click', () => {
+                object.clearTrajectory?.();
+                window.app?.requestRender?.({ updateUI: false });
+            });
+            actions.appendChild(clearBtn);
+        }
+
+        content.appendChild(actions);
+
+        applyBtn.addEventListener('click', () => {
+            const result = form.apply();
+            if (!result.ok) {
+                window.app?.showNotification?.('属性填写有误，请检查红色提示', 'error');
+                return;
+            }
+
+            if (object.type === 'electron-gun') {
+                object._emitAccumulator = 0;
+            }
+            if (typeof object.resetRuntime === 'function') {
+                object.resetRuntime();
+            }
+
+            const invalidateFields = entry.rendererKey !== 'particle';
+            window.app?.requestRender?.({ invalidateFields, updateUI: false });
+        });
+
         this.openPanel();
     }
     

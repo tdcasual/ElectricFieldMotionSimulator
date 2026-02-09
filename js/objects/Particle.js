@@ -41,8 +41,46 @@ export class Particle extends BaseObject {
                 fields: [
                     { key: 'mass', label: '质量 (kg)', type: 'number' },
                     { key: 'charge', label: '电荷量 (C)', type: 'number' },
-                    { key: 'vx', label: '当前速度 vx (m/s)', type: 'expression' },
-                    { key: 'vy', label: '当前速度 vy (m/s)', type: 'expression' },
+                    { key: 'vx', label: '当前速度 vx (m/s)', type: 'expression', unit: 'm/s', bind: {
+                        get: (obj, ctx) => {
+                            const expr = typeof obj.vxExpr === 'string' ? obj.vxExpr.trim() : '';
+                            if (expr) return expr;
+                            const ppm = ctx?.pixelsPerMeter || 1;
+                            const vx = Number.isFinite(obj.velocity?.x) ? obj.velocity.x / ppm : 0;
+                            return String(vx);
+                        },
+                        set: (obj, parsed, ctx) => {
+                            if (!parsed || parsed.empty) {
+                                obj.vxExpr = null;
+                                return;
+                            }
+                            obj.vxExpr = parsed.expr || null;
+                            const ppm = ctx?.pixelsPerMeter || 1;
+                            if (Number.isFinite(parsed.value)) {
+                                obj.velocity.x = parsed.value * ppm;
+                            }
+                        }
+                    } },
+                    { key: 'vy', label: '当前速度 vy (m/s)', type: 'expression', unit: 'm/s', bind: {
+                        get: (obj, ctx) => {
+                            const expr = typeof obj.vyExpr === 'string' ? obj.vyExpr.trim() : '';
+                            if (expr) return expr;
+                            const ppm = ctx?.pixelsPerMeter || 1;
+                            const vy = Number.isFinite(obj.velocity?.y) ? obj.velocity.y / ppm : 0;
+                            return String(vy);
+                        },
+                        set: (obj, parsed, ctx) => {
+                            if (!parsed || parsed.empty) {
+                                obj.vyExpr = null;
+                                return;
+                            }
+                            obj.vyExpr = parsed.expr || null;
+                            const ppm = ctx?.pixelsPerMeter || 1;
+                            if (Number.isFinite(parsed.value)) {
+                                obj.velocity.y = parsed.value * ppm;
+                            }
+                        }
+                    } },
                     { key: 'radius', label: '半径 (px)', type: 'number', min: 2, max: 20 }
                 ]
             },
@@ -50,19 +88,31 @@ export class Particle extends BaseObject {
                 title: '显示',
                 fields: [
                     { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' },
+                    { key: 'gravity', label: '重力加速度 g (m/s²)', type: 'number', min: 0, step: 0.1,
+                        enabledWhen: (obj) => !obj.ignoreGravity,
+                        bind: {
+                            get: (obj, ctx) => ctx?.scene?.settings?.gravity ?? 10,
+                            set: (obj, value, ctx) => {
+                                if (!ctx?.scene?.settings) return;
+                                if (Number.isFinite(value) && value >= 0) {
+                                    ctx.scene.settings.gravity = value;
+                                }
+                            }
+                        }
+                    },
                     { key: 'showTrajectory', label: '显示轨迹', type: 'checkbox' },
                     { key: 'trajectoryRetention', label: '轨迹保留', type: 'select', options: [
                         { value: 'infinite', label: '永久' },
                         { value: 'seconds', label: '最近 N 秒' }
-                    ] },
+                    ], enabledWhen: (obj) => !!obj.showTrajectory },
                     { key: 'trajectorySeconds', label: '显示最近 (s)', type: 'number', min: 0.1, step: 0.1,
-                        visibleWhen: (obj) => obj.trajectoryRetention === 'seconds'
+                        visibleWhen: (obj) => obj.trajectoryRetention === 'seconds' && !!obj.showTrajectory
                     },
                     { key: 'showVelocity', label: '显示速度', type: 'checkbox' },
                     { key: 'velocityDisplayMode', label: '速度显示方式', type: 'select', options: [
                         { value: 'vector', label: '矢量' },
                         { value: 'speed', label: '数值' }
-                    ], visibleWhen: (obj) => !!obj.showVelocity },
+                    ], enabledWhen: (obj) => !!obj.showVelocity },
                     { key: 'showEnergy', label: '显示能量', type: 'checkbox' }
                 ]
             },

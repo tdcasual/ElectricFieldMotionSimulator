@@ -35,7 +35,18 @@ export class ElectronGun extends BaseObject {
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
                     { key: 'direction', label: '发射方向 (度)', type: 'number', min: 0, max: 360 },
                     { key: 'emissionRate', label: '发射频率 (个/秒)', type: 'number', min: 0, step: 0.5 },
-                    { key: 'emissionSpeed', label: '发射初速度 (px/s)', type: 'number', min: 0, step: 10 },
+                    { key: 'emissionSpeed', label: '发射初速度 (m/s)', type: 'number', min: 0, step: 10, bind: {
+                        get: (obj, ctx) => {
+                            const ppm = ctx?.pixelsPerMeter || 1;
+                            return (Number.isFinite(obj.emissionSpeed) ? obj.emissionSpeed : 0) / ppm;
+                        },
+                        set: (obj, value, ctx) => {
+                            const ppm = ctx?.pixelsPerMeter || 1;
+                            if (Number.isFinite(value) && value >= 0) {
+                                obj.emissionSpeed = value * ppm;
+                            }
+                        }
+                    } },
                     { key: 'barrelLength', label: '枪管长度', type: 'number', min: 0, step: 1 }
                 ]
             },
@@ -47,11 +58,33 @@ export class ElectronGun extends BaseObject {
                         { value: 'proton', label: '质子' },
                         { value: 'alpha', label: 'α粒子' },
                         { value: 'custom', label: '自定义' }
-                    ] },
+                    ], bind: {
+                        get: (obj) => obj.particleType || 'electron',
+                        set: (obj, value) => {
+                            obj.particleType = value;
+                            const preset = obj.constructor?.PARTICLE_PRESETS?.[value];
+                            if (preset) {
+                                obj.particleCharge = preset.charge;
+                                obj.particleMass = preset.mass;
+                            }
+                        }
+                    } },
                     { key: 'particleCharge', label: '粒子电荷 (C)', type: 'number', step: 1e-20 },
                     { key: 'particleMass', label: '粒子质量 (kg)', type: 'number', step: 1e-30 },
                     { key: 'particleRadius', label: '粒子半径 (px)', type: 'number', min: 2, max: 20 },
-                    { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' }
+                    { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' },
+                    { key: 'gravity', label: '重力加速度 g (m/s²)', type: 'number', min: 0, step: 0.1,
+                        enabledWhen: (obj) => !obj.ignoreGravity,
+                        bind: {
+                            get: (obj, ctx) => ctx?.scene?.settings?.gravity ?? 10,
+                            set: (obj, value, ctx) => {
+                                if (!ctx?.scene?.settings) return;
+                                if (Number.isFinite(value) && value >= 0) {
+                                    ctx.scene.settings.gravity = value;
+                                }
+                            }
+                        }
+                    }
                 ]
             },
             {
@@ -61,7 +94,7 @@ export class ElectronGun extends BaseObject {
                     { key: 'velocityDisplayMode', label: '速度显示方式', type: 'select', options: [
                         { value: 'vector', label: '矢量' },
                         { value: 'speed', label: '数值' }
-                    ], visibleWhen: (obj) => !!obj.showVelocity },
+                    ], enabledWhen: (obj) => !!obj.showVelocity },
                     { key: 'showEnergy', label: '显示能量', type: 'checkbox' }
                 ]
             }

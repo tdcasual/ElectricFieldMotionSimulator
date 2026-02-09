@@ -69,8 +69,15 @@ export class ParallelPlateCapacitor extends ElectricField {
                         { value: 'square', label: '方波' },
                         { value: 'triangle', label: '三角波' }
                     ], visibleWhen: (obj) => obj.sourceType === 'ac' },
-                    { key: 'customExpression', label: '自定义 U(t)', type: 'text',
-                        visibleWhen: (obj) => obj.sourceType === 'custom'
+                    { key: 'customExpression', label: '自定义 U(t)', type: 'text', multiline: true, rows: 2,
+                        visibleWhen: (obj) => obj.sourceType === 'custom',
+                        bind: {
+                            get: (obj) => obj.customExpression || 'Math.sin(2 * Math.PI * 50 * t)',
+                            set: (obj, value) => {
+                                obj.customExpression = value || '0';
+                                obj.compileCustomExpression?.();
+                            }
+                        }
                     }
                 ]
             }

@@ -41,6 +41,46 @@ export class ProgrammableEmitter extends BaseObject {
     }
 
     static schema() {
+        const parseNumberList = (raw) => String(raw ?? '')
+            .split(',')
+            .map(item => item.trim())
+            .filter(item => item.length > 0)
+            .map(item => (Number.isFinite(Number(item)) ? Number(item) : null))
+            .filter(item => item !== null);
+
+        const bindSpeed = (prop) => ({
+            get: (obj, ctx) => {
+                const ppm = ctx?.pixelsPerMeter || 1;
+                const raw = Number.isFinite(obj[prop]) ? obj[prop] : 0;
+                return raw / ppm;
+            },
+            set: (obj, value, ctx) => {
+                const ppm = ctx?.pixelsPerMeter || 1;
+                if (Number.isFinite(value) && value >= 0) {
+                    obj[prop] = value * ppm;
+                }
+            }
+        });
+
+        const bindList = (prop, options = {}) => ({
+            get: (obj, ctx) => {
+                const ppm = ctx?.pixelsPerMeter || 1;
+                const list = Array.isArray(obj[prop]) ? obj[prop] : [];
+                const factor = options.scale === 'ppm' ? ppm : 1;
+                return list.map((v) => (Number.isFinite(v) ? v / factor : 0)).join(', ');
+            },
+            set: (obj, value, ctx) => {
+                const ppm = ctx?.pixelsPerMeter || 1;
+                const list = parseNumberList(value);
+                const factor = options.scale === 'ppm' ? ppm : 1;
+                const min = Number.isFinite(options.clampMin) ? options.clampMin : null;
+                obj[prop] = list.map((v) => {
+                    const next = min === null ? v : Math.max(min, v);
+                    return next * factor;
+                });
+            }
+        });
+
         return [
             {
                 title: '发射器',
@@ -64,7 +104,7 @@ export class ProgrammableEmitter extends BaseObject {
                     { key: 'emissionInterval', label: '发射间隔 (s)', type: 'number', min: 0, step: 0.05,
                         visibleWhen: (obj) => obj.emissionMode === 'sequence'
                     },
-                    { key: 'timeList', label: '时间列表', type: 'text',
+                    { key: 'timeList', label: '时间列表', type: 'text', multiline: true, rows: 2, bind: bindList('timeList', { clampMin: 0 }),
                         visibleWhen: (obj) => obj.emissionMode === 'time-list'
                     }
                 ]
@@ -78,16 +118,16 @@ export class ProgrammableEmitter extends BaseObject {
                         { value: 'list', label: '列表' },
                         { value: 'arithmetic', label: '等差' }
                     ] },
-                    { key: 'emissionSpeed', label: '默认速度 (px/s)', type: 'number', min: 0, step: 10,
+                    { key: 'emissionSpeed', label: '默认速度 (m/s)', type: 'number', min: 0, step: 10, bind: bindSpeed('emissionSpeed'),
                         visibleWhen: (obj) => obj.speedMode === 'fixed'
                     },
-                    { key: 'speedMin', label: '最小速度 (px/s)', type: 'number', min: 0, step: 10,
+                    { key: 'speedMin', label: '最小速度 (m/s)', type: 'number', min: 0, step: 10, bind: bindSpeed('speedMin'),
                         visibleWhen: (obj) => obj.speedMode === 'random' || obj.speedMode === 'arithmetic'
                     },
-                    { key: 'speedMax', label: '最大速度 (px/s)', type: 'number', min: 0, step: 10,
+                    { key: 'speedMax', label: '最大速度 (m/s)', type: 'number', min: 0, step: 10, bind: bindSpeed('speedMax'),
                         visibleWhen: (obj) => obj.speedMode === 'random' || obj.speedMode === 'arithmetic'
                     },
-                    { key: 'speedList', label: '速度列表', type: 'text',
+                    { key: 'speedList', label: '速度列表', type: 'text', multiline: true, rows: 2, bind: bindList('speedList', { scale: 'ppm', clampMin: 0 }),
                         visibleWhen: (obj) => obj.speedMode === 'list'
                     },
                     { key: 'speedListMode', label: '列表模式', type: 'select', options: [
@@ -113,7 +153,7 @@ export class ProgrammableEmitter extends BaseObject {
                     { key: 'angleMax', label: '最大角度', type: 'number', step: 1,
                         visibleWhen: (obj) => obj.angleMode === 'random'
                     },
-                    { key: 'angleList', label: '角度列表', type: 'text',
+                    { key: 'angleList', label: '角度列表', type: 'text', multiline: true, rows: 2, bind: bindList('angleList'),
                         visibleWhen: (obj) => obj.angleMode === 'list'
                     },
                     { key: 'angleListMode', label: '列表模式', type: 'select', options: [
@@ -133,11 +173,33 @@ export class ProgrammableEmitter extends BaseObject {
                         { value: 'proton', label: '质子' },
                         { value: 'alpha', label: 'α粒子' },
                         { value: 'custom', label: '自定义' }
-                    ] },
+                    ], bind: {
+                        get: (obj) => obj.particleType || 'electron',
+                        set: (obj, value) => {
+                            obj.particleType = value;
+                            const preset = obj.constructor?.PARTICLE_PRESETS?.[value];
+                            if (preset) {
+                                obj.particleCharge = preset.charge;
+                                obj.particleMass = preset.mass;
+                            }
+                        }
+                    } },
                     { key: 'particleCharge', label: '粒子电荷 (C)', type: 'number', step: 1e-20 },
                     { key: 'particleMass', label: '粒子质量 (kg)', type: 'number', step: 1e-30 },
                     { key: 'particleRadius', label: '粒子半径 (px)', type: 'number', min: 2, max: 20 },
                     { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' },
+                    { key: 'gravity', label: '重力加速度 g (m/s²)', type: 'number', min: 0, step: 0.1,
+                        enabledWhen: (obj) => !obj.ignoreGravity,
+                        bind: {
+                            get: (obj, ctx) => ctx?.scene?.settings?.gravity ?? 10,
+                            set: (obj, value, ctx) => {
+                                if (!ctx?.scene?.settings) return;
+                                if (Number.isFinite(value) && value >= 0) {
+                                    ctx.scene.settings.gravity = value;
+                                }
+                            }
+                        }
+                    },
                     { key: 'keepTrajectory', label: '保留轨迹', type: 'checkbox' }
                 ]
             }
