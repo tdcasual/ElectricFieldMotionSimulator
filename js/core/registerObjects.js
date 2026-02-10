@@ -119,7 +119,8 @@ registry.register('electric-field-rect', {
   category: 'electric',
   defaults: RectElectricField.defaults,
   schema: RectElectricField.schema,
-  rendererKey: 'electric'
+  rendererKey: 'electric',
+  interaction: { kind: 'electric-field', resizeMode: 'rect' }
 });
 
 registry.register('electric-field-circle', {
@@ -129,7 +130,8 @@ registry.register('electric-field-circle', {
   category: 'electric',
   defaults: CircleElectricField.defaults,
   schema: CircleElectricField.schema,
-  rendererKey: 'electric'
+  rendererKey: 'electric',
+  interaction: { kind: 'electric-field', resizeMode: 'radius' }
 });
 
 registry.register('semicircle-electric-field', {
@@ -139,7 +141,8 @@ registry.register('semicircle-electric-field', {
   category: 'electric',
   defaults: SemiCircleElectricField.defaults,
   schema: SemiCircleElectricField.schema,
-  rendererKey: 'electric'
+  rendererKey: 'electric',
+  interaction: { kind: 'electric-field', resizeMode: 'radius' }
 });
 
 registry.register('parallel-plate-capacitor', {
@@ -176,7 +179,8 @@ registry.register('magnetic-field', {
   category: 'magnetic',
   defaults: MagneticField.defaults,
   schema: MagneticField.schema,
-  rendererKey: 'magnetic'
+  rendererKey: 'magnetic',
+  interaction: { kind: 'magnetic-field' }
 });
 
 registry.register('magnetic-field-long', {
@@ -191,7 +195,8 @@ registry.register('magnetic-field-long', {
     height: 90
   }),
   schema: MagneticField.schema,
-  rendererKey: 'magnetic'
+  rendererKey: 'magnetic',
+  interaction: { kind: 'magnetic-field' }
 });
 
 registry.register('magnetic-field-circle', {
@@ -207,7 +212,8 @@ registry.register('magnetic-field-circle', {
     height: 180
   }),
   schema: MagneticField.schema,
-  rendererKey: 'magnetic'
+  rendererKey: 'magnetic',
+  interaction: { kind: 'magnetic-field' }
 });
 
 registry.register('magnetic-field-triangle', {
@@ -222,7 +228,8 @@ registry.register('magnetic-field-triangle', {
     height: 180
   }),
   schema: MagneticField.schema,
-  rendererKey: 'magnetic'
+  rendererKey: 'magnetic',
+  interaction: { kind: 'magnetic-field' }
 });
 
 registry.register('particle', {

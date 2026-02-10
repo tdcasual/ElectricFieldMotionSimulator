@@ -7,10 +7,7 @@ import { registry } from '../core/registerObjects.js';
 const TOOL_ALIASES = {
     'electric-field-semicircle': { type: 'semicircle-electric-field' },
     'capacitor': { type: 'parallel-plate-capacitor' },
-    'vertical-capacitor': { type: 'vertical-parallel-plate-capacitor' },
-    'magnetic-field-long': { type: 'magnetic-field', overrides: { shape: 'rect', width: 320, height: 90 } },
-    'magnetic-field-circle': { type: 'magnetic-field', overrides: { shape: 'circle', radius: 90 } },
-    'magnetic-field-triangle': { type: 'magnetic-field', overrides: { shape: 'triangle', width: 240, height: 180 } }
+    'vertical-capacitor': { type: 'vertical-parallel-plate-capacitor' }
 };
 
 const CREATION_OVERRIDES = {
@@ -243,7 +240,7 @@ export class DragDropManager {
             this.resizeHandle = null;
             this.resizeStart = null;
 
-            if (clickedObject.type === 'magnetic-field') {
+            if (this.isMagneticResizable(clickedObject)) {
                 const handle = this.getMagneticResizeHandle(clickedObject, this.pointerDownPos);
                 if (handle) {
                     this.dragMode = 'resize';
@@ -345,7 +342,7 @@ export class DragDropManager {
         }
 
         if (this.dragMode === 'resize') {
-            if (this.draggingObject.type === 'magnetic-field') {
+            if (this.isMagneticResizable(this.draggingObject)) {
                 this.resizeMagneticField(this.draggingObject, pos);
                 this.renderer.invalidateFields();
             } else if (this.isElectricResizable(this.draggingObject)) {
@@ -451,7 +448,7 @@ export class DragDropManager {
             this.resizeHandle = null;
             this.resizeStart = null;
 
-            if (clickedObject.type === 'magnetic-field') {
+            if (this.isMagneticResizable(clickedObject)) {
                 const handle = this.getMagneticResizeHandle(clickedObject, pos);
                 if (handle) {
                     this.dragMode = 'resize';
@@ -522,7 +519,7 @@ export class DragDropManager {
         const pos = this.getMousePos(e);
 
         if (this.dragMode === 'resize') {
-            if (this.draggingObject.type === 'magnetic-field') {
+            if (this.isMagneticResizable(this.draggingObject)) {
                 this.resizeMagneticField(this.draggingObject, pos);
                 this.renderer.invalidateFields();
             } else if (this.isElectricResizable(this.draggingObject)) {
@@ -690,16 +687,45 @@ export class DragDropManager {
         setRect({ x: startX, y: startY, width: newW, height: newH });
     }
 
+    getRegistryEntry(object) {
+        if (!object) return null;
+        return registry.get(object.type);
+    }
+
+    getInteractionKind(object) {
+        return this.getRegistryEntry(object)?.interaction?.kind || null;
+    }
+
+    isMagneticResizable(object) {
+        const kind = this.getInteractionKind(object);
+        if (kind) return kind === 'magnetic-field';
+        return object?.type === 'magnetic-field';
+    }
+
     isElectricResizable(object) {
+        const kind = this.getInteractionKind(object);
+        if (kind) return kind === 'electric-field';
         if (!object) return false;
         return object.type === 'electric-field-rect' ||
             object.type === 'electric-field-circle' ||
             object.type === 'semicircle-electric-field';
     }
 
+    getElectricResizeMode(field) {
+        const entry = this.getRegistryEntry(field);
+        if (entry?.interaction?.kind === 'electric-field' && entry?.interaction?.resizeMode) {
+            return entry.interaction.resizeMode;
+        }
+        if (!field) return 'rect';
+        if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
+            return 'radius';
+        }
+        return 'rect';
+    }
+
     getElectricResizeHandles(field) {
         if (!field) return [];
-        if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
+        if (this.getElectricResizeMode(field) === 'radius') {
             const r = Math.max(0, field.radius ?? 0);
             return [{ key: 'radius', x: field.x + r, y: field.y }];
         }
@@ -737,7 +763,7 @@ export class DragDropManager {
         const minRadius = 15;
         const start = this.resizeStart;
 
-        if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
+        if (this.getElectricResizeMode(field) === 'radius') {
             const cx = start.x;
             const cy = start.y;
             const r = Math.max(minRadius, Math.hypot(pos.x - cx, pos.y - cy));

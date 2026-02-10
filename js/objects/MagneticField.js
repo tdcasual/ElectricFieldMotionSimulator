@@ -47,7 +47,7 @@ export class MagneticField extends BaseObject {
 
     constructor(config = {}) {
         super(config);
-        this.type = 'magnetic-field';
+        this.type = config.type || 'magnetic-field';
         this.shape = config.shape || 'rect'; // rect | circle | triangle
         this.width = config.width ?? (config.radius ? config.radius * 2 : 200);
         this.height = config.height ?? (config.radius ? config.radius * 2 : 150);

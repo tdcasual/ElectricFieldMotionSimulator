@@ -34,6 +34,9 @@ test('registry registers all built-in types', async () => {
     'parallel-plate-capacitor',
     'vertical-parallel-plate-capacitor',
     'magnetic-field',
+    'magnetic-field-long',
+    'magnetic-field-circle',
+    'magnetic-field-triangle',
     'particle',
     'electron-gun',
     'programmable-emitter',
@@ -43,4 +46,11 @@ test('registry registers all built-in types', async () => {
   for (const type of types) {
     assert.ok(registry.get(type), `missing ${type}`);
   }
+});
+
+test('registry preserves magnetic variant types', async () => {
+  const { registry } = await import('../js/core/registerObjects.js');
+  const circle = registry.create('magnetic-field-circle', { x: 10, y: 20 });
+  assert.equal(circle.type, 'magnetic-field-circle');
+  assert.equal(circle.shape, 'circle');
 });

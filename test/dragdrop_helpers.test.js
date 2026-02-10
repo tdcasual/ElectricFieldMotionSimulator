@@ -8,6 +8,9 @@ test('resolveToolEntry maps toolbar aliases', () => {
 
   const semicircle = resolveToolEntry('electric-field-semicircle');
   assert.equal(semicircle.type, 'semicircle-electric-field');
+
+  const magneticLong = resolveToolEntry('magnetic-field-long');
+  assert.equal(magneticLong.type, 'magnetic-field-long');
 });
 
 test('getCreationOverrides applies pixels-per-meter scaling', () => {
