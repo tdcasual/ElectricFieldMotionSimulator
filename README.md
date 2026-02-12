@@ -224,6 +224,12 @@ JSON格式示例（`example-scene.json`）：
 - **物理引擎**: RK4数值积分
 - **许可**: MIT
 
+## Frontend Rewrite Tracking
+
+- 核心链路对齐清单: `docs/migration/parity-checklist.md`
+- 迁移设计文档: `docs/plans/2026-02-12-frontend-framework-migration-design.md`
+- 迁移实施计划: `docs/plans/2026-02-12-vue3-rewrite-implementation-plan.md`
+
 ## 示例场景
 
 项目包含一个示例场景文件 `example-scene.json`，可用于测试导入功能。该场景包含：
