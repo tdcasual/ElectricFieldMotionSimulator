@@ -15,15 +15,15 @@ export class Renderer {
         this.bgCanvas = null;
         this.fieldCanvas = null;
         this.particleCanvas = null;
-        
+
         this.bgCtx = null;
         this.fieldCtx = null;
         this.particleCtx = null;
-        
+
         this.width = 0;
         this.height = 0;
         this.dpr = window.devicePixelRatio || 1;
-        
+
         this.gridRenderer = new GridRenderer();
         this.fieldVisualizer = new FieldVisualizer();
         this.trajectoryRenderer = new TrajectoryRenderer();
@@ -34,7 +34,7 @@ export class Renderer {
             typeof window !== 'undefined' ? window.innerWidth : 1280,
             typeof window !== 'undefined' ? window.innerHeight : 720
         );
-        
+
         this.needFieldRedraw = true;
     }
 
@@ -49,7 +49,7 @@ export class Renderer {
         this.particleRenderRadius = metrics.particleRenderRadius;
         this.particleSelectionPadding = metrics.particleSelectionPadding;
     }
-    
+
     init() {
         // 获取Canvas元素
         this.bgCanvas = document.getElementById('bg-canvas');
@@ -60,20 +60,20 @@ export class Renderer {
             console.warn('Renderer: canvas elements not found, init skipped.');
             return;
         }
-        
+
         this.bgCtx = this.bgCanvas.getContext('2d');
         this.fieldCtx = this.fieldCanvas.getContext('2d');
         this.particleCtx = this.particleCanvas.getContext('2d');
-        
+
         // 设置尺寸
         this.resize();
-        
+
         // 开启抗锯齿
         this.bgCtx.imageSmoothingEnabled = true;
         this.fieldCtx.imageSmoothingEnabled = true;
         this.particleCtx.imageSmoothingEnabled = true;
     }
-    
+
     resize() {
         const container = document.getElementById('canvas-container');
         if (!container || !this.bgCanvas || !this.fieldCanvas || !this.particleCanvas) {
@@ -83,7 +83,7 @@ export class Renderer {
         this.width = container.clientWidth;
         this.height = container.clientHeight;
         this.updateResponsiveParticleMetrics(this.width, this.height);
-        
+
         // 设置Canvas尺寸（考虑DPI）
         [this.bgCanvas, this.fieldCanvas, this.particleCanvas].forEach(canvas => {
             canvas.width = this.width * this.dpr;
@@ -95,10 +95,10 @@ export class Renderer {
             ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
             ctx.imageSmoothingEnabled = true;
         });
-        
+
         this.needFieldRedraw = true;
     }
-    
+
     render(scene) {
         if (!this.bgCtx || !this.fieldCtx || !this.particleCtx) return;
 
@@ -108,21 +108,21 @@ export class Renderer {
             this.renderFields(scene);
             this.needFieldRedraw = false;
         }
-        
+
         // 渲染粒子层（每帧）
         this.renderParticles(scene);
     }
-    
+
     renderBackground(scene) {
         this.bgCtx.clearRect(0, 0, this.width, this.height);
         const { offsetX, offsetY } = this.getCameraOffset(scene);
-        
+
         // 绘制网格
         if (scene.settings.showGrid) {
             this.gridRenderer.render(this.bgCtx, this.width, this.height, scene.settings.gridSize, offsetX, offsetY);
         }
     }
-    
+
     renderFields(scene) {
         this.fieldCtx.clearRect(0, 0, this.width, this.height);
         const { offsetX, offsetY } = this.getCameraOffset(scene);
@@ -140,6 +140,7 @@ export class Renderer {
                 renderer(this, object, scene);
             }
         }
+        this.drawTangencyHint(scene);
         this.fieldCtx.restore();
 
         // 绘制场强矢量（可选）
@@ -147,17 +148,72 @@ export class Renderer {
             this.fieldVisualizer.render(this.fieldCtx, scene, this.width, this.height, { offsetX, offsetY });
         }
     }
-    
+
+    drawTangencyHint(scene) {
+        const hint = scene?.interaction?.tangencyHint;
+        if (!hint) return;
+        const circle = hint.activeCircle;
+        if (!circle || !Number.isFinite(circle.x) || !Number.isFinite(circle.y) || !Number.isFinite(circle.radius) || circle.radius <= 0) {
+            return;
+        }
+
+        this.fieldCtx.save();
+        this.fieldCtx.strokeStyle = 'rgba(0, 220, 210, 0.95)';
+        this.fieldCtx.lineWidth = 2;
+        this.fieldCtx.setLineDash([6, 4]);
+        this.fieldCtx.beginPath();
+        this.fieldCtx.arc(circle.x, circle.y, circle.radius + 4, 0, Math.PI * 2);
+        this.fieldCtx.stroke();
+        this.fieldCtx.setLineDash([]);
+
+        const candidate = hint.candidate;
+        if (candidate?.kind === 'circle' &&
+            Number.isFinite(candidate.x) &&
+            Number.isFinite(candidate.y) &&
+            Number.isFinite(candidate.radius) &&
+            candidate.radius > 0) {
+            this.fieldCtx.strokeStyle = 'rgba(0, 180, 255, 0.92)';
+            this.fieldCtx.lineWidth = 2.5;
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(candidate.x, candidate.y, candidate.radius, 0, Math.PI * 2);
+            this.fieldCtx.stroke();
+        } else if (candidate?.kind === 'segment' &&
+            Number.isFinite(candidate.x1) &&
+            Number.isFinite(candidate.y1) &&
+            Number.isFinite(candidate.x2) &&
+            Number.isFinite(candidate.y2)) {
+            this.fieldCtx.strokeStyle = 'rgba(0, 180, 255, 0.92)';
+            this.fieldCtx.lineWidth = 3;
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(candidate.x1, candidate.y1);
+            this.fieldCtx.lineTo(candidate.x2, candidate.y2);
+            this.fieldCtx.stroke();
+        }
+
+        const relationText = hint.relation === 'inner' ? '内切' : '外切';
+        const baseLabel = hint.kind === 'circle-circle'
+            ? `相切（${relationText}）`
+            : '相切';
+        const label = hint.suppressed ? `${baseLabel} Alt仅提示` : baseLabel;
+        this.drawTextBadge(
+            this.fieldCtx,
+            circle.x + circle.radius + 10,
+            circle.y - circle.radius - 8,
+            label
+        );
+        this.fieldCtx.restore();
+    }
+
     drawElectricField(field, scene) {
         this.fieldCtx.save();
-        
+
         // 绘制场边界
         this.fieldCtx.strokeStyle = 'rgba(255, 200, 0, 0.6)';
         this.fieldCtx.lineWidth = 2;
-        
+
         if (field.type === 'electric-field-rect') {
             this.fieldCtx.strokeRect(field.x, field.y, field.width, field.height);
-            
+
             // 填充半透明背景
             this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
             this.fieldCtx.fillRect(field.x, field.y, field.width, field.height);
@@ -165,7 +221,7 @@ export class Renderer {
             this.fieldCtx.beginPath();
             this.fieldCtx.arc(field.x, field.y, field.radius, 0, Math.PI * 2);
             this.fieldCtx.stroke();
-            
+
             this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
             this.fieldCtx.fill();
         } else if (field.type === 'semicircle-electric-field') {
@@ -173,13 +229,13 @@ export class Renderer {
             const angle = field.orientation * Math.PI / 180;
             const startAngle = angle - Math.PI / 2;
             const endAngle = angle + Math.PI / 2;
-            
+
             this.fieldCtx.beginPath();
             this.fieldCtx.arc(field.x, field.y, field.radius, startAngle, endAngle);
             this.fieldCtx.lineTo(field.x, field.y);
             this.fieldCtx.closePath();
             this.fieldCtx.stroke();
-            
+
             this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
             this.fieldCtx.fill();
         } else if (field.type === 'parallel-plate-capacitor') {
@@ -188,58 +244,58 @@ export class Renderer {
             const plateAngle = (field.direction + 90) * Math.PI / 180;
             const cosPlate = Math.cos(plateAngle);
             const sinPlate = Math.sin(plateAngle);
-            
+
             // 电场方向
             const fieldAngle = field.direction * Math.PI / 180;
             const cosField = Math.cos(fieldAngle);
             const sinField = Math.sin(fieldAngle);
-            
+
             const halfWidth = field.width / 2;
             const halfDist = field.plateDistance / 2;
-            
+
             // 第一块板（沿负电场方向）
             const plate1X1 = field.x - cosPlate * halfWidth - cosField * halfDist;
             const plate1Y1 = field.y - sinPlate * halfWidth - sinField * halfDist;
             const plate1X2 = field.x + cosPlate * halfWidth - cosField * halfDist;
             const plate1Y2 = field.y + sinPlate * halfWidth - sinField * halfDist;
-            
+
             // 第二块板（沿正电场方向）
             const plate2X1 = field.x - cosPlate * halfWidth + cosField * halfDist;
             const plate2Y1 = field.y - sinPlate * halfWidth + sinField * halfDist;
             const plate2X2 = field.x + cosPlate * halfWidth + cosField * halfDist;
             const plate2Y2 = field.y + sinPlate * halfWidth + sinField * halfDist;
-            
+
             // 绘制两块板
             this.fieldCtx.strokeStyle = field.polarity > 0 ? '#0088ff' : '#ff4444';
             this.fieldCtx.lineWidth = 3;
-            
+
             this.fieldCtx.beginPath();
             this.fieldCtx.moveTo(plate1X1, plate1Y1);
             this.fieldCtx.lineTo(plate1X2, plate1Y2);
             this.fieldCtx.stroke();
-            
+
             this.fieldCtx.beginPath();
             this.fieldCtx.moveTo(plate2X1, plate2Y1);
             this.fieldCtx.lineTo(plate2X2, plate2Y2);
             this.fieldCtx.stroke();
-            
+
             // 绘制连接线（淡色虚线）
             this.fieldCtx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
             this.fieldCtx.lineWidth = 1;
             this.fieldCtx.setLineDash([5, 5]);
-            
+
             this.fieldCtx.beginPath();
             this.fieldCtx.moveTo(plate1X1, plate1Y1);
             this.fieldCtx.lineTo(plate2X1, plate2Y1);
             this.fieldCtx.stroke();
-            
+
             this.fieldCtx.beginPath();
             this.fieldCtx.moveTo(plate1X2, plate1Y2);
             this.fieldCtx.lineTo(plate2X2, plate2Y2);
             this.fieldCtx.stroke();
-            
+
             this.fieldCtx.setLineDash([]);
-            
+
             // 填充区域（两板之间）
             this.fieldCtx.fillStyle = 'rgba(100, 150, 255, 0.1)';
             this.fieldCtx.beginPath();
@@ -311,13 +367,13 @@ export class Renderer {
             }
             this.drawTextBadge(this.fieldCtx, labelX, labelY, `E: ${this.formatNumber(strength)} N/C`);
         }
-        
+
         // 绘制选中高亮
         if (field === scene.selectedObject) {
             this.fieldCtx.strokeStyle = '#0e639c';
             this.fieldCtx.lineWidth = 3;
             this.fieldCtx.setLineDash([5, 5]);
-            
+
             if (field.type === 'electric-field-rect') {
                 this.fieldCtx.strokeRect(field.x - 5, field.y - 5, field.width + 10, field.height + 10);
             } else if (field.type === 'electric-field-circle') {
@@ -333,14 +389,14 @@ export class Renderer {
                 const plateAngle = (field.direction + 90) * Math.PI / 180;
                 const cosPlate = Math.cos(plateAngle);
                 const sinPlate = Math.sin(plateAngle);
-                
+
                 const fieldAngle = field.direction * Math.PI / 180;
                 const cosField = Math.cos(fieldAngle);
                 const sinField = Math.sin(fieldAngle);
-                
+
                 const halfWidth = field.width / 2 + 5;
                 const halfDist = field.plateDistance / 2 + 5;
-                
+
                 this.fieldCtx.beginPath();
                 this.fieldCtx.moveTo(
                     field.x - cosPlate * halfWidth - cosField * halfDist,
@@ -365,7 +421,7 @@ export class Renderer {
                 const halfGap = field.plateDistance / 2 + 5;
                 this.fieldCtx.strokeRect(field.x - halfGap, field.y - halfHeight, halfGap * 2, halfHeight * 2);
             }
-            
+
             this.fieldCtx.setLineDash([]);
 
             // 缩放控制点（仅匀强电场）
@@ -395,10 +451,10 @@ export class Renderer {
                 }
             }
         }
-        
+
         this.fieldCtx.restore();
     }
-    
+
     drawMagneticField(field, scene) {
         this.fieldCtx.save();
 
@@ -535,7 +591,7 @@ export class Renderer {
         // 显示场强（便于查看）
         const bVal = Number.isFinite(field.strength) ? field.strength : 0;
         this.drawTextBadge(this.fieldCtx, bounds.minX + 8, bounds.minY + 18, `B: ${this.formatNumber(bVal)} T`);
-        
+
         this.fieldCtx.restore();
     }
 
@@ -805,19 +861,19 @@ export class Renderer {
             this.fieldCtx.restore();
         }
     }
-    
+
     renderParticles(scene) {
         this.particleCtx.clearRect(0, 0, this.width, this.height);
         const { offsetX, offsetY } = this.getCameraOffset(scene);
         this.particleCtx.save();
         this.particleCtx.translate(offsetX, offsetY);
-        
+
         for (const particle of scene.particles) {
             // 绘制轨迹
             if (scene.settings.showTrajectories && particle.showTrajectory) {
                 this.trajectoryRenderer.render(this.particleCtx, particle);
             }
-            
+
             // 绘制粒子主体
             this.drawParticle(particle);
 
@@ -845,7 +901,7 @@ export class Renderer {
                     }
                 }
             }
-            
+
             // 绘制能量信息
             if (scene.settings.showEnergy && particle.showEnergy) {
                 this.drawEnergyInfo(particle);
@@ -863,25 +919,25 @@ export class Renderer {
         }
         this.particleCtx.restore();
     }
-    
+
     drawParticle(particle) {
         this.particleCtx.save();
         const radius = Number.isFinite(this.particleRenderRadius) ? this.particleRenderRadius : 6;
-        
+
         // 粒子主体
         this.particleCtx.beginPath();
         this.particleCtx.arc(particle.position.x, particle.position.y, radius, 0, Math.PI * 2);
         this.particleCtx.fillStyle = particle.charge > 0 ? '#ff4444' : '#4444ff';
         this.particleCtx.fill();
-        
+
         // 粒子边框
         this.particleCtx.strokeStyle = 'white';
         this.particleCtx.lineWidth = 2;
         this.particleCtx.stroke();
-        
+
         this.particleCtx.restore();
     }
-    
+
     drawParticleSelection(particle) {
         this.particleCtx.save();
         this.particleCtx.strokeStyle = '#0e639c';
@@ -895,25 +951,25 @@ export class Renderer {
         this.particleCtx.setLineDash([]);
         this.particleCtx.restore();
     }
-    
+
     drawArrow(ctx, x, y, dx, dy, color = 'white', lineWidth = 2) {
         const length = Math.sqrt(dx * dx + dy * dy);
         if (length < 5) return;
-        
+
         const angle = Math.atan2(dy, dx);
         const headLen = 8;
-        
+
         ctx.save();
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
         ctx.lineWidth = lineWidth;
-        
+
         // 箭头线
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(x + dx, y + dy);
         ctx.stroke();
-        
+
         // 箭头头部
         ctx.beginPath();
         ctx.moveTo(x + dx, y + dy);
@@ -927,10 +983,10 @@ export class Renderer {
         );
         ctx.closePath();
         ctx.fill();
-        
+
         ctx.restore();
     }
-    
+
     formatNumber(value) {
         if (!Number.isFinite(value)) return '0';
         const abs = Math.abs(value);
@@ -1039,7 +1095,7 @@ export class Renderer {
             textY += 18;
         }
     }
-    
+
     /**
      * 标记需要重绘场层
      */

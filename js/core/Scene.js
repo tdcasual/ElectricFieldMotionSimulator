@@ -18,7 +18,8 @@ export class Scene {
         this.time = 0; // 模拟时间（秒）
         this.viewport = { width: 0, height: 0 };
         this.camera = { offsetX: 0, offsetY: 0 };
-        
+        this.interaction = { tangencyHint: null };
+
         // 场景设置
         this.settings = {
             mode: 'normal',
@@ -82,7 +83,7 @@ export class Scene {
             maxY: normalizeZero((height - offsetY) + margin)
         };
     }
-    
+
     /**
      * 添加对象到场景
      */
@@ -109,11 +110,11 @@ export class Scene {
         } else if (object.type === 'particle') {
             this.particles.push(object);
         }
-        
+
         object.scene = this;
         return object;
     }
-    
+
     /**
      * 从场景移除对象
      */
@@ -144,23 +145,23 @@ export class Scene {
 
         const index = this.objects.indexOf(object);
         if (index > -1) this.objects.splice(index, 1);
-        
+
         return this;
     }
-    
+
     /**
      * 获取所有对象
      */
     getAllObjects() {
         return [...this.objects];
     }
-    
+
     /**
      * 查找指定位置的对象
      */
     findObjectAt(x, y) {
         const allObjects = this.getAllObjects();
-        
+
         // 从后往前查找（后添加的在上层）
         for (let i = allObjects.length - 1; i >= 0; i--) {
             const obj = allObjects[i];
@@ -168,10 +169,10 @@ export class Scene {
                 return obj;
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * 清空场景
      */
@@ -186,9 +187,10 @@ export class Scene {
         this.selectedObject = null;
         this.time = 0;
         this.variables = {};
+        this.interaction = { tangencyHint: null };
         this.setCamera(0, 0);
     }
-    
+
     /**
      * 复制对象
      */
@@ -206,17 +208,17 @@ export class Scene {
 
         // 复制时应生成新 id，避免与原对象冲突
         delete data.id;
-        
+
         const ObjectClass = object.constructor;
         const newObject = new ObjectClass(data);
         if (typeof newObject.deserialize === 'function') {
             newObject.deserialize(data);
         }
         this.addObject(newObject);
-        
+
         return newObject;
     }
-    
+
     /**
      * 序列化场景
      */
@@ -230,14 +232,14 @@ export class Scene {
             objects: this.objects.map(obj => obj.serialize())
         };
     }
-    
+
     /**
      * 从数据加载场景
      */
-	    loadFromData(data) {
-	        // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表
-	        this.variables = {};
-            this.setCamera(0, 0);
+    loadFromData(data) {
+        // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表
+        this.variables = {};
+        this.setCamera(0, 0);
 
         // 清空对象
         this.objects = [];
@@ -256,63 +258,66 @@ export class Scene {
                 this.addObject(instance);
             }
         }
-        
-	        // 加载设置
-	        if (data.settings) {
-	            Object.assign(this.settings, data.settings);
-	        }
 
-            if (data.camera && typeof data.camera === 'object') {
-                const offsetX = Number(data.camera.offsetX);
-                const offsetY = Number(data.camera.offsetY);
-                this.setCamera(offsetX, offsetY);
+        // 加载设置
+        if (data.settings) {
+            Object.assign(this.settings, data.settings);
+        }
+
+        if (data.camera && typeof data.camera === 'object') {
+            const offsetX = Number(data.camera.offsetX);
+            const offsetY = Number(data.camera.offsetY);
+            this.setCamera(offsetX, offsetY);
+        }
+
+        // 运行期交互态（不从存档恢复）
+        this.interaction = { tangencyHint: null };
+
+        // 加载变量（可选）
+        if (data.variables && typeof data.variables === 'object' && !Array.isArray(data.variables)) {
+            const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+            const RESERVED = new Set(['__proto__', 'prototype', 'constructor']);
+            const next = Object.create(null);
+            for (const [rawName, rawValue] of Object.entries(data.variables)) {
+                const name = String(rawName ?? '').trim();
+                if (!name || !NAME_RE.test(name) || RESERVED.has(name)) continue;
+                const value = Number(rawValue);
+                if (!Number.isFinite(value)) continue;
+                next[name] = value;
             }
+            this.variables = { ...next };
+        }
 
-	        // 加载变量（可选）
-	        if (data.variables && typeof data.variables === 'object' && !Array.isArray(data.variables)) {
-	            const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-	            const RESERVED = new Set(['__proto__', 'prototype', 'constructor']);
-	            const next = Object.create(null);
-	            for (const [rawName, rawValue] of Object.entries(data.variables)) {
-	                const name = String(rawName ?? '').trim();
-	                if (!name || !NAME_RE.test(name) || RESERVED.has(name)) continue;
-	                const value = Number(rawValue);
-	                if (!Number.isFinite(value)) continue;
-	                next[name] = value;
-	            }
-	            this.variables = { ...next };
-	        }
+        // 重置时间轴
+        this.time = 0;
+    }
 
-	        // 重置时间轴
-	        this.time = 0;
-	    }
-    
     /**
      * 获取电场强度（所有电场叠加）
      */
     getElectricField(x, y) {
         let Ex = 0, Ey = 0;
         const t = this.time || 0;
-        
+
         for (const field of this.electricFields) {
             const E = field.getFieldAt(x, y, t);
             Ex += E.x;
             Ey += E.y;
         }
-        
+
         return { x: Ex, y: Ey };
     }
-    
+
     /**
      * 获取磁场强度（所有磁场叠加）
      */
     getMagneticField(x, y) {
         let Bz = 0;
-        
+
         for (const field of this.magneticFields) {
             Bz += field.getFieldAt(x, y, this.time || 0);
         }
-        
+
         return Bz;
     }
 

@@ -4,6 +4,7 @@
 
 import { registry } from '../core/registerObjects.js';
 import { buildDemoCreationOverrides, isDemoMode } from '../modes/DemoMode.js';
+import { computeTangencyMatch } from './TangencyEngine.js';
 
 const TOOL_ALIASES = {
     'electric-field-semicircle': { type: 'semicircle-electric-field' },
@@ -25,6 +26,9 @@ const CREATION_OVERRIDES = {
     })
 };
 
+const TANGENCY_TOLERANCE_PX = 2;
+const MIN_TANGENCY_RADIUS = 15;
+
 export function resolveToolEntry(type) {
     return TOOL_ALIASES[type] || { type, overrides: {} };
 }
@@ -35,11 +39,146 @@ export function getCreationOverrides(type, pixelsPerMeter, options = {}) {
     return CREATION_OVERRIDES[type](pixelsPerMeter);
 }
 
+function isFiniteNumber(value) {
+    return Number.isFinite(value);
+}
+
+function isFinitePositive(value) {
+    return Number.isFinite(value) && value > 0;
+}
+
+function buildRectSegments(object) {
+    const x = object?.x;
+    const y = object?.y;
+    const w = object?.width;
+    const h = object?.height;
+    if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFinitePositive(w) || !isFinitePositive(h)) {
+        return [];
+    }
+
+    return [
+        { x1: x, y1: y, x2: x + w, y2: y },
+        { x1: x + w, y1: y, x2: x + w, y2: y + h },
+        { x1: x + w, y1: y + h, x2: x, y2: y + h },
+        { x1: x, y1: y + h, x2: x, y2: y }
+    ];
+}
+
+function buildTriangleSegments(object) {
+    const x = object?.x;
+    const y = object?.y;
+    const w = object?.width;
+    const h = object?.height;
+    if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFinitePositive(w) || !isFinitePositive(h)) {
+        return [];
+    }
+
+    const ax = x + w / 2;
+    const ay = y;
+    const bx = x;
+    const by = y + h;
+    const cx = x + w;
+    const cy = y + h;
+    return [
+        { x1: ax, y1: ay, x2: bx, y2: by },
+        { x1: bx, y1: by, x2: cx, y2: cy },
+        { x1: cx, y1: cy, x2: ax, y2: ay }
+    ];
+}
+
+function buildDisappearZoneSegment(object) {
+    if (object?.type !== 'disappear-zone') return null;
+    const length = object.length;
+    const angle = object.angle;
+    if (!isFinitePositive(length) || !isFiniteNumber(angle) || !isFiniteNumber(object.x) || !isFiniteNumber(object.y)) {
+        return null;
+    }
+
+    const rad = angle * Math.PI / 180;
+    const half = length / 2;
+    const dx = Math.cos(rad) * half;
+    const dy = Math.sin(rad) * half;
+    return { x1: object.x - dx, y1: object.y - dy, x2: object.x + dx, y2: object.y + dy };
+}
+
+export function getObjectCircleBoundary(object) {
+    if (!object) return null;
+    const isElectricCircle = object.type === 'electric-field-circle';
+    const isMagneticCircle = object.type?.includes('magnetic-field') && (object.shape || 'rect') === 'circle';
+    if (!isElectricCircle && !isMagneticCircle) return null;
+    if (!isFiniteNumber(object.x) || !isFiniteNumber(object.y) || !isFinitePositive(object.radius)) {
+        return null;
+    }
+    return { x: object.x, y: object.y, radius: object.radius };
+}
+
+function objectBoundarySegments(object) {
+    if (!object) return [];
+    if (object.type === 'electric-field-rect') {
+        return buildRectSegments(object);
+    }
+
+    if (object.type?.includes('magnetic-field')) {
+        const shape = object.shape || 'rect';
+        if (shape === 'rect') return buildRectSegments(object);
+        if (shape === 'triangle') return buildTriangleSegments(object);
+    }
+
+    const zoneSegment = buildDisappearZoneSegment(object);
+    if (zoneSegment) return [zoneSegment];
+    return [];
+}
+
+export function buildTangencyCandidates(objects, activeObject) {
+    if (!Array.isArray(objects)) return [];
+    const candidates = [];
+    for (const object of objects) {
+        if (!object) continue;
+        if (object === activeObject) continue;
+        if (activeObject?.id && object?.id && object.id === activeObject.id) continue;
+
+        const circle = getObjectCircleBoundary(object);
+        if (circle) {
+            candidates.push({
+                kind: 'circle',
+                x: circle.x,
+                y: circle.y,
+                radius: circle.radius,
+                objectId: object.id ?? null,
+                objectRef: object
+            });
+            continue;
+        }
+
+        const segments = objectBoundarySegments(object);
+        for (const segment of segments) {
+            candidates.push({
+                kind: 'segment',
+                x1: segment.x1,
+                y1: segment.y1,
+                x2: segment.x2,
+                y2: segment.y2,
+                objectId: object.id ?? null,
+                objectRef: object
+            });
+        }
+    }
+    return candidates;
+}
+
+export function clearTangencyHintState(scene) {
+    if (!scene || typeof scene !== 'object') return;
+    if (!scene.interaction || typeof scene.interaction !== 'object') {
+        scene.interaction = {};
+    }
+    scene.interaction.tangencyHint = null;
+}
+
 export class DragDropManager {
     constructor(scene, renderer, options = {}) {
         this.scene = scene;
         this.renderer = renderer;
-        
+
         this.draggingObject = null;
         this.dragOffset = { x: 0, y: 0 };
         this.isDragging = false;
@@ -63,13 +202,13 @@ export class DragDropManager {
         this.isPanning = false;
         this.panStartScreen = null;
         this.panStartCamera = null;
-        
+
         // 允许外部传入 canvas（测试页面或自定义场景）
         this.canvas = options.canvas || document.getElementById('particle-canvas');
-        
+
         this.init();
     }
-    
+
     init() {
         if (!this.canvas) {
             console.warn('DragDropManager: canvas not found, skipping canvas event binding.');
@@ -90,22 +229,22 @@ export class DragDropManager {
                 this.toggleArmedTool(item);
             });
         });
-        
+
         // Canvas接收拖拽
         this.canvas.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'copy';
         });
-        
+
         this.canvas.addEventListener('drop', (e) => {
             e.preventDefault();
             const type = e.dataTransfer.getData('component-type');
             const screen = this.getScreenPos(e);
             const world = this.screenToWorld(screen);
-            
+
             this.createObject(type, world.x, world.y);
         });
-        
+
         // Canvas内对象拖拽（Pointer Events 优先，兼容触屏）
         if (window.PointerEvent) {
             this.canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
@@ -117,11 +256,11 @@ export class DragDropManager {
             this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
             this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
         }
-        
+
         // 右键菜单
         this.canvas.addEventListener('contextmenu', (e) => this.onContextMenu(e));
     }
-    
+
     createObject(type, x, y) {
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
@@ -254,10 +393,107 @@ export class DragDropManager {
         this.setCameraOffset(this.panStartCamera.offsetX + dx, this.panStartCamera.offsetY + dy);
     }
 
+    getSceneObjects() {
+        if (Array.isArray(this.scene?.objects)) return this.scene.objects;
+        if (typeof this.scene?.getAllObjects === 'function') return this.scene.getAllObjects();
+        return [];
+    }
+
+    ensureSceneInteractionState() {
+        if (!this.scene || typeof this.scene !== 'object') return null;
+        if (!this.scene.interaction || typeof this.scene.interaction !== 'object') {
+            this.scene.interaction = {};
+        }
+        return this.scene.interaction;
+    }
+
+    clearTangencyHint() {
+        clearTangencyHintState(this.scene);
+    }
+
+    getTangencyMode() {
+        if (this.dragMode !== 'resize') return 'move';
+        return this.resizeHandle === 'radius' ? 'resize' : null;
+    }
+
+    applyTangencySnap(match, mode) {
+        if (!match?.snapTarget || !this.draggingObject) return;
+        if (mode === 'move') {
+            if (isFiniteNumber(match.snapTarget.x)) {
+                this.draggingObject.x = match.snapTarget.x;
+            }
+            if (isFiniteNumber(match.snapTarget.y)) {
+                this.draggingObject.y = match.snapTarget.y;
+            }
+            return;
+        }
+
+        if (mode !== 'resize') return;
+        if (!isFiniteNumber(match.snapTarget.radius)) return;
+        const snappedRadius = Math.max(MIN_TANGENCY_RADIUS, match.snapTarget.radius);
+        this.draggingObject.radius = snappedRadius;
+        if (this.isMagneticResizable(this.draggingObject)) {
+            this.draggingObject.width = snappedRadius * 2;
+            this.draggingObject.height = snappedRadius * 2;
+        }
+    }
+
+    updateTangencyHintAndSnap(eventLike = null) {
+        if (!this.isDragging || !this.draggingObject || this.draggingObject.type === 'particle') {
+            this.clearTangencyHint();
+            return;
+        }
+
+        const mode = this.getTangencyMode();
+        if (!mode) {
+            this.clearTangencyHint();
+            return;
+        }
+
+        const activeCircle = getObjectCircleBoundary(this.draggingObject);
+        if (!activeCircle) {
+            this.clearTangencyHint();
+            return;
+        }
+
+        const candidates = buildTangencyCandidates(this.getSceneObjects(), this.draggingObject);
+        const match = computeTangencyMatch(activeCircle, candidates, TANGENCY_TOLERANCE_PX, mode);
+        if (!match) {
+            this.clearTangencyHint();
+            return;
+        }
+
+        const suppressed = !!eventLike?.altKey;
+        if (!suppressed) {
+            this.applyTangencySnap(match, mode);
+        }
+
+        const currentCircle = getObjectCircleBoundary(this.draggingObject) || activeCircle;
+        const interaction = this.ensureSceneInteractionState();
+        if (!interaction) return;
+        interaction.tangencyHint = {
+            activeObjectId: this.draggingObject.id ?? null,
+            activeType: mode,
+            kind: match.kind,
+            relation: match.relation,
+            errorPx: match.errorPx,
+            movementPx: match.movementPx,
+            suppressed,
+            applied: !suppressed,
+            candidate: match.candidate,
+            activeCircle: currentCircle,
+            label: match.kind === 'circle-circle'
+                ? `相切（${match.relation === 'inner' ? '内切' : '外切'}）`
+                : '相切'
+        };
+    }
+
     onPointerDown(e) {
         if (!this.canvas) return;
         if (this.activePointerId !== null) return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        this.clearTangencyHint();
 
         this.activePointerId = e.pointerId;
         this.longPressTriggered = false;
@@ -364,6 +600,7 @@ export class DragDropManager {
             this.draggingObject = null;
             this.scene.selectedObject = null;
             this.isDragging = false;
+            this.clearTangencyHint();
             this.clearLongPressTimer();
             this.dragMode = 'move';
             this.resizeHandle = null;
@@ -437,6 +674,7 @@ export class DragDropManager {
             this.draggingObject.position.y = pos.y - this.dragOffset.y;
             this.draggingObject.clearTrajectory();
             if (this.removeParticleIfInDisappearZone(this.draggingObject)) {
+                this.clearTangencyHint();
                 this.draggingObject = null;
                 this.isDragging = false;
                 this.pointerDownObject = null;
@@ -450,6 +688,8 @@ export class DragDropManager {
             this.draggingObject.y = pos.y - this.dragOffset.y;
             this.renderer.invalidateFields();
         }
+
+        this.updateTangencyHintAndSnap(e);
 
         if (this.scene.isPaused) {
             this.renderer.render(this.scene);
@@ -480,6 +720,7 @@ export class DragDropManager {
         this.pointerDownPos = null;
         this.pointerDownObject = null;
         this.longPressTriggered = false;
+        this.clearTangencyHint();
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
@@ -503,6 +744,7 @@ export class DragDropManager {
         this.pointerDownPos = null;
         this.pointerDownObject = null;
         this.longPressTriggered = false;
+        this.clearTangencyHint();
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
@@ -513,21 +755,22 @@ export class DragDropManager {
         this.activePointerId = null;
         this.canvas.style.cursor = 'default';
     }
-    
+
     getMousePos(e) {
         const screen = this.getScreenPos(e);
         return this.screenToWorld(screen);
     }
-    
+
     onMouseDown(e) {
         if (e.button !== 0) return; // 只处理左键
-        
+        this.clearTangencyHint();
+
         const screenPos = this.getScreenPos(e);
         const pos = this.screenToWorld(screenPos);
         this.pointerDownPos = pos;
         const prevSelectedObject = this.scene.selectedObject;
         const clickedObject = this.scene.findObjectAt(pos.x, pos.y);
-        
+
         if (clickedObject) {
             this.isPanning = false;
             this.panStartScreen = null;
@@ -570,7 +813,7 @@ export class DragDropManager {
                     };
                 }
             }
-            
+
             if (clickedObject.type === 'particle') {
                 // 解除贴板状态以允许重新拖动
                 clickedObject.stuckToCapacitor = false;
@@ -585,7 +828,7 @@ export class DragDropManager {
                     y: pos.y - clickedObject.y
                 };
             }
-            
+
             this.canvas.style.cursor = this.dragMode === 'resize' ? 'nwse-resize' : 'grabbing';
         } else {
             this.scene.selectedObject = null;
@@ -612,7 +855,7 @@ export class DragDropManager {
             }
         }
     }
-    
+
     onMouseMove(e) {
         if (this.isPanning && this.panStartScreen) {
             const screenPos = this.getScreenPos(e);
@@ -625,7 +868,7 @@ export class DragDropManager {
         }
 
         if (!this.isDragging || !this.draggingObject) return;
-        
+
         const pos = this.getMousePos(e);
 
         if (this.dragMode === 'resize') {
@@ -642,6 +885,7 @@ export class DragDropManager {
             // 清空轨迹
             this.draggingObject.clearTrajectory();
             if (this.removeParticleIfInDisappearZone(this.draggingObject)) {
+                this.clearTangencyHint();
                 this.draggingObject = null;
                 this.isDragging = false;
                 this.canvas.style.cursor = 'default';
@@ -652,16 +896,19 @@ export class DragDropManager {
             this.draggingObject.y = pos.y - this.dragOffset.y;
             this.renderer.invalidateFields();
         }
-        
+
+        this.updateTangencyHintAndSnap(e);
+
         // 🔧 FIX: 暂停时强制渲染，否则拖拽的对象会消失
         if (this.scene.isPaused) {
             this.renderer.render(this.scene);
         }
     }
-    
+
     onMouseUp(e) {
         this.isDragging = false;
         this.draggingObject = null;
+        this.clearTangencyHint();
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
@@ -978,7 +1225,7 @@ export class DragDropManager {
         }
         return false;
     }
-    
+
     onContextMenu(e) {
         e.preventDefault();
         const fromTouch = e.sourceCapabilities?.firesTouchEvents === true;
@@ -993,7 +1240,7 @@ export class DragDropManager {
         const pos = this.getMousePos(e);
         const prevSelectedObject = this.scene.selectedObject;
         const clickedObject = this.scene.findObjectAt(pos.x, pos.y);
-        
+
         if (clickedObject) {
             this.scene.selectedObject = clickedObject;
 
@@ -1008,13 +1255,13 @@ export class DragDropManager {
                     }
                 }
             }
-            
+
             // 显示右键菜单
             const contextMenu = document.getElementById('context-menu');
             contextMenu.style.left = e.clientX + 'px';
             contextMenu.style.top = e.clientY + 'px';
             contextMenu.style.display = 'block';
-            
+
             // 点击外部关闭菜单
             setTimeout(() => {
                 const closeMenu = () => {
