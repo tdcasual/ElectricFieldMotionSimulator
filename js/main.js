@@ -19,6 +19,14 @@ import { PerformanceMonitor } from './utils/PerformanceMonitor.js';
 import { ThemeManager } from './utils/ThemeManager.js';
 import { Presets } from './presets/Presets.js';
 import { registry } from './core/registerObjects.js';
+import {
+    DEMO_BASE_PIXELS_PER_UNIT,
+    DEMO_MAX_ZOOM,
+    DEMO_MIN_ZOOM,
+    DEMO_ZOOM_STEP,
+    applyDemoZoomToScene,
+    getNextDemoZoom
+} from './modes/DemoMode.js';
 
 class Application {
     constructor() {
@@ -34,9 +42,20 @@ class Application {
         this.modal = null;
         this.performanceMonitor = new PerformanceMonitor();
         this.themeManager = new ThemeManager();
+        this.mode = 'normal';
+        this.demoSession = null;
+        this.modeSwitchInProgress = false;
+        this.demoState = {
+            zoom: 1,
+            basePixelsPerMeter: DEMO_BASE_PIXELS_PER_UNIT,
+            minZoom: DEMO_MIN_ZOOM,
+            maxZoom: DEMO_MAX_ZOOM,
+            step: DEMO_ZOOM_STEP
+        };
         
         this.running = false;
         this.timeStep = 0.016; // 默认16ms (60fps)
+        this.scene.settings.mode = this.mode;
         
         this.init();
     }
@@ -57,7 +76,182 @@ class Application {
         }
     }
 
+    isDemoMode() {
+        return this.mode === 'demo';
+    }
+
+    getDemoPixelsPerMeter() {
+        return this.demoState.basePixelsPerMeter * this.demoState.zoom;
+    }
+
+    setRunningState(nextRunning) {
+        const running = !!nextRunning;
+        this.running = running;
+        this.scene.isPaused = !running;
+        const playIcon = document.getElementById('play-icon');
+        if (playIcon) {
+            playIcon.textContent = running ? '⏸️' : '▶️';
+        }
+        if (running) {
+            this.loop();
+        }
+    }
+
+    captureSceneSnapshot() {
+        return JSON.parse(JSON.stringify(this.buildSceneData()));
+    }
+
+    restoreSceneSnapshot(snapshot) {
+        if (!snapshot || typeof snapshot !== 'object') return;
+        this.scene.clear();
+        this.scene.loadFromData(snapshot);
+        this.applyUIFromSceneData(snapshot);
+        this.propertyPanel?.hide?.();
+    }
+
+    syncModeToSceneSettings() {
+        if (!this.scene?.settings) return;
+        this.scene.settings.mode = this.mode;
+        if (!this.isDemoMode()) return;
+        this.scene.settings.gravity = 0;
+        this.scene.settings.pixelsPerMeter = this.getDemoPixelsPerMeter();
+    }
+
+    syncDemoButtonState() {
+        const demoBtn = document.getElementById('demo-mode-btn');
+        if (!demoBtn) return;
+        const active = this.isDemoMode();
+        demoBtn.classList.toggle('btn-primary', active);
+        demoBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        demoBtn.title = active ? '退出演示模式' : '进入演示模式';
+        demoBtn.textContent = active ? '演示中' : '演示';
+    }
+
+    showModeSwitchPrompt(targetMode) {
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = (choice) => {
+                if (settled) return;
+                settled = true;
+                resolve(choice);
+            };
+
+            const enteringDemo = targetMode === 'demo';
+            this.modal.showActions({
+                title: enteringDemo ? '进入演示模式' : '退出演示模式',
+                content: enteringDemo
+                    ? '<p>切换前是否保存当前场景？进入演示模式后会清空当前画布并使用临时会话。</p>'
+                    : '<p>切换前是否保存当前演示场景？退出后将恢复进入演示模式前的场景。</p>',
+                actions: [
+                    {
+                        label: '保存并切换',
+                        className: 'btn btn-primary',
+                        onClick: () => finish('save')
+                    },
+                    {
+                        label: '不保存直接切换',
+                        className: 'btn',
+                        onClick: () => finish('discard')
+                    },
+                    {
+                        label: '取消',
+                        className: 'btn',
+                        onClick: () => finish('cancel')
+                    }
+                ],
+                onDismiss: () => finish('cancel')
+            });
+        });
+    }
+
+    async toggleDemoMode() {
+        if (this.modeSwitchInProgress) return;
+        this.modeSwitchInProgress = true;
+
+        try {
+            const targetMode = this.isDemoMode() ? 'normal' : 'demo';
+            const choice = await this.showModeSwitchPrompt(targetMode);
+            if (choice === 'cancel') return;
+
+            if (choice === 'save') {
+                const saved = this.saveScene();
+                if (!saved) return;
+            }
+
+            if (targetMode === 'demo') {
+                this.enterDemoMode();
+            } else {
+                this.exitDemoMode();
+            }
+        } finally {
+            this.modeSwitchInProgress = false;
+        }
+    }
+
+    enterDemoMode() {
+        this.demoSession = {
+            snapshot: this.captureSceneSnapshot(),
+            wasRunning: this.running
+        };
+        this.setRunningState(false);
+
+        this.mode = 'demo';
+        this.demoState.zoom = 1;
+        this.scene.clear();
+        this.scene.settings.boundaryMargin = this.demoState.basePixelsPerMeter;
+        this.syncModeToSceneSettings();
+        this.propertyPanel?.hide?.();
+        this.requestRender({ invalidateFields: true, forceRender: true });
+        this.showNotification('已进入演示模式：默认值为 1，滚轮可按鼠标位置缩放', 'info');
+    }
+
+    exitDemoMode() {
+        const session = this.demoSession;
+        this.setRunningState(false);
+        this.mode = 'normal';
+        this.demoState.zoom = 1;
+        if (session?.snapshot) {
+            this.restoreSceneSnapshot(session.snapshot);
+        }
+        this.scene.settings.mode = 'normal';
+        this.demoSession = null;
+        this.setRunningState(!!session?.wasRunning);
+        this.requestRender({ invalidateFields: true, forceRender: true });
+        this.showNotification('已退出演示模式并恢复切换前场景', 'success');
+    }
+
+    handleDemoWheel(event) {
+        if (!this.isDemoMode()) return;
+        event.preventDefault();
+
+        const canvas = this.renderer?.particleCanvas;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const anchorX = event.clientX - rect.left;
+        const anchorY = event.clientY - rect.top;
+
+        const nextZoom = getNextDemoZoom(this.demoState.zoom, event.deltaY, {
+            step: this.demoState.step,
+            min: this.demoState.minZoom,
+            max: this.demoState.maxZoom
+        });
+
+        if (Math.abs(nextZoom - this.demoState.zoom) < 1e-12) return;
+
+        const changed = applyDemoZoomToScene(this.scene, {
+            newPixelsPerMeter: this.demoState.basePixelsPerMeter * nextZoom,
+            anchorX,
+            anchorY
+        });
+        if (!changed) return;
+
+        this.demoState.zoom = nextZoom;
+        this.scene.settings.gravity = 0;
+        this.requestRender({ invalidateFields: true, forceRender: true });
+    }
+
     syncHeaderControlsFromScene() {
+        const demoActive = this.isDemoMode();
         const energyToggle = document.getElementById('toggle-energy-overlay');
         if (energyToggle && document.activeElement !== energyToggle) {
             energyToggle.checked = !!this.scene.settings.showEnergy;
@@ -67,10 +261,16 @@ class Application {
         if (scaleInput && document.activeElement !== scaleInput) {
             scaleInput.value = String(this.scene.settings.pixelsPerMeter ?? 1);
         }
+        if (scaleInput) {
+            scaleInput.disabled = demoActive;
+        }
 
         const gravityInput = document.getElementById('gravity-input');
         if (gravityInput && document.activeElement !== gravityInput) {
             gravityInput.value = String(this.scene.settings.gravity ?? 10);
+        }
+        if (gravityInput) {
+            gravityInput.disabled = demoActive;
         }
 
         const boundarySelect = document.getElementById('boundary-mode-select');
@@ -87,6 +287,8 @@ class Application {
         if (boundaryMarginControl && boundarySelect) {
             boundaryMarginControl.style.display = boundarySelect.value === 'margin' ? '' : 'none';
         }
+
+        this.syncDemoButtonState();
     }
     
     init() {
@@ -114,9 +316,7 @@ class Application {
         this.loadDefaultScene();
         
         // 默认暂停，等待点击开始
-        this.scene.isPaused = true;
-        const playIcon = document.getElementById('play-icon');
-        if (playIcon) playIcon.textContent = '▶';
+        this.setRunningState(false);
         this.renderer.render(this.scene);
         this.updateUI();
         
@@ -154,16 +354,21 @@ class Application {
             this.toggleTheme();
         });
 
-	        // 变量表
-	        document.getElementById('variables-btn')?.addEventListener('click', () => {
-	            this.variableEditor?.show?.();
-	        });
+        // 变量表
+        document.getElementById('variables-btn')?.addEventListener('click', () => {
+            this.variableEditor?.show?.();
+        });
 
-	        // 变量变更后，自动应用到已绑定表达式的对象（如粒子 vx/vy）
-	        document.addEventListener('scene-variables-changed', () => {
-	            this.applySceneVariableExpressions();
-	            this.requestRender({ updateUI: false });
-	        });
+        // 演示模式切换
+        document.getElementById('demo-mode-btn')?.addEventListener('click', () => {
+            this.toggleDemoMode();
+        });
+
+        // 变量变更后，自动应用到已绑定表达式的对象（如粒子 vx/vy）
+        document.addEventListener('scene-variables-changed', () => {
+            this.applySceneVariableExpressions();
+            this.requestRender({ updateUI: false });
+        });
         
         // 播放/暂停按钮
         document.getElementById('play-pause-btn').addEventListener('click', () => {
@@ -225,9 +430,10 @@ class Application {
 
 	        // 比例尺（px ↔ m）
 	        const scaleInput = document.getElementById('scale-px-per-meter');
-	        if (scaleInput) {
+        if (scaleInput) {
             scaleInput.value = String(this.scene.settings.pixelsPerMeter ?? 1);
             const applyScale = () => {
+                if (this.isDemoMode()) return;
                 const value = parseFloat(scaleInput.value);
                 if (!Number.isFinite(value) || value <= 0) return;
                 this.scene.settings.pixelsPerMeter = value;
@@ -241,6 +447,7 @@ class Application {
         if (gravityInput) {
             gravityInput.value = String(this.scene.settings.gravity ?? 10);
             gravityInput.addEventListener('change', () => {
+                if (this.isDemoMode()) return;
                 const value = parseFloat(gravityInput.value);
                 if (!Number.isFinite(value) || value < 0) return;
                 this.scene.settings.gravity = value;
@@ -294,11 +501,14 @@ class Application {
         window.addEventListener('resize', () => {
             this.handleResize();
         });
+
+        const particleCanvas = document.getElementById('particle-canvas');
+        particleCanvas?.addEventListener('wheel', (event) => this.handleDemoWheel(event), { passive: false });
         
         // 键盘快捷键
-	        document.addEventListener('keydown', (e) => {
-	            this.handleKeydown(e);
-	        });
+        document.addEventListener('keydown', (e) => {
+            this.handleKeydown(e);
+        });
 	    }
 
 	    applySceneVariableExpressions() {
@@ -384,23 +594,15 @@ class Application {
     }
     
     start() {
-        this.running = true;
-        this.loop();
+        this.setRunningState(true);
     }
     
     stop() {
-        this.running = false;
+        this.setRunningState(false);
     }
     
     togglePlayPause() {
-        this.running = !this.running;
-        this.scene.isPaused = !this.running;  // 同步暂停状态到Scene
-        const playIcon = document.getElementById('play-icon');
-        playIcon.textContent = this.running ? '⏸️' : '▶️';
-        
-        if (this.running) {
-            this.loop();
-        }
+        this.setRunningState(!this.running);
     }
     
     loop() {
@@ -445,6 +647,7 @@ class Application {
     
     reset() {
         this.scene.clear();
+        this.syncModeToSceneSettings();
         this.propertyPanel.hide();
         this.requestRender({ invalidateFields: true });
         this.showNotification('场景已重置', 'info');
@@ -453,6 +656,7 @@ class Application {
     clearScene() {
         if (confirm('确定要清空整个场景吗？此操作不可撤销。')) {
             this.scene.clear();
+            this.syncModeToSceneSettings();
             this.propertyPanel.hide();
             this.requestRender({ invalidateFields: true });
             this.showNotification('场景已清空', 'success');
@@ -461,10 +665,10 @@ class Application {
     
     saveScene() {
         const sceneName = prompt('请输入场景名称:', 'my-scene');
-        if (sceneName) {
-            Serializer.saveSceneData(this.buildSceneData(), sceneName);
-            this.showNotification(`场景 "${sceneName}" 已保存`, 'success');
-        }
+        if (!sceneName) return false;
+        Serializer.saveSceneData(this.buildSceneData(), sceneName);
+        this.showNotification(`场景 "${sceneName}" 已保存`, 'success');
+        return true;
     }
     
     loadScene() {
@@ -477,6 +681,7 @@ class Application {
                     this.scene.clear();
                     this.scene.loadFromData(loadedData);
                     this.applyUIFromSceneData(loadedData);
+                    this.syncModeToSceneSettings();
                     this.propertyPanel.hide();
                     this.requestRender({ invalidateFields: true });
                     this.showNotification(`场景 "${sceneName}" 已加载`, 'success');
@@ -502,6 +707,7 @@ class Application {
             this.scene.clear();
             this.propertyPanel?.hide?.();
             this.scene.loadFromData(preset.data);
+            this.syncModeToSceneSettings();
             this.requestRender({ invalidateFields: true });
             this.showNotification(`已加载预设场景: ${preset.name}`, 'success');
         } catch (error) {
@@ -550,6 +756,7 @@ class Application {
                 this.scene.clear();
                 this.scene.loadFromData(data);
                 this.applyUIFromSceneData(data);
+                this.syncModeToSceneSettings();
                 this.propertyPanel.hide();
                 this.requestRender({ invalidateFields: true });
                 

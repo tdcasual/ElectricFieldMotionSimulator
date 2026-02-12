@@ -3,6 +3,7 @@
  */
 
 import { registry } from '../core/registerObjects.js';
+import { buildDemoCreationOverrides, isDemoMode } from '../modes/DemoMode.js';
 
 const TOOL_ALIASES = {
     'electric-field-semicircle': { type: 'semicircle-electric-field' },
@@ -28,7 +29,8 @@ export function resolveToolEntry(type) {
     return TOOL_ALIASES[type] || { type, overrides: {} };
 }
 
-export function getCreationOverrides(type, pixelsPerMeter) {
+export function getCreationOverrides(type, pixelsPerMeter, options = {}) {
+    if (options?.demoMode) return {};
     if (!CREATION_OVERRIDES[type]) return {};
     return CREATION_OVERRIDES[type](pixelsPerMeter);
 }
@@ -122,13 +124,18 @@ export class DragDropManager {
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
             : 1;
+        const demoMode = isDemoMode(this.scene);
         const alias = resolveToolEntry(type);
         const resolvedType = alias.type || type;
         const baseOverrides = { x, y, ...(alias.overrides || {}) };
-        const extraOverrides = getCreationOverrides(resolvedType, pixelsPerMeter);
+        const entry = registry.get(resolvedType);
+        const demoOverrides = demoMode
+            ? buildDemoCreationOverrides(entry, pixelsPerMeter)
+            : {};
+        const extraOverrides = getCreationOverrides(resolvedType, pixelsPerMeter, { demoMode });
         let object = null;
         try {
-            object = registry.create(resolvedType, { ...baseOverrides, ...extraOverrides });
+            object = registry.create(resolvedType, { ...demoOverrides, ...baseOverrides, ...extraOverrides });
         } catch (error) {
             console.warn('Unknown tool type:', resolvedType, error);
         }

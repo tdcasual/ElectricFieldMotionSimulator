@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateSchema, parseExpressionInput } from '../js/ui/SchemaForm.js';
+import { validateSchema, parseExpressionInput, SchemaForm } from '../js/ui/SchemaForm.js';
 
 test('SchemaForm validates required number fields', () => {
   const schema = [{ title: 'A', fields: [{ key: 'x', type: 'number', min: 0 }] }];
@@ -15,4 +15,43 @@ test('SchemaForm parses expression inputs', () => {
 
   const bad = parseExpressionInput('unknownVar + 1', { variables: {} });
   assert.equal(bad.ok, false);
+});
+
+test('validateSchema relaxes demo-mode bounds for scaled fields', () => {
+  const schema = [{ title: 'A', fields: [{ key: 'radius', type: 'number', min: 2, max: 20 }] }];
+
+  const normalErrors = validateSchema(schema, { radius: 1 });
+  assert.equal(normalErrors.length, 1);
+
+  const demoErrors = validateSchema(schema, { radius: 1 }, {
+    demoMode: true,
+    isScaledNumberField: (field) => field.key === 'radius'
+  });
+  assert.equal(demoErrors.length, 0);
+});
+
+test('SchemaForm scales x/y number fields in demo mode', () => {
+  const form = new SchemaForm({
+    container: null,
+    schema: [],
+    object: {},
+    scene: { settings: { mode: 'demo', pixelsPerMeter: 50 } }
+  });
+
+  assert.equal(form.shouldScaleNumberField({ type: 'number', key: 'x' }), true);
+  assert.equal(form.shouldScaleNumberField({ type: 'number', key: 'y' }), true);
+  assert.equal(form.shouldScaleNumberField({ type: 'number', key: 'mass' }), false);
+});
+
+test('SchemaForm maps demo labels from px to unit', () => {
+  const form = new SchemaForm({
+    container: null,
+    schema: [],
+    object: {},
+    scene: { settings: { mode: 'demo', pixelsPerMeter: 50 } }
+  });
+
+  assert.equal(form.getDisplayLabel({ type: 'number', key: 'x', label: 'X 坐标' }), 'X 坐标 (unit)');
+  assert.equal(form.getDisplayLabel({ type: 'number', key: 'radius', label: '半径 (px)' }), '半径 (unit)');
+  assert.equal(form.getDisplayLabel({ type: 'number', key: 'radius', label: '半径（px）' }), '半径（unit）');
 });

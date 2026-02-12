@@ -20,6 +20,7 @@ export class Scene {
         
         // 场景设置
         this.settings = {
+            mode: 'normal',
             showGrid: true,
             gridSize: 50,
             showTrajectories: true,

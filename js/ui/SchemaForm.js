@@ -1,5 +1,21 @@
 import { compileSafeExpression } from '../utils/SafeExpression.js';
 
+const DEMO_UNIT_FIELD_KEYS = new Set([
+  'x',
+  'y',
+  'width',
+  'height',
+  'radius',
+  'length',
+  'plateDistance',
+  'barrelLength',
+  'depth',
+  'viewGap',
+  'spotSize',
+  'lineWidth',
+  'particleRadius'
+]);
+
 export function isFieldVisible(field, values) {
   if (typeof field.visibleWhen !== 'function') return true;
   try {
@@ -61,7 +77,18 @@ export function parseExpressionInput(text, scene) {
   }
 }
 
-export function validateSchema(schema, values) {
+function shouldRelaxNumericBounds(field, options = {}) {
+  const demoMode = options?.scene?.settings?.mode === 'demo' || options?.demoMode === true;
+  if (!demoMode) return false;
+  if (typeof options?.isScaledNumberField !== 'function') return false;
+  try {
+    return !!options.isScaledNumberField(field);
+  } catch {
+    return false;
+  }
+}
+
+export function validateSchema(schema, values, options = {}) {
   const errors = [];
   if (!Array.isArray(schema)) return errors;
 
@@ -86,10 +113,11 @@ export function validateSchema(schema, values) {
           errors.push({ key: field.key, error: '数值无效' });
           continue;
         }
-        if (field.min != null && value < field.min) {
+        const relaxBounds = shouldRelaxNumericBounds(field, options);
+        if (!relaxBounds && field.min != null && value < field.min) {
           errors.push({ key: field.key, error: `最小值 ${field.min}` });
         }
-        if (field.max != null && value > field.max) {
+        if (!relaxBounds && field.max != null && value > field.max) {
           errors.push({ key: field.key, error: `最大值 ${field.max}` });
         }
       }
@@ -169,14 +197,15 @@ export class SchemaForm {
         row.className = 'form-row';
 
         const input = createInputForField(field);
+        this.adjustNumericInputForContext(field, input);
         const label = document.createElement('label');
 
         if (field.type === 'checkbox') {
           label.appendChild(input);
-          label.appendChild(document.createTextNode(` ${field.label}`));
+          label.appendChild(document.createTextNode(` ${this.getDisplayLabel(field)}`));
           row.appendChild(label);
         } else {
-          label.textContent = field.label;
+          label.textContent = this.getDisplayLabel(field);
           row.appendChild(label);
           row.appendChild(input);
         }
@@ -208,6 +237,51 @@ export class SchemaForm {
     return Number.isFinite(value) && value > 0 ? value : 1;
   }
 
+  isDemoMode() {
+    return this.scene?.settings?.mode === 'demo';
+  }
+
+  shouldScaleNumberField(field) {
+    if (!this.isDemoMode()) return false;
+    if (!field || field.type !== 'number' || !field.key) return false;
+    if (field.bind && (typeof field.bind.get === 'function' || typeof field.bind.set === 'function')) {
+      return false;
+    }
+    return DEMO_UNIT_FIELD_KEYS.has(field.key);
+  }
+
+  toDisplayNumber(field, value) {
+    if (!this.shouldScaleNumberField(field)) return value;
+    if (!Number.isFinite(value)) return value;
+    return value / this.getPixelsPerMeter();
+  }
+
+  toObjectNumber(field, value) {
+    if (!this.shouldScaleNumberField(field)) return value;
+    if (!Number.isFinite(value)) return value;
+    return value * this.getPixelsPerMeter();
+  }
+
+  adjustNumericInputForContext(field, input) {
+    if (!field || field.type !== 'number' || !input) return;
+    if (!this.shouldScaleNumberField(field)) return;
+    input.removeAttribute('min');
+    input.removeAttribute('max');
+    input.step = 'any';
+  }
+
+  getDisplayLabel(field) {
+    const base = String(field?.label ?? field?.key ?? '');
+    if (!this.shouldScaleNumberField(field)) return base;
+    if (/\(px\)/i.test(base)) {
+      return base.replace(/\(px\)/ig, '(unit)');
+    }
+    if (/（px）/i.test(base)) {
+      return base.replace(/（px）/ig, '（unit）');
+    }
+    return `${base} (unit)`;
+  }
+
   fillValuesFromObject() {
     const context = this.buildContext();
     for (const state of this.fields) {
@@ -218,6 +292,13 @@ export class SchemaForm {
         value = field.bind.get(this.object, context);
       } else {
         value = this.object?.[field.key];
+      }
+
+      if (field.type === 'number') {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric)) {
+          value = this.toDisplayNumber(field, numeric);
+        }
       }
 
       if (field.type === 'checkbox') {
@@ -322,7 +403,10 @@ export class SchemaForm {
   apply() {
     const context = this.buildContext();
     const values = this.readValues();
-    const errors = validateSchema(this.schema, values);
+    const errors = validateSchema(this.schema, values, {
+      scene: this.scene,
+      isScaledNumberField: (field) => this.shouldScaleNumberField(field)
+    });
     const expressionResults = new Map();
 
     for (const state of this.fields) {
@@ -363,7 +447,7 @@ export class SchemaForm {
       if (field.type === 'checkbox') {
         value = input.checked;
       } else if (field.type === 'number') {
-        value = Number(input.value);
+        value = this.toObjectNumber(field, Number(input.value));
       } else if (field.type === 'select') {
         value = input.value;
         const options = Array.isArray(field.options) ? field.options : [];

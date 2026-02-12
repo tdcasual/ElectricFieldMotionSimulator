@@ -17,3 +17,8 @@ test('getCreationOverrides applies pixels-per-meter scaling', () => {
   const overrides = getCreationOverrides('particle', 2);
   assert.equal(overrides.vx, 100);
 });
+
+test('getCreationOverrides returns empty overrides in demo mode', () => {
+  const overrides = getCreationOverrides('particle', 2, { demoMode: true });
+  assert.deepEqual(overrides, {});
+});
