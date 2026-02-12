@@ -1,13 +1,14 @@
 /* 主布局 */
 #app {
     --panel-width: 0px;
+    --header-height: 108px;
     display: grid;
     grid-template-areas:
         "toolbar header header"
         "toolbar canvas panel"
         "toolbar footer footer";
     grid-template-columns: 220px 1fr var(--panel-width);
-    grid-template-rows: 60px 1fr 40px;
+    grid-template-rows: var(--header-height) 1fr 40px;
     height: 100vh;
     height: 100dvh;
     width: 100vw;
@@ -23,16 +24,17 @@
     background: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: space-between;
     gap: var(--spacing-md);
-    padding: 0 var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-lg);
 }
 
 #header h1 {
     font-size: 18px;
     font-weight: 600;
     color: var(--text-primary);
+    align-self: center;
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
@@ -42,18 +44,27 @@
 
 .header-controls {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: var(--spacing-sm);
     flex: 1 1 auto;
     min-width: 0;
-    justify-content: flex-end;
+}
+
+.header-actions,
+.header-settings {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
     scrollbar-width: thin;
 }
 
-.header-controls::-webkit-scrollbar {
+.header-actions::-webkit-scrollbar,
+.header-settings::-webkit-scrollbar {
     height: 6px;
 }
 
@@ -63,10 +74,36 @@
     gap: var(--spacing-sm);
     font-size: 13px;
     color: var(--text-secondary);
+    flex: 0 0 auto;
+}
+
+.header-actions .btn {
+    font-size: 12px;
+    padding: 5px 8px;
+}
+
+.control-label input[type="number"] {
+    width: 80px;
+}
+
+#gravity-input {
+    width: 70px;
+}
+
+#scale-px-per-meter {
+    width: 76px;
+}
+
+#boundary-margin-input {
+    width: 70px;
+}
+
+#boundary-mode-select {
+    width: 108px;
 }
 
 #timestep-slider {
-    width: 100px;
+    width: 88px;
 }
 
 #timestep-value {
@@ -261,6 +298,7 @@
 /* 响应式布局 */
 @media (max-width: 1200px) {
     #app {
+        --header-height: 120px;
         grid-template-columns: 60px 1fr;
         grid-template-areas:
             "toolbar header"
@@ -271,7 +309,7 @@
     #property-panel {
         position: fixed;
         right: -320px;
-        top: 60px;
+        top: var(--header-height);
         bottom: 40px;
         width: 320px;
         transition: right var(--transition-slow);
@@ -296,15 +334,16 @@
 
 @media (max-width: 768px) {
     #app {
+        --header-height: 128px;
         grid-template-columns: 52px 1fr;
     }
 
     #header {
-        padding: 0 var(--spacing-md);
+        padding: var(--spacing-xs) var(--spacing-sm);
     }
 
     #header h1 {
-        font-size: 14px;
+        display: none;
     }
 
     #timestep-slider {

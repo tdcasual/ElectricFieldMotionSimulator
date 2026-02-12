@@ -119,7 +119,6 @@ export class PhysicsEngine {
         const marginSetting = scene?.settings?.boundaryMargin;
         const margin = Number.isFinite(marginSetting) && marginSetting >= 0 ? marginSetting : 0;
 
-        const radius = Number.isFinite(particle.radius) ? particle.radius : 0;
         const x = particle.position.x;
         const y = particle.position.y;
         const vx = particle.velocity.x;
@@ -130,17 +129,17 @@ export class PhysicsEngine {
             return true;
         }
 
-        const minX = radius;
-        const maxX = width - radius;
-        const minY = radius;
-        const maxY = height - radius;
+        const minX = 0;
+        const maxX = width;
+        const minY = 0;
+        const maxY = height;
 
         if (mode === 'remove' || mode === 'margin') {
             const extra = mode === 'margin' ? margin : 0;
-            const minXRemove = -radius - extra;
-            const maxXRemove = width + radius + extra;
-            const minYRemove = -radius - extra;
-            const maxYRemove = height + radius + extra;
+            const minXRemove = -extra;
+            const maxXRemove = width + extra;
+            const minYRemove = -extra;
+            const maxYRemove = height + extra;
 
             if (x < minXRemove || x > maxXRemove || y < minYRemove || y > maxYRemove) {
                 return true;
@@ -256,8 +255,6 @@ export class PhysicsEngine {
         const prevY = particle.prevY ?? particle.position.y;
         const currX = particle.position.x;
         const currY = particle.position.y;
-        const radius = Number.isFinite(particle.radius) ? particle.radius : 0;
-
         for (const zone of zones) {
             if (!zone || zone.type !== 'disappear-zone') continue;
             const length = Number.isFinite(zone.length) ? zone.length : 0;
@@ -271,7 +268,7 @@ export class PhysicsEngine {
             const y2 = zone.y + dy;
 
             const lineWidth = Number.isFinite(zone.lineWidth) ? zone.lineWidth : 6;
-            const threshold = radius + lineWidth / 2;
+            const threshold = lineWidth / 2;
 
             const dist = this.segmentDistance(prevX, prevY, currX, currY, x1, y1, x2, y2);
             if (dist <= threshold) {
@@ -354,9 +351,9 @@ export class PhysicsEngine {
             const halfDist = field.plateDistance / 2;
 
             // Inside plate span and touching either plate surface.
-            if (Math.abs(alongPlate) <= halfWidth && Math.abs(alongField) >= halfDist - particle.radius) {
+            if (Math.abs(alongPlate) <= halfWidth && Math.abs(alongField) >= halfDist) {
                 const sign = Math.sign(alongField) || 1;
-                const clampedAlongField = sign * (halfDist - particle.radius);
+                const clampedAlongField = sign * halfDist;
 
                 // Project back to space coords, stay on inner side of plate.
                 particle.position.x = field.x + cosPlate * alongPlate + cosField * clampedAlongField;

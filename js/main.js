@@ -89,8 +89,12 @@ class Application {
         this.running = running;
         this.scene.isPaused = !running;
         const playIcon = document.getElementById('play-icon');
+        const playLabel = document.getElementById('play-label');
         if (playIcon) {
-            playIcon.textContent = running ? '⏸️' : '▶️';
+            playIcon.textContent = running ? '⏸' : '▶';
+        }
+        if (playLabel) {
+            playLabel.textContent = running ? '暂停' : '播放';
         }
         if (running) {
             this.loop();
@@ -124,7 +128,7 @@ class Application {
         demoBtn.classList.toggle('btn-primary', active);
         demoBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
         demoBtn.title = active ? '退出演示模式' : '进入演示模式';
-        demoBtn.textContent = active ? '演示中' : '演示';
+        demoBtn.textContent = active ? '退出演示' : '演示模式';
     }
 
     showModeSwitchPrompt(targetMode) {

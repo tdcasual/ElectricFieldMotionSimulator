@@ -15,53 +15,58 @@
         <header id="header">
             <h1>⚡ 电磁场粒子运动模拟器</h1>
             <div class="header-controls">
-                <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停">
-                    <span id="play-icon">▶️</span>
-                </button>
-                <button id="reset-btn" class="btn" title="重置" aria-label="重置">🔄</button>
-                <button id="clear-btn" class="btn" title="清空场景" aria-label="清空场景">🗑️</button>
-                <button id="save-btn" class="btn" title="保存场景" aria-label="保存场景">💾</button>
-                <button id="load-btn" class="btn" title="加载场景" aria-label="加载场景">📂</button>
-                <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景">📤</button>
-                <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景">📥</button>
-                <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题">🌙</button>
-                <button id="variables-btn" class="btn" title="变量表" aria-label="变量表">ƒx</button>
-                <button id="markdown-toggle-btn" class="btn" title="题目板" aria-label="题目板">📝</button>
-                <button id="demo-mode-btn" class="btn" title="进入演示模式" aria-label="演示模式" aria-pressed="false">演示</button>
-                <input type="file" id="import-file-input" accept=".json" style="display: none;">
-                <label class="control-label">
-                    <span>显示能量:</span>
-                    <input type="checkbox" id="toggle-energy-overlay" checked>
-                </label>
-                <label class="control-label">
-                    <span>比例尺: 1m =</span>
-                    <input type="number" id="scale-px-per-meter" min="0.0001" step="1" value="1">
-                    <span>px</span>
-                </label>
-                <label class="control-label">
-                    <span>重力 g:</span>
-                    <input type="number" id="gravity-input" min="0" step="0.1" value="10">
-                    <span>m/s²</span>
-                </label>
-                <label class="control-label">
-                    <span>边界:</span>
-                    <select id="boundary-mode-select" aria-label="边界处理方式">
-                        <option value="margin">缓冲消失</option>
-                        <option value="remove">出界消失</option>
-                        <option value="bounce">反弹</option>
-                        <option value="wrap">穿越</option>
-                    </select>
-                </label>
-                <label class="control-label" id="boundary-margin-control">
-                    <span>缓冲:</span>
-                    <input type="number" id="boundary-margin-input" min="0" step="10" value="200">
-                    <span>px</span>
-                </label>
-                <label class="control-label">
-                    <span>时间步长:</span>
-                    <input type="range" id="timestep-slider" min="0.001" max="0.05" step="0.001" value="0.016">
-                    <span id="timestep-value">16ms</span>
-                </label>
+                <div class="header-actions">
+                    <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停">
+                        <span id="play-icon">▶</span>
+                        <span id="play-label">播放</span>
+                    </button>
+                    <button id="reset-btn" class="btn" title="重置" aria-label="重置">🔄 重置</button>
+                    <button id="clear-btn" class="btn" title="清空场景" aria-label="清空场景">🗑 清空</button>
+                    <button id="save-btn" class="btn" title="保存场景" aria-label="保存场景">💾 保存</button>
+                    <button id="load-btn" class="btn" title="加载场景" aria-label="加载场景">📂 读取</button>
+                    <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景">📤 导出</button>
+                    <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景">📥 导入</button>
+                    <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题">🌙 主题</button>
+                    <button id="variables-btn" class="btn" title="变量表" aria-label="变量表">ƒx 变量</button>
+                    <button id="markdown-toggle-btn" class="btn" title="题目板" aria-label="题目板">📝 题板</button>
+                    <button id="demo-mode-btn" class="btn" title="进入演示模式" aria-label="演示模式" aria-pressed="false">演示模式</button>
+                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                </div>
+                <div class="header-settings">
+                    <label class="control-label">
+                        <span>显示能量:</span>
+                        <input type="checkbox" id="toggle-energy-overlay" checked>
+                    </label>
+                    <label class="control-label">
+                        <span>比例尺: 1m =</span>
+                        <input type="number" id="scale-px-per-meter" min="0.0001" step="1" value="1">
+                        <span>px</span>
+                    </label>
+                    <label class="control-label">
+                        <span>重力 g:</span>
+                        <input type="number" id="gravity-input" min="0" step="0.1" value="10">
+                        <span>m/s²</span>
+                    </label>
+                    <label class="control-label">
+                        <span>边界:</span>
+                        <select id="boundary-mode-select" aria-label="边界处理方式">
+                            <option value="margin">缓冲消失</option>
+                            <option value="remove">出界消失</option>
+                            <option value="bounce">反弹</option>
+                            <option value="wrap">穿越</option>
+                        </select>
+                    </label>
+                    <label class="control-label" id="boundary-margin-control">
+                        <span>缓冲:</span>
+                        <input type="number" id="boundary-margin-input" min="0" step="10" value="200">
+                        <span>px</span>
+                    </label>
+                    <label class="control-label">
+                        <span>时间步长:</span>
+                        <input type="range" id="timestep-slider" min="0.001" max="0.05" step="0.001" value="0.016">
+                        <span id="timestep-value">16ms</span>
+                    </label>
+                </div>
             </div>
         </header>        <!-- 左侧组件库工具栏 -->
         <aside id="toolbar">

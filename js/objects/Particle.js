@@ -81,7 +81,7 @@ export class Particle extends BaseObject {
                             }
                         }
                     } },
-                    { key: 'radius', label: '半径 (px)', type: 'number', min: 2, max: 20 }
+                    { key: 'radius', label: '半径（质点模式忽略）', type: 'number', min: 0, step: 1 }
                 ]
             },
             {
@@ -273,7 +273,7 @@ export class Particle extends BaseObject {
     containsPoint(x, y) {
         const dx = x - this.position.x;
         const dy = y - this.position.y;
-        return Math.sqrt(dx * dx + dy * dy) <= this.radius + 5; // 增加5px点击容差
+        return Math.sqrt(dx * dx + dy * dy) <= 10; // 质点渲染下使用固定点击容差
     }
     
     /**

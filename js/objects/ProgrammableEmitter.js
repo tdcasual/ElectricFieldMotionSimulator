@@ -186,7 +186,7 @@ export class ProgrammableEmitter extends BaseObject {
                     } },
                     { key: 'particleCharge', label: '粒子电荷 (C)', type: 'number', step: 1e-20 },
                     { key: 'particleMass', label: '粒子质量 (kg)', type: 'number', step: 1e-30 },
-                    { key: 'particleRadius', label: '粒子半径 (px)', type: 'number', min: 2, max: 20 },
+                    { key: 'particleRadius', label: '粒子半径（质点模式忽略）', type: 'number', min: 0, step: 1 },
                     { key: 'ignoreGravity', label: '忽略重力', type: 'checkbox' },
                     { key: 'gravity', label: '重力加速度 g (m/s²)', type: 'number', min: 0, step: 0.1,
                         enabledWhen: (obj) => !obj.ignoreGravity,

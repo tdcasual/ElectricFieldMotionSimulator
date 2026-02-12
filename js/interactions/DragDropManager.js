@@ -831,7 +831,6 @@ export class DragDropManager {
 
         const px = particle.position?.x ?? particle.x ?? 0;
         const py = particle.position?.y ?? particle.y ?? 0;
-        const radius = Number.isFinite(particle.radius) ? particle.radius : 0;
 
         for (const zone of zones) {
             if (!zone || zone.type !== 'disappear-zone') continue;
@@ -846,7 +845,7 @@ export class DragDropManager {
             const y2 = zone.y + dy;
 
             const lineWidth = Number.isFinite(zone.lineWidth) ? zone.lineWidth : 6;
-            const threshold = radius + lineWidth / 2;
+            const threshold = lineWidth / 2;
 
             const abx = x2 - x1;
             const aby = y2 - y1;

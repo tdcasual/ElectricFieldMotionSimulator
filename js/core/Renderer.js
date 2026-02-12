@@ -27,6 +27,8 @@ export class Renderer {
         this.fieldVisualizer = new FieldVisualizer();
         this.trajectoryRenderer = new TrajectoryRenderer();
         this.forceCalculator = new ForceCalculator();
+        this.particleRenderRadius = 2.5;
+        this.particleSelectionPadding = 8;
         
         this.needFieldRedraw = true;
     }
@@ -837,10 +839,11 @@ export class Renderer {
     
     drawParticle(particle) {
         this.particleCtx.save();
+        const radius = Number.isFinite(this.particleRenderRadius) ? this.particleRenderRadius : 2.5;
         
         // 粒子主体
         this.particleCtx.beginPath();
-        this.particleCtx.arc(particle.position.x, particle.position.y, particle.radius, 0, Math.PI * 2);
+        this.particleCtx.arc(particle.position.x, particle.position.y, radius, 0, Math.PI * 2);
         this.particleCtx.fillStyle = particle.charge > 0 ? '#ff4444' : '#4444ff';
         this.particleCtx.fill();
         
@@ -857,8 +860,10 @@ export class Renderer {
         this.particleCtx.strokeStyle = '#0e639c';
         this.particleCtx.lineWidth = 3;
         this.particleCtx.setLineDash([5, 5]);
+        const radius = (Number.isFinite(this.particleRenderRadius) ? this.particleRenderRadius : 2.5) +
+            (Number.isFinite(this.particleSelectionPadding) ? this.particleSelectionPadding : 8);
         this.particleCtx.beginPath();
-        this.particleCtx.arc(particle.position.x, particle.position.y, particle.radius + 8, 0, Math.PI * 2);
+        this.particleCtx.arc(particle.position.x, particle.position.y, radius, 0, Math.PI * 2);
         this.particleCtx.stroke();
         this.particleCtx.setLineDash([]);
         this.particleCtx.restore();
