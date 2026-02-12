@@ -3,17 +3,21 @@
  */
 
 export class FieldVisualizer {
-    render(ctx, scene, width, height) {
+    render(ctx, scene, width, height, options = {}) {
         const spacing = 50;
         const arrowScale = 0.03; // 场强到箭头长度的比例
         const minArrowLen = 6;
         const maxArrowLen = 22;
+        const offsetX = Number.isFinite(options.offsetX) ? options.offsetX : 0;
+        const offsetY = Number.isFinite(options.offsetY) ? options.offsetY : 0;
         
         ctx.save();
         
         for (let x = spacing / 2; x < width; x += spacing) {
             for (let y = spacing / 2; y < height; y += spacing) {
-                const E = scene.getElectricField(x, y);
+                const worldX = x - offsetX;
+                const worldY = y - offsetY;
+                const E = scene.getElectricField(worldX, worldY);
                 const magnitude = Math.sqrt(E.x * E.x + E.y * E.y);
                 
                 if (magnitude <= 0) continue;

@@ -15,6 +15,7 @@ import { Modal } from './ui/Modal.js';
 import { Toolbar } from './ui/Toolbar.js';
 import { Serializer } from './utils/Serializer.js';
 import { compileSafeExpression } from './utils/SafeExpression.js';
+import { createResetBaselineController } from './utils/ResetBaseline.js';
 import { PerformanceMonitor } from './utils/PerformanceMonitor.js';
 import { ThemeManager } from './utils/ThemeManager.js';
 import { Presets } from './presets/Presets.js';
@@ -42,7 +43,7 @@ class Application {
         this.modal = null;
         this.performanceMonitor = new PerformanceMonitor();
         this.themeManager = new ThemeManager();
-        this.mode = 'normal';
+        this.mode = 'demo';
         this.demoSession = null;
         this.modeSwitchInProgress = false;
         this.demoState = {
@@ -52,6 +53,8 @@ class Application {
             maxZoom: DEMO_MAX_ZOOM,
             step: DEMO_ZOOM_STEP
         };
+        this.resetBaseline = createResetBaselineController();
+        this.isRestoringBaseline = false;
         
         this.running = false;
         this.timeStep = 0.016; // 默认16ms (60fps)
@@ -103,6 +106,41 @@ class Application {
 
     captureSceneSnapshot() {
         return JSON.parse(JSON.stringify(this.buildSceneData()));
+    }
+
+    shouldTrackResetBaseline() {
+        if (this.isRestoringBaseline) return false;
+        if (this.running) return false;
+        return !!this.scene;
+    }
+
+    recordResetBaseline(reason = '') {
+        if (!this.shouldTrackResetBaseline()) return false;
+        const snapshot = this.captureSceneSnapshot();
+        const saved = this.resetBaseline.setBaseline(snapshot);
+        if (!saved) return false;
+        return true;
+    }
+
+    restoreResetBaseline() {
+        const snapshot = this.resetBaseline.restoreBaseline();
+        if (!snapshot) return false;
+
+        this.isRestoringBaseline = true;
+        try {
+            this.setRunningState(false);
+            this.scene.clear();
+            this.scene.loadFromData(snapshot);
+            this.applyUIFromSceneData(snapshot);
+            this.syncModeToSceneSettings();
+            this.propertyPanel?.hide?.();
+            this.requestRender({ invalidateFields: true, forceRender: true });
+            this.resetBaseline.setBaseline(snapshot);
+        } finally {
+            this.isRestoringBaseline = false;
+        }
+
+        return true;
     }
 
     restoreSceneSnapshot(snapshot) {
@@ -192,7 +230,8 @@ class Application {
         }
     }
 
-    enterDemoMode() {
+    enterDemoMode(options = {}) {
+        const silent = options?.silent === true;
         this.demoSession = {
             snapshot: this.captureSceneSnapshot(),
             wasRunning: this.running
@@ -206,7 +245,9 @@ class Application {
         this.syncModeToSceneSettings();
         this.propertyPanel?.hide?.();
         this.requestRender({ invalidateFields: true, forceRender: true });
-        this.showNotification('已进入演示模式：默认值为 1，滚轮可按鼠标位置缩放', 'info');
+        if (!silent) {
+            this.showNotification('已进入演示模式：默认值为 1，滚轮可按鼠标位置缩放', 'info');
+        }
     }
 
     exitDemoMode() {
@@ -231,8 +272,9 @@ class Application {
         const canvas = this.renderer?.particleCanvas;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
-        const anchorX = event.clientX - rect.left;
-        const anchorY = event.clientY - rect.top;
+        const anchorScreenX = event.clientX - rect.left;
+        const anchorScreenY = event.clientY - rect.top;
+        const anchor = this.scene.toWorldPoint(anchorScreenX, anchorScreenY);
 
         const nextZoom = getNextDemoZoom(this.demoState.zoom, event.deltaY, {
             step: this.demoState.step,
@@ -244,8 +286,8 @@ class Application {
 
         const changed = applyDemoZoomToScene(this.scene, {
             newPixelsPerMeter: this.demoState.basePixelsPerMeter * nextZoom,
-            anchorX,
-            anchorY
+            anchorX: anchor.x,
+            anchorY: anchor.y
         });
         if (!changed) return;
 
@@ -318,11 +360,15 @@ class Application {
         
         // 加载默认场景
         this.loadDefaultScene();
+        if (this.isDemoMode()) {
+            this.enterDemoMode({ silent: true });
+        }
         
         // 默认暂停，等待点击开始
         this.setRunningState(false);
         this.renderer.render(this.scene);
         this.updateUI();
+        this.recordResetBaseline('init');
         
         console.log('✅ 初始化完成');
     }
@@ -340,7 +386,12 @@ class Application {
     }
 
     requestRender(options = {}) {
-        const { invalidateFields = false, forceRender = false, updateUI = true } = options;
+        const {
+            invalidateFields = false,
+            forceRender = false,
+            updateUI = true,
+            trackBaseline = true
+        } = options;
         if (invalidateFields) {
             this.renderer.invalidateFields();
         }
@@ -349,6 +400,9 @@ class Application {
         }
         if (updateUI) {
             this.updateUI();
+        }
+        if (trackBaseline) {
+            this.recordResetBaseline('requestRender');
         }
     }
     
@@ -650,11 +704,12 @@ class Application {
     }
     
     reset() {
-        this.scene.clear();
-        this.syncModeToSceneSettings();
-        this.propertyPanel.hide();
-        this.requestRender({ invalidateFields: true });
-        this.showNotification('场景已重置', 'info');
+        const restored = this.restoreResetBaseline();
+        if (restored) {
+            this.showNotification('已重置到运动开始前状态', 'info');
+            return;
+        }
+        this.showNotification('暂无可重置的起始状态', 'warning');
     }
     
     clearScene() {

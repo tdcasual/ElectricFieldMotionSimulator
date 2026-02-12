@@ -1,7 +1,7 @@
 export const DEMO_BASE_PIXELS_PER_UNIT = 50;
 export const DEMO_MIN_ZOOM = 0.1;
 export const DEMO_MAX_ZOOM = 20;
-export const DEMO_ZOOM_STEP = 1.1;
+export const DEMO_ZOOM_STEP = 1.05;
 
 const DEMO_PX_DEFAULT_KEYS = new Set([
   'x',
@@ -198,8 +198,12 @@ export function getNextDemoZoom(currentZoom, deltaY, options = {}) {
     ? options.max
     : DEMO_MAX_ZOOM;
   const now = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : 1;
+  const delta = Number(deltaY);
+  if (!Number.isFinite(delta) || Math.abs(delta) < 1e-9) return now;
 
-  const factor = deltaY < 0 ? step : 1 / step;
+  const normalized = clamp(Math.abs(delta) / 100, 0.05, 4);
+  const scaledStep = Math.pow(step, normalized);
+  const factor = delta < 0 ? scaledStep : 1 / scaledStep;
   return clamp(now * factor, min, max);
 }
 

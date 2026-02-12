@@ -129,17 +129,32 @@ export class PhysicsEngine {
             return true;
         }
 
-        const minX = 0;
-        const maxX = width;
-        const minY = 0;
-        const maxY = height;
+        let minX;
+        let maxX;
+        let minY;
+        let maxY;
+        if (typeof scene?.getWorldViewportBounds === 'function') {
+            const bounds = scene.getWorldViewportBounds(0);
+            minX = bounds.minX;
+            maxX = bounds.maxX;
+            minY = bounds.minY;
+            maxY = bounds.maxY;
+        } else {
+            const offsetX = Number.isFinite(scene?.camera?.offsetX) ? scene.camera.offsetX : 0;
+            const offsetY = Number.isFinite(scene?.camera?.offsetY) ? scene.camera.offsetY : 0;
+            const normalizeZero = (value) => (Object.is(value, -0) ? 0 : value);
+            minX = normalizeZero(-offsetX);
+            maxX = normalizeZero(width - offsetX);
+            minY = normalizeZero(-offsetY);
+            maxY = normalizeZero(height - offsetY);
+        }
 
         if (mode === 'remove' || mode === 'margin') {
             const extra = mode === 'margin' ? margin : 0;
-            const minXRemove = -extra;
-            const maxXRemove = width + extra;
-            const minYRemove = -extra;
-            const maxYRemove = height + extra;
+            const minXRemove = minX - extra;
+            const maxXRemove = maxX + extra;
+            const minYRemove = minY - extra;
+            const maxYRemove = maxY + extra;
 
             if (x < minXRemove || x > maxXRemove || y < minYRemove || y > maxYRemove) {
                 return true;

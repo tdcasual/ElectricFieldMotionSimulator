@@ -60,6 +60,9 @@ export class DragDropManager {
         this.dragMode = 'move'; // move | resize
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.isPanning = false;
+        this.panStartScreen = null;
+        this.panStartCamera = null;
         
         // 允许外部传入 canvas（测试页面或自定义场景）
         this.canvas = options.canvas || document.getElementById('particle-canvas');
@@ -97,11 +100,10 @@ export class DragDropManager {
         this.canvas.addEventListener('drop', (e) => {
             e.preventDefault();
             const type = e.dataTransfer.getData('component-type');
-            const rect = this.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const screen = this.getScreenPos(e);
+            const world = this.screenToWorld(screen);
             
-            this.createObject(type, x, y);
+            this.createObject(type, world.x, world.y);
         });
         
         // Canvas内对象拖拽（Pointer Events 优先，兼容触屏）
@@ -208,6 +210,50 @@ export class DragDropManager {
         document.dispatchEvent(event);
     }
 
+    getCameraOffset() {
+        const offsetX = Number.isFinite(this.scene?.camera?.offsetX) ? this.scene.camera.offsetX : 0;
+        const offsetY = Number.isFinite(this.scene?.camera?.offsetY) ? this.scene.camera.offsetY : 0;
+        return { offsetX, offsetY };
+    }
+
+    setCameraOffset(offsetX, offsetY) {
+        if (typeof this.scene?.setCamera === 'function') {
+            this.scene.setCamera(offsetX, offsetY);
+            return;
+        }
+        if (!this.scene.camera || typeof this.scene.camera !== 'object') {
+            this.scene.camera = { offsetX: 0, offsetY: 0 };
+        }
+        this.scene.camera.offsetX = Number.isFinite(offsetX) ? offsetX : 0;
+        this.scene.camera.offsetY = Number.isFinite(offsetY) ? offsetY : 0;
+    }
+
+    getScreenPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
+
+    screenToWorld(pos) {
+        if (!pos) return { x: 0, y: 0 };
+        if (typeof this.scene?.toWorldPoint === 'function') {
+            return this.scene.toWorldPoint(pos.x, pos.y);
+        }
+        const { offsetX, offsetY } = this.getCameraOffset();
+        return { x: pos.x - offsetX, y: pos.y - offsetY };
+    }
+
+    panCameraByPointer(screenPos) {
+        if (!this.isPanning || !screenPos || !this.panStartScreen || !this.panStartCamera) {
+            return;
+        }
+        const dx = screenPos.x - this.panStartScreen.x;
+        const dy = screenPos.y - this.panStartScreen.y;
+        this.setCameraOffset(this.panStartCamera.offsetX + dx, this.panStartCamera.offsetY + dy);
+    }
+
     onPointerDown(e) {
         if (!this.canvas) return;
         if (this.activePointerId !== null) return;
@@ -215,7 +261,8 @@ export class DragDropManager {
 
         this.activePointerId = e.pointerId;
         this.longPressTriggered = false;
-        this.pointerDownPos = this.getMousePos(e);
+        const screenPos = this.getScreenPos(e);
+        this.pointerDownPos = this.screenToWorld(screenPos);
 
         this.canvas.setPointerCapture?.(e.pointerId);
 
@@ -240,6 +287,9 @@ export class DragDropManager {
         this.pointerDownObject = clickedObject;
 
         if (clickedObject) {
+            this.isPanning = false;
+            this.panStartScreen = null;
+            this.panStartCamera = null;
             this.draggingObject = clickedObject;
             this.scene.selectedObject = clickedObject;
             this.isDragging = false;
@@ -318,6 +368,12 @@ export class DragDropManager {
             this.dragMode = 'move';
             this.resizeHandle = null;
             this.resizeStart = null;
+            this.isPanning = true;
+            this.panStartScreen = screenPos;
+            this.panStartCamera = this.getCameraOffset();
+            if (e.pointerType === 'mouse') {
+                this.canvas.style.cursor = 'grabbing';
+            }
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
@@ -335,12 +391,32 @@ export class DragDropManager {
 
     onPointerMove(e) {
         if (this.activePointerId !== e.pointerId) return;
+        const screenPos = this.getScreenPos(e);
+        const thresholdSq = e.pointerType === 'mouse' ? 1 : 9;
+
+        if (this.isPanning && this.panStartScreen) {
+            const dx = screenPos.x - this.panStartScreen.x;
+            const dy = screenPos.y - this.panStartScreen.y;
+
+            if (!this.isDragging) {
+                if ((dx * dx + dy * dy) < thresholdSq) return;
+                this.isDragging = true;
+                this.clearLongPressTimer();
+            }
+
+            this.panCameraByPointer(screenPos);
+            this.renderer.invalidateFields();
+            if (this.scene.isPaused) {
+                this.renderer.render(this.scene);
+            }
+            return;
+        }
+
         if (!this.draggingObject || !this.pointerDownPos) return;
 
-        const pos = this.getMousePos(e);
+        const pos = this.screenToWorld(screenPos);
         const dx = pos.x - this.pointerDownPos.x;
         const dy = pos.y - this.pointerDownPos.y;
-        const thresholdSq = e.pointerType === 'mouse' ? 1 : 9;
 
         if (!this.isDragging) {
             if ((dx * dx + dy * dy) < thresholdSq) return;
@@ -407,6 +483,9 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.isPanning = false;
+        this.panStartScreen = null;
+        this.panStartCamera = null;
 
         if (e.pointerType === 'mouse') {
             this.canvas.style.cursor = 'default';
@@ -427,27 +506,32 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.isPanning = false;
+        this.panStartScreen = null;
+        this.panStartCamera = null;
         this.canvas.releasePointerCapture?.(e.pointerId);
         this.activePointerId = null;
         this.canvas.style.cursor = 'default';
     }
     
     getMousePos(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
+        const screen = this.getScreenPos(e);
+        return this.screenToWorld(screen);
     }
     
     onMouseDown(e) {
         if (e.button !== 0) return; // 只处理左键
         
-        const pos = this.getMousePos(e);
+        const screenPos = this.getScreenPos(e);
+        const pos = this.screenToWorld(screenPos);
+        this.pointerDownPos = pos;
         const prevSelectedObject = this.scene.selectedObject;
         const clickedObject = this.scene.findObjectAt(pos.x, pos.y);
         
         if (clickedObject) {
+            this.isPanning = false;
+            this.panStartScreen = null;
+            this.panStartCamera = null;
             this.draggingObject = clickedObject;
             this.scene.selectedObject = clickedObject;
             this.isDragging = true;
@@ -505,6 +589,15 @@ export class DragDropManager {
             this.canvas.style.cursor = this.dragMode === 'resize' ? 'nwse-resize' : 'grabbing';
         } else {
             this.scene.selectedObject = null;
+            this.draggingObject = null;
+            this.isDragging = true;
+            this.dragMode = 'move';
+            this.resizeHandle = null;
+            this.resizeStart = null;
+            this.isPanning = true;
+            this.panStartScreen = screenPos;
+            this.panStartCamera = this.getCameraOffset();
+            this.canvas.style.cursor = 'grabbing';
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
@@ -521,6 +614,16 @@ export class DragDropManager {
     }
     
     onMouseMove(e) {
+        if (this.isPanning && this.panStartScreen) {
+            const screenPos = this.getScreenPos(e);
+            this.panCameraByPointer(screenPos);
+            this.renderer.invalidateFields();
+            if (this.scene.isPaused) {
+                this.renderer.render(this.scene);
+            }
+            return;
+        }
+
         if (!this.isDragging || !this.draggingObject) return;
         
         const pos = this.getMousePos(e);
@@ -562,6 +665,9 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.isPanning = false;
+        this.panStartScreen = null;
+        this.panStartCamera = null;
         this.canvas.style.cursor = 'default';
     }
 

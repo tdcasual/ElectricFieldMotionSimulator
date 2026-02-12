@@ -3,8 +3,12 @@
  */
 
 export class GridRenderer {
-    render(ctx, width, height, gridSize) {
+    render(ctx, width, height, gridSize, offsetX = 0, offsetY = 0) {
         ctx.save();
+
+        const step = Number.isFinite(gridSize) && gridSize > 0 ? gridSize : 50;
+        const normalizedOffsetX = ((offsetX % step) + step) % step;
+        const normalizedOffsetY = ((offsetY % step) + step) % step;
         
         // 根据主题获取网格颜色
         const isDarkTheme = document.body.classList.contains('dark-theme') || 
@@ -13,7 +17,7 @@ export class GridRenderer {
         ctx.lineWidth = 0.5;
         
         // 绘制垂直线
-        for (let x = 0; x <= width; x += gridSize) {
+        for (let x = normalizedOffsetX; x <= width; x += step) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, height);
@@ -21,7 +25,7 @@ export class GridRenderer {
         }
         
         // 绘制水平线
-        for (let y = 0; y <= height; y += gridSize) {
+        for (let y = normalizedOffsetY; y <= height; y += step) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(width, y);

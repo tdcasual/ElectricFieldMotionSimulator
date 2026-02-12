@@ -17,6 +17,7 @@ export class Scene {
         this.isPaused = false;
         this.time = 0; // 模拟时间（秒）
         this.viewport = { width: 0, height: 0 };
+        this.camera = { offsetX: 0, offsetY: 0 };
         
         // 场景设置
         this.settings = {
@@ -41,6 +42,45 @@ export class Scene {
         const h = Number.isFinite(height) ? height : 0;
         this.viewport.width = Math.max(0, w);
         this.viewport.height = Math.max(0, h);
+    }
+
+    getCameraOffset() {
+        const offsetX = Number.isFinite(this.camera?.offsetX) ? this.camera.offsetX : 0;
+        const offsetY = Number.isFinite(this.camera?.offsetY) ? this.camera.offsetY : 0;
+        return { offsetX, offsetY };
+    }
+
+    setCamera(offsetX = 0, offsetY = 0) {
+        this.camera.offsetX = Number.isFinite(offsetX) ? offsetX : 0;
+        this.camera.offsetY = Number.isFinite(offsetY) ? offsetY : 0;
+    }
+
+    toWorldPoint(screenX, screenY) {
+        const x = Number.isFinite(screenX) ? screenX : 0;
+        const y = Number.isFinite(screenY) ? screenY : 0;
+        const { offsetX, offsetY } = this.getCameraOffset();
+        return { x: x - offsetX, y: y - offsetY };
+    }
+
+    toScreenPoint(worldX, worldY) {
+        const x = Number.isFinite(worldX) ? worldX : 0;
+        const y = Number.isFinite(worldY) ? worldY : 0;
+        const { offsetX, offsetY } = this.getCameraOffset();
+        return { x: x + offsetX, y: y + offsetY };
+    }
+
+    getWorldViewportBounds(extra = 0) {
+        const normalizeZero = (value) => (Object.is(value, -0) ? 0 : value);
+        const margin = Number.isFinite(extra) ? extra : 0;
+        const width = Number.isFinite(this.viewport?.width) ? this.viewport.width : 0;
+        const height = Number.isFinite(this.viewport?.height) ? this.viewport.height : 0;
+        const { offsetX, offsetY } = this.getCameraOffset();
+        return {
+            minX: normalizeZero(-offsetX - margin),
+            maxX: normalizeZero((width - offsetX) + margin),
+            minY: normalizeZero(-offsetY - margin),
+            maxY: normalizeZero((height - offsetY) + margin)
+        };
     }
     
     /**
@@ -146,6 +186,7 @@ export class Scene {
         this.selectedObject = null;
         this.time = 0;
         this.variables = {};
+        this.setCamera(0, 0);
     }
     
     /**
@@ -184,6 +225,7 @@ export class Scene {
             version: '1.0',
             timestamp: Date.now(),
             settings: { ...this.settings },
+            camera: { ...this.getCameraOffset() },
             variables: { ...(this.variables || {}) },
             objects: this.objects.map(obj => obj.serialize())
         };
@@ -195,6 +237,7 @@ export class Scene {
 	    loadFromData(data) {
 	        // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表
 	        this.variables = {};
+            this.setCamera(0, 0);
 
         // 清空对象
         this.objects = [];
@@ -218,6 +261,12 @@ export class Scene {
 	        if (data.settings) {
 	            Object.assign(this.settings, data.settings);
 	        }
+
+            if (data.camera && typeof data.camera === 'object') {
+                const offsetX = Number(data.camera.offsetX);
+                const offsetY = Number(data.camera.offsetY);
+                this.setCamera(offsetX, offsetY);
+            }
 
 	        // 加载变量（可选）
 	        if (data.variables && typeof data.variables === 'object' && !Array.isArray(data.variables)) {

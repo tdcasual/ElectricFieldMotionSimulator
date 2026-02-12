@@ -5,6 +5,7 @@
 import { GridRenderer } from '../rendering/GridRenderer.js';
 import { FieldVisualizer } from '../rendering/FieldVisualizer.js';
 import { TrajectoryRenderer } from '../rendering/TrajectoryRenderer.js';
+import { computeResponsiveParticleMetrics } from '../rendering/ResponsiveSizing.js';
 import { ForceCalculator } from '../physics/ForceCalculator.js';
 import { registry } from './registerObjects.js';
 import { getObjectRenderer } from '../rendering/ObjectRenderers.js';
@@ -27,10 +28,26 @@ export class Renderer {
         this.fieldVisualizer = new FieldVisualizer();
         this.trajectoryRenderer = new TrajectoryRenderer();
         this.forceCalculator = new ForceCalculator();
-        this.particleRenderRadius = 2.5;
-        this.particleSelectionPadding = 8;
+        this.particleRenderRadius = 6;
+        this.particleSelectionPadding = 10;
+        this.updateResponsiveParticleMetrics(
+            typeof window !== 'undefined' ? window.innerWidth : 1280,
+            typeof window !== 'undefined' ? window.innerHeight : 720
+        );
         
         this.needFieldRedraw = true;
+    }
+
+    getCameraOffset(scene) {
+        const offsetX = Number.isFinite(scene?.camera?.offsetX) ? scene.camera.offsetX : 0;
+        const offsetY = Number.isFinite(scene?.camera?.offsetY) ? scene.camera.offsetY : 0;
+        return { offsetX, offsetY };
+    }
+
+    updateResponsiveParticleMetrics(viewportWidth, viewportHeight) {
+        const metrics = computeResponsiveParticleMetrics(viewportWidth, viewportHeight);
+        this.particleRenderRadius = metrics.particleRenderRadius;
+        this.particleSelectionPadding = metrics.particleSelectionPadding;
     }
     
     init() {
@@ -65,6 +82,7 @@ export class Renderer {
         this.dpr = window.devicePixelRatio || 1;
         this.width = container.clientWidth;
         this.height = container.clientHeight;
+        this.updateResponsiveParticleMetrics(this.width, this.height);
         
         // 设置Canvas尺寸（考虑DPI）
         [this.bgCanvas, this.fieldCanvas, this.particleCanvas].forEach(canvas => {
@@ -97,18 +115,22 @@ export class Renderer {
     
     renderBackground(scene) {
         this.bgCtx.clearRect(0, 0, this.width, this.height);
+        const { offsetX, offsetY } = this.getCameraOffset(scene);
         
         // 绘制网格
         if (scene.settings.showGrid) {
-            this.gridRenderer.render(this.bgCtx, this.width, this.height, scene.settings.gridSize);
+            this.gridRenderer.render(this.bgCtx, this.width, this.height, scene.settings.gridSize, offsetX, offsetY);
         }
     }
     
     renderFields(scene) {
         this.fieldCtx.clearRect(0, 0, this.width, this.height);
+        const { offsetX, offsetY } = this.getCameraOffset(scene);
 
         const objects = scene.objects || scene.getAllObjects();
         const renderOrder = ['electric', 'magnetic', 'device'];
+        this.fieldCtx.save();
+        this.fieldCtx.translate(offsetX, offsetY);
         for (const key of renderOrder) {
             const renderer = getObjectRenderer(key);
             if (!renderer) continue;
@@ -118,10 +140,11 @@ export class Renderer {
                 renderer(this, object, scene);
             }
         }
+        this.fieldCtx.restore();
 
         // 绘制场强矢量（可选）
         if (scene.settings.showFieldVectors) {
-            this.fieldVisualizer.render(this.fieldCtx, scene, this.width, this.height);
+            this.fieldVisualizer.render(this.fieldCtx, scene, this.width, this.height, { offsetX, offsetY });
         }
     }
     
@@ -638,8 +661,8 @@ export class Renderer {
         this.fieldCtx.translate(emitter.x, emitter.y);
         this.fieldCtx.rotate(emitter.direction * Math.PI / 180);
 
-        const bodyLen = 30;
-        const bodyWidth = 12;
+        const bodyLen = 45;
+        const bodyWidth = 18;
 
         this.fieldCtx.fillStyle = '#6c9bf4';
         this.fieldCtx.strokeStyle = '#2c5aa0';
@@ -726,7 +749,7 @@ export class Renderer {
             this.fieldCtx.lineWidth = 2.5;
             this.fieldCtx.setLineDash([5, 5]);
             this.fieldCtx.beginPath();
-            this.fieldCtx.arc(emitter.x, emitter.y, 18, 0, Math.PI * 2);
+            this.fieldCtx.arc(emitter.x, emitter.y, 24, 0, Math.PI * 2);
             this.fieldCtx.stroke();
             this.fieldCtx.restore();
         }
@@ -739,8 +762,8 @@ export class Renderer {
         const baseDirection = Number.isFinite(emitter.direction) ? emitter.direction : 0;
         this.fieldCtx.rotate(baseDirection * Math.PI / 180);
 
-        const bodyLen = 26;
-        const bodyWidth = 14;
+        const bodyLen = 38;
+        const bodyWidth = 20;
 
         this.fieldCtx.fillStyle = '#7bd389';
         this.fieldCtx.strokeStyle = '#2e7d32';
@@ -777,7 +800,7 @@ export class Renderer {
             this.fieldCtx.lineWidth = 2.5;
             this.fieldCtx.setLineDash([5, 5]);
             this.fieldCtx.beginPath();
-            this.fieldCtx.arc(emitter.x, emitter.y, 18, 0, Math.PI * 2);
+            this.fieldCtx.arc(emitter.x, emitter.y, 24, 0, Math.PI * 2);
             this.fieldCtx.stroke();
             this.fieldCtx.restore();
         }
@@ -785,6 +808,9 @@ export class Renderer {
     
     renderParticles(scene) {
         this.particleCtx.clearRect(0, 0, this.width, this.height);
+        const { offsetX, offsetY } = this.getCameraOffset(scene);
+        this.particleCtx.save();
+        this.particleCtx.translate(offsetX, offsetY);
         
         for (const particle of scene.particles) {
             // 绘制轨迹
@@ -835,11 +861,12 @@ export class Renderer {
                 this.drawParticleSelection(particle);
             }
         }
+        this.particleCtx.restore();
     }
     
     drawParticle(particle) {
         this.particleCtx.save();
-        const radius = Number.isFinite(this.particleRenderRadius) ? this.particleRenderRadius : 2.5;
+        const radius = Number.isFinite(this.particleRenderRadius) ? this.particleRenderRadius : 6;
         
         // 粒子主体
         this.particleCtx.beginPath();
@@ -860,8 +887,8 @@ export class Renderer {
         this.particleCtx.strokeStyle = '#0e639c';
         this.particleCtx.lineWidth = 3;
         this.particleCtx.setLineDash([5, 5]);
-        const radius = (Number.isFinite(this.particleRenderRadius) ? this.particleRenderRadius : 2.5) +
-            (Number.isFinite(this.particleSelectionPadding) ? this.particleSelectionPadding : 8);
+        const radius = (Number.isFinite(this.particleRenderRadius) ? this.particleRenderRadius : 6) +
+            (Number.isFinite(this.particleSelectionPadding) ? this.particleSelectionPadding : 10);
         this.particleCtx.beginPath();
         this.particleCtx.arc(particle.position.x, particle.position.y, radius, 0, Math.PI * 2);
         this.particleCtx.stroke();

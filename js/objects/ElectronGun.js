@@ -196,7 +196,7 @@ export class ElectronGun extends BaseObject {
     containsPoint(x, y) {
         const dx = x - this.x;
         const dy = y - this.y;
-        return Math.sqrt(dx * dx + dy * dy) <= 18;
+        return Math.sqrt(dx * dx + dy * dy) <= 24;
     }
 
     serialize() {

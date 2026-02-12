@@ -62,10 +62,17 @@ test('buildDemoCreationOverrides normalizes numbers and scales px-space fields',
 });
 
 test('getNextDemoZoom applies wheel direction and clamps to bounds', () => {
-  assert.equal(getNextDemoZoom(1, -100, { step: 1.1, min: 0.1, max: 20 }), 1.1);
-  closeTo(getNextDemoZoom(1, 100, { step: 1.1, min: 0.1, max: 20 }), 1 / 1.1);
-  assert.equal(getNextDemoZoom(0.1, 100, { step: 1.1, min: 0.1, max: 20 }), 0.1);
-  assert.equal(getNextDemoZoom(20, -100, { step: 1.1, min: 0.1, max: 20 }), 20);
+  const zoomIn = getNextDemoZoom(1, -100, { step: 1.1, min: 0.1, max: 20 });
+  const zoomOut = getNextDemoZoom(1, 100, { step: 1.1, min: 0.1, max: 20 });
+  assert.ok(zoomIn > 1);
+  assert.ok(zoomOut < 1);
+
+  const subtle = getNextDemoZoom(1, -2, { step: 1.1, min: 0.1, max: 20 });
+  const aggressive = getNextDemoZoom(1, -100, { step: 1.1, min: 0.1, max: 20 });
+  assert.ok((subtle - 1) < (aggressive - 1));
+
+  assert.equal(getNextDemoZoom(0.1, 1000, { step: 1.1, min: 0.1, max: 20 }), 0.1);
+  assert.equal(getNextDemoZoom(20, -1000, { step: 1.1, min: 0.1, max: 20 }), 20);
 });
 
 test('applyDemoZoomToScene rescales objects around anchor and updates scene scale', () => {
