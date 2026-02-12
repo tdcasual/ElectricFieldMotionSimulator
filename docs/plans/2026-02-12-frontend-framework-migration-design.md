@@ -265,6 +265,10 @@ Mitigation:
   - Freeze new-write paths if data compatibility is at risk.
   - Patch and re-qualify under full gate suite before re-release.
 
+Runbook artifacts:
+- `/Users/lvxiaoer/Documents/ElectricFieldMotionSimulator/.worktrees/codex/frontend-vue3-rewrite/docs/release/frontend-rewrite-rollback-runbook.md`
+- `/Users/lvxiaoer/Documents/ElectricFieldMotionSimulator/.worktrees/codex/frontend-vue3-rewrite/docs/release/frontend-rewrite-launch-checklist.md`
+
 ## Acceptance Criteria
 
 The migration is considered successful only if:
