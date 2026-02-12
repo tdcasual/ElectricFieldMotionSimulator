@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import type { EngineCommand } from '../engine/types';
+import { createDemoSession, type DemoSession } from '../modes/demoSession';
 
 function makeId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -10,7 +11,8 @@ function makeId() {
 
 export const useSceneStore = defineStore('scene', {
   state: () => ({
-    selectedObjectId: null as string | null
+    selectedObjectId: null as string | null,
+    demoSession: null as DemoSession<{ selectedObjectId: string | null }> | null
   }),
   actions: {
     dispatch(command: EngineCommand) {
@@ -23,6 +25,18 @@ export const useSceneStore = defineStore('scene', {
         this.selectedObjectId = command.payload.id;
         return;
       }
+    },
+    enterDemoMode() {
+      this.demoSession = createDemoSession({
+        selectedObjectId: this.selectedObjectId
+      });
+      this.selectedObjectId = null;
+    },
+    exitDemoMode() {
+      if (!this.demoSession) return;
+      const restored = this.demoSession.exit();
+      this.selectedObjectId = restored.selectedObjectId;
+      this.demoSession = null;
     }
   }
 });
