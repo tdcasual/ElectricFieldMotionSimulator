@@ -1,0 +1,35 @@
+{
+  "version": "2.0",
+  "settings": {
+    "mode": "normal",
+    "pixelsPerMeter": 1,
+    "gravity": 10,
+    "boundaryMode": "margin",
+    "boundaryMargin": 200
+  },
+  "objects": [
+    {
+      "type": "electric-field-rect",
+      "x": 180,
+      "y": 140,
+      "width": 260,
+      "height": 180,
+      "strength": 1200,
+      "direction": 0
+    },
+    {
+      "type": "particle",
+      "x": 240,
+      "y": 220,
+      "velocity": {
+        "x": 60,
+        "y": -10,
+        "z": 0
+      },
+      "mass": 9.109e-31,
+      "charge": -1.602e-19,
+      "radius": 5,
+      "ignoreGravity": true
+    }
+  ]
+}

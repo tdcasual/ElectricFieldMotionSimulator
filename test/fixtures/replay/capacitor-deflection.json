@@ -1,0 +1,36 @@
+{
+  "version": "2.0",
+  "settings": {
+    "mode": "normal",
+    "pixelsPerMeter": 1,
+    "gravity": 10,
+    "boundaryMode": "margin",
+    "boundaryMargin": 200
+  },
+  "objects": [
+    {
+      "type": "parallel-plate-capacitor",
+      "x": 260,
+      "y": 140,
+      "width": 300,
+      "height": 180,
+      "plateGap": 80,
+      "strength": 900,
+      "polarity": 1
+    },
+    {
+      "type": "particle",
+      "x": 220,
+      "y": 230,
+      "velocity": {
+        "x": 100,
+        "y": 0,
+        "z": 0
+      },
+      "mass": 9.109e-31,
+      "charge": -1.602e-19,
+      "radius": 5,
+      "ignoreGravity": true
+    }
+  ]
+}
