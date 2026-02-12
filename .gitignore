@@ -1,3 +1,5 @@
 .worktrees/
 .playwright-cli/
 node_modules/
+test-results/
+output/playwright/
