@@ -8,7 +8,8 @@
     "build:frontend": "vite build --config frontend/vite.config.ts",
     "test:frontend": "vitest --config frontend/vite.config.ts run",
     "lint:frontend": "ESLINT_USE_FLAT_CONFIG=false eslint --config frontend/.eslintrc.cjs \"frontend/src/**/*.ts\" \"frontend/test/**/*.ts\"",
-    "test:e2e": "playwright test -c frontend/playwright.config.ts"
+    "test:e2e": "playwright test -c frontend/playwright.config.ts",
+    "quality:all": "npm run lint:frontend && npm test && npm run test:frontend && npm run test:e2e"
   },
   "dependencies": {
     "pinia": "^3.0.3",
