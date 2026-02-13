@@ -7,7 +7,7 @@
     "dev:frontend": "vite --config frontend/vite.config.ts",
     "build:frontend": "vite build --config frontend/vite.config.ts",
     "test:frontend": "vitest --config frontend/vite.config.ts run",
-    "lint:frontend": "ESLINT_USE_FLAT_CONFIG=false eslint --config frontend/.eslintrc.cjs \"frontend/src/**/*.ts\" \"frontend/test/**/*.ts\"",
+    "lint:frontend": "eslint \"frontend/src/**/*.ts\" \"frontend/test/**/*.ts\"",
     "test:e2e": "playwright test -c frontend/playwright.config.ts",
     "quality:all": "npm run lint:frontend && npm test && npm run test:frontend && npm run test:e2e"
   },
@@ -23,7 +23,7 @@
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.21",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.0",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.12",
