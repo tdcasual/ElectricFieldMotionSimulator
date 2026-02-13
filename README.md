@@ -1,289 +1,49 @@
-# 电磁场粒子运动模拟器
+# ⚡ 电磁场粒子运动模拟器
 
-一个基于HTML5 Canvas和原生JavaScript的电磁场粒子运动模拟器，支持拖拽式界面、实时物理计算和场景导入导出。
+这是一个可以“边拖边看”的电磁学小实验场。
+你可以把电场、磁场和粒子放到画布里，实时观察轨迹、偏转和回旋运动。
 
-## 功能特性
+如果你想快速体验：
+- 🖱️ 直接打开 `index.html`
+- 🚀 或者看更详细的启动说明：[`QUICKSTART.md`](QUICKSTART.md)
 
-### 核心功能
-- ✅ **拖拽式组件库**：从工具栏拖拽电场、磁场和粒子到画布
-- ✅ **实时物理模拟**：使用RK4四阶龙格-库塔法精确计算粒子运动
-- ✅ **多种场类型**：
-  - 矩形均匀电场
-  - 圆形均匀电场
-  - 匀强磁场
-  - 带电粒子
-- ✅ **轨迹显示**：实时绘制粒子运动轨迹
-- ✅ **能量监控**：显示动能、势能等物理量
-- ✅ **场强可视化**：矢量箭头显示电场方向和强度
+## ✨ 你可以做什么
 
-### 新增功能（v1.2）
-- 🆕 **深色/浅色主题**：支持两种配色方案
-  - 深色模式（默认）：VS Code风格，护眼设计
-  - 浅色模式：Windows 10风格，高对比度
-  - 一键切换按钮（🌙/☀️）在顶部导航栏
-  - 主题偏好自动保存
-  - Canvas元素自动适配主题颜色
+- 🧲 拖拽添加对象：电场、磁场、粒子、装置
+- ▶️ 实时播放物理过程：暂停、继续、重置
+- 🎛️ 调整对象参数，马上看到运动变化
+- 💾 保存、加载、导入、导出场景
+- 🎯 在圆形边界附近获得相切提示和吸附（按住 `Alt/Option` 可临时关闭吸附）
 
-### 新增功能（v1.1）
-- 🆕 **清空场景**：一键清空所有对象（带确认提示）
-- 🆕 **导出场景**：将当前场景导出为JSON文件
-- 🆕 **导入场景**：从JSON文件导入场景配置
-- 🆕 **场景验证**：导入时自动验证文件格式
-- 🆕 **对象计数**：导入成功后显示加载的对象数量
+## 🚀 上手只要 30 秒
 
-## 使用指南
+1. 从左侧工具栏放置一个场和一个粒子
+2. 点击播放按钮或按 `Space`
+3. 拖动对象位置，观察轨迹变化
+4. 右键对象（触屏用长按）打开属性面板继续微调
 
-### 基本操作
+## ⌨️ 常用快捷键
 
-#### 1. 添加对象
-- 从左侧工具栏拖拽组件到画布中央
-- **触屏设备**：点击左侧工具（高亮）→ 再点击画布放置
-- 支持的组件：
-  - 📐 均匀电场（矩形）
-  - ⭕ 圆形电场
-  - 🧲 匀强磁场
-  - ⚪ 带电粒子
+- `Space`：播放 / 暂停
+- `Delete`：删除选中对象
+- `Ctrl+S`：保存场景
+- `Ctrl+O`：加载场景
 
-#### 2. 编辑对象
-- **移动**：鼠标左键拖拽对象
-- **配置属性**：右键点击对象 → 选择"属性"
-- **触屏设备**：长按对象或快速双击对象打开属性面板（替代右键）
-- **复制对象**：右键点击对象 → 选择"复制"
-- **删除对象**：右键点击对象 → 选择"删除"，或选中后按Delete键
+## 📚 想了解更多
 
-#### 3. 主题切换 🎨
-点击顶部导航栏右侧的主题按钮：
-- **深色模式**（🌙）：VS Code风格配色，低蓝光护眼设计
-- **浅色模式**（☀️）：Windows 10风格配色，高对比度
-- 主题偏好自动保存到本地
-- 下次访问自动应用所选主题
-- Canvas元素颜色自动适配当前主题
+- 🧭 快速开始：[`QUICKSTART.md`](QUICKSTART.md)
+- ✅ 测试与验证：[`TESTING-GUIDE.md`](TESTING-GUIDE.md)
+- 📝 更新记录：[`CHANGELOG.md`](CHANGELOG.md)
+- 🧪 示例场景：[`example-scene.json`](example-scene.json)
 
-#### 4. 场景管理
+迁移与发布文档：
+- 📌 前端对齐清单：[`docs/migration/parity-checklist.md`](docs/migration/parity-checklist.md)
+- 🧠 迁移设计：[`docs/plans/2026-02-12-frontend-framework-migration-design.md`](docs/plans/2026-02-12-frontend-framework-migration-design.md)
+- 🛠️ 迁移实施计划：[`docs/plans/2026-02-12-vue3-rewrite-implementation-plan.md`](docs/plans/2026-02-12-vue3-rewrite-implementation-plan.md)
+- 🚦 上线检查：[`docs/release/frontend-rewrite-launch-checklist.md`](docs/release/frontend-rewrite-launch-checklist.md)
+- 🧯 回滚预案：[`docs/release/frontend-rewrite-rollback-runbook.md`](docs/release/frontend-rewrite-rollback-runbook.md)
 
-##### 清空场景 🗑️
-点击顶部工具栏的"清空"按钮（🗑️图标）：
-- 删除场景中的所有对象
-- 弹出确认对话框防止误操作
-- 操作不可撤销，请谨慎使用
+## 🎯 一句话总结
 
-##### 导出场景 📤
-1. 点击顶部工具栏的"导出"按钮（📤图标）
-2. 系统自动生成JSON文件并下载
-3. 文件名格式：`electric-field-scene-{时间戳}.json`
-4. 包含所有对象配置和场景设置
-
-##### 导入场景 📥
-1. 点击顶部工具栏的"导入"按钮（📥图标）
-2. 选择`.json`格式的场景文件
-3. 系统自动验证文件格式
-4. 导入成功后显示加载的对象数量
-5. 导入失败会显示错误信息
-
-##### 保存/加载场景（localStorage）
-- **保存**：点击"保存"按钮（💾），输入场景名称
-- **加载**：点击"加载"按钮（📂），输入要加载的场景名称
-- 数据存储在浏览器本地存储中
-
-#### 5. 模拟控制
-- **播放/暂停**：点击▶️按钮或按空格键
-- **重置**：点击🔄按钮，清空场景并保持设置
-- **比例尺**：顶部可设置 `1m = ?px`，用于把画布像素与国际单位制长度关联（速度/能量显示按 m/s、J 换算）
-- **时间步长**：调节滑块改变模拟速度（1ms-50ms）
-
-#### 6. 预设场景
-点击左侧工具栏的预设按钮快速加载示例场景：
-- **匀加速运动**：带电粒子在匀强电场中的直线运动
-- **回旋运动**：带电粒子在磁场中的圆周运动
-- **电容器偏转**：带电粒子在平行板电容器中的偏转
-
-### 场景文件格式
-
-> ⚠️ 注意：场景格式已升级为统一的 `objects` 数组结构，旧版本导出/本地存储不再兼容。升级后请重新导出场景。
-
-JSON格式示例（`example-scene.json`）：
-
-```json
-{
-  "version": "1.0",
-  "timestamp": 1733395200000,
-  "settings": {
-    "showGrid": true,
-    "gridSize": 50,
-    "showTrajectories": true,
-    "showEnergy": true,
-    "showFieldVectors": true
-  },
-  "electricFields": [
-    {
-      "type": "electric-field-rect",
-      "x": 200,
-      "y": 150,
-      "width": 400,
-      "height": 300,
-      "strength": 1500,
-      "direction": 90
-    }
-  ],
-  "magneticFields": [],
-  "particles": [
-    {
-      "type": "particle",
-      "position": [350, 200, 0],
-      "velocity": [100, 0, 0],
-      "mass": 9.109e-31,
-      "charge": -1.602e-19,
-      "ignoreGravity": true
-    }
-  ]
-}
-```
-
-### 字段说明
-
-#### 电场属性
-- `type`: 类型（`electric-field-rect` / `electric-field-circle`）
-- `x`, `y`: 位置坐标
-- `width`, `height`: 矩形电场的尺寸
-- `radius`: 圆形电场的半径
-- `strength`: 场强（N/C）
-- `direction`: 方向（度，0=右，90=下）
-
-#### 磁场属性
-- `type`: `magnetic-field`
-- `x`, `y`: 位置坐标
-- `width`, `height`: 尺寸
-- `strength`: 磁感应强度（T，正值=向外，负值=向内）
-
-#### 粒子属性
-- `type`: `particle`
-- `position`: 位置向量 [x, y, z]
-- `velocity`: 速度向量 [vx, vy, vz]（m/s）
-- `mass`: 质量（kg）
-- `charge`: 电荷量（C）
-- `radius`: 显示半径（像素）
-- `ignoreGravity`: 是否忽略重力
-- `showTrajectory`: 是否显示轨迹
-- `showEnergy`: 是否显示能量信息
-
-## 键盘快捷键
-
-- `Space` - 播放/暂停
-- `Delete` - 删除选中对象
-- `Ctrl+S` - 保存场景
-- `Ctrl+O` - 加载场景
-
-## 技术特性
-
-### 物理引擎
-- **RK4积分器**：四阶龙格-库塔法确保长时间模拟精度
-- **力计算**：
-  - 电场力：F = qE
-  - 洛伦兹力：F = q(v × B)
-  - 重力：F = mg（可选）
-- **边界处理**：弹性碰撞（恢复系数0.9）
-
-### 渲染优化
-- **多层Canvas**：背景/场/粒子分层渲染
-- **高DPI支持**：自动适配Retina屏幕
-- **性能监控**：实时FPS显示
-- **场强可视化**：矢量箭头网格
-
-### 数据管理
-- **场景序列化**：完整的导入导出功能
-- **格式验证**：防止无效数据导入
-- **本地存储**：支持localStorage保存
-- **错误处理**：友好的错误提示
-
-## 物理常数
-
-- 电子电荷量：-1.602 × 10⁻¹⁹ C
-- 质子电荷量：+1.602 × 10⁻¹⁹ C
-- 电子质量：9.109 × 10⁻³¹ kg
-- 质子质量：1.673 × 10⁻²⁷ kg
-- 重力加速度：9.8 m/s²
-
-## 浏览器兼容性
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Opera 76+
-
-需要支持：
-- ES6 Modules
-- Canvas 2D API
-- FileReader API
-- localStorage
-
-## 开发信息
-
-- **版本**: 1.1.0
-- **技术栈**: 原生JavaScript + HTML5 Canvas
-- **架构**: 模块化ES6 + 事件驱动
-- **物理引擎**: RK4数值积分
-- **许可**: MIT
-
-## Frontend Rewrite Tracking
-
-- 核心链路对齐清单: `docs/migration/parity-checklist.md`
-- 迁移设计文档: `docs/plans/2026-02-12-frontend-framework-migration-design.md`
-- 迁移实施计划: `docs/plans/2026-02-12-vue3-rewrite-implementation-plan.md`
-
-## 示例场景
-
-项目包含一个示例场景文件 `example-scene.json`，可用于测试导入功能。该场景包含：
-- 1个矩形电场
-- 1个圆形电场
-- 1个磁场区域
-- 2个带电粒子（正负电荷各一）
-
-## 故障排除
-
-### 导入失败
-- 确认文件格式为`.json`
-- 检查JSON语法是否正确
-- 验证必需字段是否存在（version, electricFields, magneticFields, particles）
-
-### 性能问题
-- 减少粒子数量
-- 降低轨迹长度（在属性面板中）
-- 关闭场强可视化
-- 增大时间步长
-
-### 物理不准确
-- 减小时间步长（推荐5-16ms）
-- 检查粒子质量和电荷量的数量级
-- 验证场强设置是否合理
-
-## 部署
-
-### Vercel（推荐）
-项目已包含 `vercel.json`，可直接作为静态站点部署：
-1. 将仓库导入 Vercel
-2. Framework Preset 选择 **Other**
-3. Root Directory 选择仓库根目录
-
-### Docker
-项目已包含 `Dockerfile`，使用 Nginx 提供静态文件服务：
-```bash
-docker build -t electric-field-sim .
-docker run --rm -p 8080:80 electric-field-sim
-```
-浏览器访问：`http://localhost:8080`
-
-## 未来计划
-
-- [ ] 半圆形电场
-- [ ] 平行板电容器（带边缘效应）
-- [ ] 撤销/重做功能
-- [ ] 多选对象操作
-- [ ] 动画录制导出
-- [ ] 数据统计分析
-- [ ] 3D可视化模式
-
----
-
-**祝使用愉快！** 🎉
-
-如有问题或建议，欢迎反馈。
+这是一个偏教学和演示友好的电磁场模拟器：
+操作轻量，反馈直观，适合快速搭实验、讲思路、做课堂展示。
