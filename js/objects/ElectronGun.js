@@ -29,7 +29,8 @@ export class ElectronGun extends BaseObject {
     static schema() {
         return [
             {
-                title: '电子枪属性',
+                title: '基础',
+                group: 'basic',
                 fields: [
                     { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
@@ -46,12 +47,12 @@ export class ElectronGun extends BaseObject {
                                 obj.emissionSpeed = value * ppm;
                             }
                         }
-                    } },
-                    { key: 'barrelLength', label: '枪管长度', type: 'number', min: 0, step: 1 }
+                    } }
                 ]
             },
             {
-                title: '粒子属性',
+                title: '粒子模板',
+                group: 'basic',
                 fields: [
                     { key: 'particleType', label: '粒子类型', type: 'select', options: [
                         { value: 'electron', label: '电子' },
@@ -88,7 +89,9 @@ export class ElectronGun extends BaseObject {
                 ]
             },
             {
-                title: '显示',
+                title: '显示与调试',
+                group: 'advanced',
+                defaultCollapsed: true,
                 fields: [
                     { key: 'showVelocity', label: '显示发射速度', type: 'checkbox' },
                     { key: 'velocityDisplayMode', label: '速度显示方式', type: 'select', options: [
@@ -108,7 +111,7 @@ export class ElectronGun extends BaseObject {
         this.direction = config.direction ?? 0; // 发射方向（度），0=向右，90=向下
         this.emissionRate = config.emissionRate ?? 1; // 粒子/秒
         this.emissionSpeed = config.emissionSpeed ?? 200; // 初速度大小（px/s）
-        this.barrelLength = config.barrelLength ?? 25; // 发射口偏移
+        this.barrelLength = config.barrelLength ?? 25; // 兼容字段：点发射模式下不再影响发射位置
 
         // 显示配置（用于画布叠加信息）
         this.showVelocity = config.showVelocity ?? false;
@@ -161,11 +164,10 @@ export class ElectronGun extends BaseObject {
 
         const angleDeg = Number.isFinite(this.direction) ? this.direction : 0;
         const angle = angleDeg * Math.PI / 180;
-        const barrel = Number.isFinite(this.barrelLength) ? this.barrelLength : 0;
         const speed = Number.isFinite(this.emissionSpeed) ? this.emissionSpeed : 0;
 
-        const spawnX = baseX + Math.cos(angle) * barrel;
-        const spawnY = baseY + Math.sin(angle) * barrel;
+        const spawnX = baseX;
+        const spawnY = baseY;
 
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;

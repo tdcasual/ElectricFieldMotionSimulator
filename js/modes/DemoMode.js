@@ -13,7 +13,6 @@ const DEMO_PX_DEFAULT_KEYS = new Set([
   'radius',
   'length',
   'plateDistance',
-  'barrelLength',
   'depth',
   'viewGap',
   'spotSize',
@@ -32,7 +31,6 @@ const ZOOM_DIMENSION_KEYS = [
   'radius',
   'length',
   'plateDistance',
-  'barrelLength',
   'depth',
   'viewGap',
   'spotSize',
@@ -41,6 +39,8 @@ const ZOOM_DIMENSION_KEYS = [
 ];
 
 const ZOOM_SPEED_KEYS = ['emissionSpeed', 'speedMin', 'speedMax'];
+const DEMO_ANGLE_KEYS = new Set(['direction', 'angle', 'orientation', 'angleMin', 'angleMax']);
+const DEMO_KEEP_DEFAULT_KEYS = new Set(['barrelLength']);
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -149,20 +149,26 @@ export function isDemoMode(scene) {
   return scene?.settings?.mode === 'demo';
 }
 
-export function normalizeDemoDefaults(value) {
+export function normalizeDemoDefaults(value, key = null) {
   if (Array.isArray(value)) {
-    return value.map(item => normalizeDemoDefaults(item));
+    return value.map(item => normalizeDemoDefaults(item, key));
   }
 
   if (value && typeof value === 'object') {
     const output = {};
     for (const [key, child] of Object.entries(value)) {
-      output[key] = normalizeDemoDefaults(child);
+      output[key] = normalizeDemoDefaults(child, key);
     }
     return output;
   }
 
   if (Number.isFinite(value)) {
+    if (key && DEMO_KEEP_DEFAULT_KEYS.has(key)) {
+      return value;
+    }
+    if (key && DEMO_ANGLE_KEYS.has(key)) {
+      return 0;
+    }
     return 1;
   }
 

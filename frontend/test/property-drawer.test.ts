@@ -31,4 +31,56 @@ describe('PropertyDrawer', () => {
     expect(payload.mass).toBe('2');
     expect(payload.showTrajectory).toBe(true);
   });
+
+  it('keeps apply action outside scrollable content', () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        sections: [{ fields: [{ key: 'mass', type: 'number' }] }],
+        values: { mass: 1 }
+      }
+    });
+
+    const scrollContent = wrapper.get('#property-content').element;
+    const applyButton = wrapper.get('[data-testid="apply-props"]').element;
+    expect(scrollContent.contains(applyButton)).toBe(false);
+  });
+
+  it('prevents numeric input wheel from hijacking panel interaction', async () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        sections: [{ fields: [{ key: 'mass', type: 'number' }] }],
+        values: { mass: 1 }
+      }
+    });
+
+    const numberInput = wrapper.get('input[type="number"]').element as HTMLInputElement;
+    const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 40 });
+    numberInput.dispatchEvent(event);
+    await wrapper.vm.$nextTick();
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('supports section collapse by defaultCollapsed and manual expand', async () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        sections: [
+          { title: '基础', fields: [{ key: 'mass', label: '质量', type: 'number' }] },
+          {
+            title: '高级',
+            defaultCollapsed: true,
+            fields: [{ key: 'advancedParam', label: '高级参数', type: 'number' }]
+          }
+        ],
+        values: { mass: 1, advancedParam: 2 }
+      }
+    });
+
+    expect(wrapper.text()).not.toContain('高级参数');
+    await wrapper.get('[data-testid="section-toggle-1"]').trigger('click');
+    expect(wrapper.text()).toContain('高级参数');
+  });
 });

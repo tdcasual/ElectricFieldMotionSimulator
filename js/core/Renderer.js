@@ -153,18 +153,46 @@ export class Renderer {
         const hint = scene?.interaction?.tangencyHint;
         if (!hint) return;
         const circle = hint.activeCircle;
-        if (!circle || !Number.isFinite(circle.x) || !Number.isFinite(circle.y) || !Number.isFinite(circle.radius) || circle.radius <= 0) {
+        const hasCircle = !!circle &&
+            Number.isFinite(circle.x) &&
+            Number.isFinite(circle.y) &&
+            Number.isFinite(circle.radius) &&
+            circle.radius > 0;
+
+        const point = hint.activePoint;
+        const hasPoint = !!point &&
+            Number.isFinite(point.x) &&
+            Number.isFinite(point.y);
+
+        if (!hasCircle && !hasPoint) {
             return;
         }
 
         this.fieldCtx.save();
-        this.fieldCtx.strokeStyle = 'rgba(0, 220, 210, 0.95)';
-        this.fieldCtx.lineWidth = 2;
-        this.fieldCtx.setLineDash([6, 4]);
-        this.fieldCtx.beginPath();
-        this.fieldCtx.arc(circle.x, circle.y, circle.radius + 4, 0, Math.PI * 2);
-        this.fieldCtx.stroke();
-        this.fieldCtx.setLineDash([]);
+        if (hasCircle) {
+            this.fieldCtx.strokeStyle = 'rgba(0, 220, 210, 0.95)';
+            this.fieldCtx.lineWidth = 2;
+            this.fieldCtx.setLineDash([6, 4]);
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(circle.x, circle.y, circle.radius + 4, 0, Math.PI * 2);
+            this.fieldCtx.stroke();
+            this.fieldCtx.setLineDash([]);
+        } else if (hasPoint) {
+            this.fieldCtx.strokeStyle = 'rgba(0, 220, 210, 0.95)';
+            this.fieldCtx.lineWidth = 2;
+            this.fieldCtx.setLineDash([4, 3]);
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(point.x, point.y, 8, 0, Math.PI * 2);
+            this.fieldCtx.stroke();
+            this.fieldCtx.setLineDash([]);
+
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(point.x - 5, point.y);
+            this.fieldCtx.lineTo(point.x + 5, point.y);
+            this.fieldCtx.moveTo(point.x, point.y - 5);
+            this.fieldCtx.lineTo(point.x, point.y + 5);
+            this.fieldCtx.stroke();
+        }
 
         const candidate = hint.candidate;
         if (candidate?.kind === 'circle' &&
@@ -188,17 +216,28 @@ export class Renderer {
             this.fieldCtx.moveTo(candidate.x1, candidate.y1);
             this.fieldCtx.lineTo(candidate.x2, candidate.y2);
             this.fieldCtx.stroke();
+        } else if (candidate?.kind === 'point' &&
+            Number.isFinite(candidate.x) &&
+            Number.isFinite(candidate.y)) {
+            this.fieldCtx.fillStyle = 'rgba(0, 180, 255, 0.95)';
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(candidate.x, candidate.y, 5, 0, Math.PI * 2);
+            this.fieldCtx.fill();
         }
 
         const relationText = hint.relation === 'inner' ? '内切' : '外切';
         const baseLabel = hint.kind === 'circle-circle'
             ? `相切（${relationText}）`
-            : '相切';
+            : (hint.kind === 'point-circle' || hint.kind === 'point-segment' || hint.kind === 'circle-point'
+                ? '边界贴合'
+                : '相切');
         const label = hint.suppressed ? `${baseLabel} Alt仅提示` : baseLabel;
+        const labelX = hasCircle ? (circle.x + circle.radius + 10) : (point.x + 12);
+        const labelY = hasCircle ? (circle.y - circle.radius - 8) : (point.y - 10);
         this.drawTextBadge(
             this.fieldCtx,
-            circle.x + circle.radius + 10,
-            circle.y - circle.radius - 8,
+            labelX,
+            labelY,
             label
         );
         this.fieldCtx.restore();
@@ -458,7 +497,8 @@ export class Renderer {
     drawMagneticField(field, scene) {
         this.fieldCtx.save();
 
-        const strength = field.strength ?? 0;
+        const strength = Number.isFinite(field.strength) ? field.strength : 0;
+        const hasDirection = Math.abs(strength) > 1e-12;
         const shape = field.shape || 'rect';
         const colorRgb = strength >= 0 ? [100, 150, 255] : [255, 100, 100];
         const borderColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.65)`;
@@ -507,6 +547,45 @@ export class Renderer {
         this.fieldCtx.fillStyle = fillColor;
         this.fieldCtx.fill();
 
+        // 圆形/矩形磁场绘制几何中心标记，便于对齐
+        const center = (() => {
+            if (shape === 'circle') {
+                if (!Number.isFinite(field.x) || !Number.isFinite(field.y)) return null;
+                return { x: field.x, y: field.y };
+            }
+            if (shape === 'rect') {
+                if (
+                    !Number.isFinite(field.x) ||
+                    !Number.isFinite(field.y) ||
+                    !Number.isFinite(field.width) ||
+                    !Number.isFinite(field.height)
+                ) {
+                    return null;
+                }
+                return {
+                    x: field.x + field.width / 2,
+                    y: field.y + field.height / 2
+                };
+            }
+            return null;
+        })();
+
+        if (center) {
+            this.fieldCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            this.fieldCtx.lineWidth = 1.5;
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(center.x - 7, center.y);
+            this.fieldCtx.lineTo(center.x + 7, center.y);
+            this.fieldCtx.moveTo(center.x, center.y - 7);
+            this.fieldCtx.lineTo(center.x, center.y + 7);
+            this.fieldCtx.stroke();
+
+            this.fieldCtx.fillStyle = 'rgba(20, 30, 48, 0.95)';
+            this.fieldCtx.beginPath();
+            this.fieldCtx.arc(center.x, center.y, 2.5, 0, Math.PI * 2);
+            this.fieldCtx.fill();
+        }
+
         // 绘制磁场符号阵列（· / ×）
         const spacing = 40;
         const dotRadius = 3;
@@ -523,7 +602,9 @@ export class Renderer {
 
         for (let x = bounds.minX + spacing / 2; x < bounds.maxX; x += spacing) {
             for (let y = bounds.minY + spacing / 2; y < bounds.maxY; y += spacing) {
-                if (strength >= 0) {
+                if (!hasDirection) continue;
+
+                if (strength > 0) {
                     // ·：指向屏幕外
                     this.fieldCtx.beginPath();
                     this.fieldCtx.arc(x, y, dotRadius, 0, Math.PI * 2);
@@ -713,36 +794,23 @@ export class Renderer {
     }
 
     drawElectronGun(emitter, scene) {
+        const originX = Number.isFinite(emitter?.x) ? emitter.x : 0;
+        const originY = Number.isFinite(emitter?.y) ? emitter.y : 0;
+
+        // 点状发射器：中心点即发射原点
         this.fieldCtx.save();
-        this.fieldCtx.translate(emitter.x, emitter.y);
-        this.fieldCtx.rotate(emitter.direction * Math.PI / 180);
-
-        const bodyLen = 45;
-        const bodyWidth = 18;
-
         this.fieldCtx.fillStyle = '#6c9bf4';
         this.fieldCtx.strokeStyle = '#2c5aa0';
         this.fieldCtx.lineWidth = 2;
-
-        // 枪体轮廓
         this.fieldCtx.beginPath();
-        this.fieldCtx.moveTo(-bodyLen * 0.3, -bodyWidth / 2);
-        this.fieldCtx.lineTo(bodyLen * 0.7, -bodyWidth / 2);
-        this.fieldCtx.lineTo(bodyLen * 0.9, 0);
-        this.fieldCtx.lineTo(bodyLen * 0.7, bodyWidth / 2);
-        this.fieldCtx.lineTo(-bodyLen * 0.3, bodyWidth / 2);
-        this.fieldCtx.closePath();
+        this.fieldCtx.arc(originX, originY, 6, 0, Math.PI * 2);
         this.fieldCtx.fill();
         this.fieldCtx.stroke();
 
-        // 发射指示箭头
-        this.fieldCtx.strokeStyle = '#ffffff';
-        this.fieldCtx.lineWidth = 2;
+        this.fieldCtx.fillStyle = '#ffffff';
         this.fieldCtx.beginPath();
-        this.fieldCtx.moveTo(0, 0);
-        this.fieldCtx.lineTo(bodyLen, 0);
-        this.fieldCtx.stroke();
-
+        this.fieldCtx.arc(originX, originY, 2, 0, Math.PI * 2);
+        this.fieldCtx.fill();
         this.fieldCtx.restore();
 
         // 叠加显示（速度/能量）
@@ -751,9 +819,6 @@ export class Renderer {
                 ? scene.settings.pixelsPerMeter
                 : 1;
             const angle = emitter.direction * Math.PI / 180;
-            const barrelLength = emitter.barrelLength ?? 25;
-            const originX = emitter.x + Math.cos(angle) * barrelLength;
-            const originY = emitter.y + Math.sin(angle) * barrelLength;
 
             if (emitter.showVelocity) {
                 if (emitter.velocityDisplayMode === 'speed') {
@@ -805,48 +870,30 @@ export class Renderer {
             this.fieldCtx.lineWidth = 2.5;
             this.fieldCtx.setLineDash([5, 5]);
             this.fieldCtx.beginPath();
-            this.fieldCtx.arc(emitter.x, emitter.y, 24, 0, Math.PI * 2);
+            this.fieldCtx.arc(originX, originY, 14, 0, Math.PI * 2);
             this.fieldCtx.stroke();
             this.fieldCtx.restore();
         }
     }
 
     drawProgrammableEmitter(emitter, scene) {
+        const originX = Number.isFinite(emitter?.x) ? emitter.x : 0;
+        const originY = Number.isFinite(emitter?.y) ? emitter.y : 0;
+
+        // 点状发射器：中心点即发射原点
         this.fieldCtx.save();
-        this.fieldCtx.translate(emitter.x, emitter.y);
-
-        const baseDirection = Number.isFinite(emitter.direction) ? emitter.direction : 0;
-        this.fieldCtx.rotate(baseDirection * Math.PI / 180);
-
-        const bodyLen = 38;
-        const bodyWidth = 20;
-
         this.fieldCtx.fillStyle = '#7bd389';
         this.fieldCtx.strokeStyle = '#2e7d32';
         this.fieldCtx.lineWidth = 2;
-
         this.fieldCtx.beginPath();
-        this.fieldCtx.rect(-bodyLen / 2, -bodyWidth / 2, bodyLen, bodyWidth);
+        this.fieldCtx.arc(originX, originY, 6, 0, Math.PI * 2);
         this.fieldCtx.fill();
         this.fieldCtx.stroke();
 
-        // 发射口箭头
-        const tipX = bodyLen / 2 + 12;
-        this.fieldCtx.strokeStyle = '#2e7d32';
-        this.fieldCtx.lineWidth = 2;
+        this.fieldCtx.fillStyle = '#ffffff';
         this.fieldCtx.beginPath();
-        this.fieldCtx.moveTo(bodyLen / 2, 0);
-        this.fieldCtx.lineTo(tipX - 4, 0);
-        this.fieldCtx.stroke();
-
-        this.fieldCtx.fillStyle = '#2e7d32';
-        this.fieldCtx.beginPath();
-        this.fieldCtx.moveTo(tipX, 0);
-        this.fieldCtx.lineTo(tipX - 6, -4);
-        this.fieldCtx.lineTo(tipX - 6, 4);
-        this.fieldCtx.closePath();
+        this.fieldCtx.arc(originX, originY, 2, 0, Math.PI * 2);
         this.fieldCtx.fill();
-
         this.fieldCtx.restore();
 
         // 选中高亮
@@ -856,7 +903,7 @@ export class Renderer {
             this.fieldCtx.lineWidth = 2.5;
             this.fieldCtx.setLineDash([5, 5]);
             this.fieldCtx.beginPath();
-            this.fieldCtx.arc(emitter.x, emitter.y, 24, 0, Math.PI * 2);
+            this.fieldCtx.arc(originX, originY, 14, 0, Math.PI * 2);
             this.fieldCtx.stroke();
             this.fieldCtx.restore();
         }

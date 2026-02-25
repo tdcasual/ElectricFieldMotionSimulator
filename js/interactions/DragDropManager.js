@@ -4,7 +4,7 @@
 
 import { registry } from '../core/registerObjects.js';
 import { buildDemoCreationOverrides, isDemoMode } from '../modes/DemoMode.js';
-import { computeTangencyMatch } from './TangencyEngine.js';
+import { computePointTangencyMatch, computeTangencyMatch } from './TangencyEngine.js';
 
 const TOOL_ALIASES = {
     'electric-field-semicircle': { type: 'semicircle-electric-field' },
@@ -112,6 +112,20 @@ export function getObjectCircleBoundary(object) {
     return { x: object.x, y: object.y, radius: object.radius };
 }
 
+export function getObjectPointBoundary(object) {
+    if (!object) return null;
+    const isEmitter = object.type === 'electron-gun' || object.type === 'programmable-emitter';
+    if (!isEmitter) return null;
+    if (!isFiniteNumber(object.x) || !isFiniteNumber(object.y)) return null;
+    return { x: object.x, y: object.y };
+}
+
+function isMagneticFieldObject(object) {
+    if (!object) return false;
+    if (object.type?.includes('magnetic-field')) return true;
+    return registry.get(object.type)?.interaction?.kind === 'magnetic-field';
+}
+
 function objectBoundarySegments(object) {
     if (!object) return [];
     if (object.type === 'electric-field-rect') {
@@ -144,6 +158,18 @@ export function buildTangencyCandidates(objects, activeObject) {
                 x: circle.x,
                 y: circle.y,
                 radius: circle.radius,
+                objectId: object.id ?? null,
+                objectRef: object
+            });
+            continue;
+        }
+
+        const point = getObjectPointBoundary(object);
+        if (point) {
+            candidates.push({
+                kind: 'point',
+                x: point.x,
+                y: point.y,
                 objectId: object.id ?? null,
                 objectRef: object
             });
@@ -471,13 +497,20 @@ export class DragDropManager {
         }
 
         const activeCircle = getObjectCircleBoundary(this.draggingObject);
-        if (!activeCircle) {
+        const activePoint = activeCircle ? null : getObjectPointBoundary(this.draggingObject);
+        if (!activeCircle && !activePoint) {
             this.clearTangencyHint();
             return;
         }
 
-        const candidates = buildTangencyCandidates(this.getSceneObjects(), this.draggingObject);
-        const match = computeTangencyMatch(activeCircle, candidates, TANGENCY_TOLERANCE_PX, mode);
+        const objects = this.getSceneObjects();
+        const candidateObjects = activePoint
+            ? objects.filter((item) => isMagneticFieldObject(item))
+            : objects;
+        const candidates = buildTangencyCandidates(candidateObjects, this.draggingObject);
+        const match = activeCircle
+            ? computeTangencyMatch(activeCircle, candidates, TANGENCY_TOLERANCE_PX, mode)
+            : computePointTangencyMatch(activePoint, candidates, TANGENCY_TOLERANCE_PX);
         if (!match) {
             this.clearTangencyHint();
             return;
@@ -489,6 +522,7 @@ export class DragDropManager {
         }
 
         const currentCircle = getObjectCircleBoundary(this.draggingObject) || activeCircle;
+        const currentPoint = getObjectPointBoundary(this.draggingObject) || activePoint;
         const interaction = this.ensureSceneInteractionState();
         if (!interaction) return;
         interaction.tangencyHint = {
@@ -502,9 +536,12 @@ export class DragDropManager {
             applied: !suppressed,
             candidate: match.candidate,
             activeCircle: currentCircle,
+            activePoint: currentPoint,
             label: match.kind === 'circle-circle'
                 ? `相切（${match.relation === 'inner' ? '内切' : '外切'}）`
-                : '相切'
+                : (match.kind === 'point-circle' || match.kind === 'point-segment' || match.kind === 'circle-point'
+                    ? '边界贴合'
+                    : '相切')
         };
     }
 

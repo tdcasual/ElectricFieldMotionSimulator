@@ -41,6 +41,8 @@ export type SchemaField = {
 
 export type SchemaSection = {
   title?: string;
+  group?: 'basic' | 'advanced';
+  defaultCollapsed?: boolean;
   fields?: SchemaField[];
 };
 
@@ -173,6 +175,7 @@ export class SimulatorRuntime {
 
     this.setRunning(false);
     this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
+    this.enterDemoMode();
   }
 
   unmount() {
@@ -244,7 +247,7 @@ export class SimulatorRuntime {
     this.applyModeSettings();
     this.callbacks.onPropertyHide?.();
     this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: false });
-    this.setStatusText('已进入演示模式：默认值为 1，滚轮可按鼠标位置缩放');
+    this.setStatusText('已进入演示模式：数值默认 1、角度默认 0，滚轮可按鼠标位置缩放');
     return true;
   }
 

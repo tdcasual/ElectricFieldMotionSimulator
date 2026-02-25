@@ -10,6 +10,12 @@ function isValidCircle(circle) {
     circle.radius > 0;
 }
 
+function isValidPoint(point) {
+  return !!point &&
+    isFiniteNumber(point.x) &&
+    isFiniteNumber(point.y);
+}
+
 function normalizeVector(x, y) {
   const len = Math.hypot(x, y);
   if (len <= 0) return { x: 1, y: 0, length: 0 };
@@ -185,6 +191,106 @@ export function evaluateCircleSegmentTangency(activeCircle, candidate, tolerance
   };
 }
 
+export function evaluateCirclePointTangency(activeCircle, candidate, tolerance = 2, mode = 'move') {
+  if (!isValidCircle(activeCircle)) return null;
+  if (!candidate || candidate.kind !== 'point' || !isValidPoint(candidate)) return null;
+
+  const ax = activeCircle.x;
+  const ay = activeCircle.y;
+  const ar = activeCircle.radius;
+  const px = candidate.x;
+  const py = candidate.y;
+  const dir = normalizeVector(ax - px, ay - py);
+
+  if (mode === 'resize') {
+    const targetRadius = dir.length;
+    if (targetRadius <= 0) return null;
+    const errorPx = Math.abs(ar - targetRadius);
+    if (errorPx > tolerance) return null;
+    return {
+      kind: 'circle-point',
+      relation: 'outer',
+      errorPx,
+      movementPx: Math.abs(targetRadius - ar),
+      candidate,
+      snapTarget: { radius: targetRadius }
+    };
+  }
+
+  const errorPx = Math.abs(dir.length - ar);
+  if (errorPx > tolerance) return null;
+
+  const targetX = px + dir.x * ar;
+  const targetY = py + dir.y * ar;
+  return {
+    kind: 'circle-point',
+    relation: 'outer',
+    errorPx,
+    movementPx: Math.hypot(targetX - ax, targetY - ay),
+    candidate,
+    snapTarget: { x: targetX, y: targetY, radius: ar }
+  };
+}
+
+export function evaluatePointSegmentTangency(activePoint, candidate, tolerance = 2) {
+  if (!isValidPoint(activePoint)) return null;
+  if (!candidate || candidate.kind !== 'segment') return null;
+  if (
+    !isFiniteNumber(candidate.x1) ||
+    !isFiniteNumber(candidate.y1) ||
+    !isFiniteNumber(candidate.x2) ||
+    !isFiniteNumber(candidate.y2)
+  ) {
+    return null;
+  }
+
+  const nearest = closestPointOnSegment(
+    activePoint.x,
+    activePoint.y,
+    candidate.x1,
+    candidate.y1,
+    candidate.x2,
+    candidate.y2
+  );
+  const errorPx = nearest.distance;
+  if (errorPx > tolerance) return null;
+
+  return {
+    kind: 'point-segment',
+    relation: 'outer',
+    errorPx,
+    movementPx: Math.hypot(nearest.x - activePoint.x, nearest.y - activePoint.y),
+    candidate,
+    snapTarget: { x: nearest.x, y: nearest.y }
+  };
+}
+
+export function evaluatePointCircleTangency(activePoint, candidate, tolerance = 2) {
+  if (!isValidPoint(activePoint)) return null;
+  if (!candidate || candidate.kind !== 'circle' || !isValidCircle(candidate)) return null;
+
+  const px = activePoint.x;
+  const py = activePoint.y;
+  const cx = candidate.x;
+  const cy = candidate.y;
+  const radius = candidate.radius;
+
+  const dir = normalizeVector(px - cx, py - cy);
+  const errorPx = Math.abs(dir.length - radius);
+  if (errorPx > tolerance) return null;
+
+  const targetX = cx + dir.x * radius;
+  const targetY = cy + dir.y * radius;
+  return {
+    kind: 'point-circle',
+    relation: 'outer',
+    errorPx,
+    movementPx: Math.hypot(targetX - px, targetY - py),
+    candidate,
+    snapTarget: { x: targetX, y: targetY }
+  };
+}
+
 export function pickBestTangencyMatch(matches) {
   return pickClosestByErrorAndMovement(matches);
 }
@@ -204,6 +310,32 @@ export function computeTangencyMatch(activeCircle, candidates, tolerance = 2, mo
     if (candidate.kind === 'segment') {
       const segmentMatch = evaluateCircleSegmentTangency(activeCircle, candidate, tolerance, mode);
       if (segmentMatch) matches.push(segmentMatch);
+      continue;
+    }
+    if (candidate.kind === 'point') {
+      const pointMatch = evaluateCirclePointTangency(activeCircle, candidate, tolerance, mode);
+      if (pointMatch) matches.push(pointMatch);
+    }
+  }
+
+  return pickBestTangencyMatch(matches);
+}
+
+export function computePointTangencyMatch(activePoint, candidates, tolerance = 2) {
+  if (!isValidPoint(activePoint)) return null;
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+
+  const matches = [];
+  for (const candidate of candidates) {
+    if (!candidate || !candidate.kind) continue;
+    if (candidate.kind === 'segment') {
+      const segmentMatch = evaluatePointSegmentTangency(activePoint, candidate, tolerance);
+      if (segmentMatch) matches.push(segmentMatch);
+      continue;
+    }
+    if (candidate.kind === 'circle') {
+      const circleMatch = evaluatePointCircleTangency(activePoint, candidate, tolerance);
+      if (circleMatch) matches.push(circleMatch);
     }
   }
 

@@ -81,6 +81,9 @@ function normalizeBoundaryMode(value: unknown) {
   return allowed.has(next) ? next : 'margin';
 }
 
+const DEFAULT_MARKDOWN_FONT_SIZE = 16;
+const LEGACY_MARKDOWN_FONT_SIZE = 13;
+
 export const useSimulatorStore = defineStore('simulator', () => {
   const runtime = shallowRef<SimulatorRuntime | null>(null);
   const runtimeMounted = ref(false);
@@ -106,6 +109,12 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const propertyTitle = ref('属性面板');
   const propertySections = ref<PropertyPayload['sections']>([]);
   const propertyValues = ref<Record<string, unknown>>({});
+  const variablesPanelOpen = ref(false);
+  const variableDraft = ref<Record<string, number>>({});
+  const markdownBoardOpen = ref(false);
+  const markdownContent = ref('# 题板\n\n- 在这里记录题目和步骤\n- 支持基础 Markdown 语法\n- 支持 LaTeX：$v=\\frac{s}{t}$');
+  const markdownMode = ref<'edit' | 'preview'>('preview');
+  const markdownFontSize = ref(DEFAULT_MARKDOWN_FONT_SIZE);
 
   const timeStepLabel = computed(() => `${Math.round(timeStep.value * 1000)}ms`);
   const showBoundaryMarginControl = computed(() => boundaryMode.value === 'margin');
@@ -138,6 +147,44 @@ export const useSimulatorStore = defineStore('simulator', () => {
     propertyTitle.value = payload.title;
     propertySections.value = payload.sections;
     propertyValues.value = { ...(payload.values ?? {}) };
+  }
+
+  function loadMarkdownPreferences() {
+    if (typeof window === 'undefined') return;
+    try {
+      const content = window.localStorage.getItem('sim.markdown.content');
+      if (typeof content === 'string') {
+        markdownContent.value = content;
+      }
+
+      const mode = window.localStorage.getItem('sim.markdown.mode');
+      if (mode === 'edit' || mode === 'preview') {
+        markdownMode.value = mode;
+      }
+
+      const fontSize = Number(window.localStorage.getItem('sim.markdown.fontSize'));
+      if (Number.isFinite(fontSize)) {
+        const normalized = Math.max(10, Math.min(32, Math.round(fontSize)));
+        const migrated = normalized === LEGACY_MARKDOWN_FONT_SIZE ? DEFAULT_MARKDOWN_FONT_SIZE : normalized;
+        markdownFontSize.value = migrated;
+        if (migrated !== normalized) {
+          window.localStorage.setItem('sim.markdown.fontSize', String(migrated));
+        }
+      }
+    } catch {
+      // ignore persistence errors
+    }
+  }
+
+  function persistMarkdownPreferences() {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('sim.markdown.content', markdownContent.value);
+      window.localStorage.setItem('sim.markdown.mode', markdownMode.value);
+      window.localStorage.setItem('sim.markdown.fontSize', String(markdownFontSize.value));
+    } catch {
+      // ignore persistence errors
+    }
   }
 
   function closePropertyPanel() {
@@ -173,6 +220,70 @@ export const useSimulatorStore = defineStore('simulator', () => {
     });
     return runtime.value;
   }
+
+  function normalizeSceneVariables(input: Record<string, unknown>) {
+    const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+    const RESERVED = new Set(['__proto__', 'prototype', 'constructor']);
+    const next: Record<string, number> = {};
+    for (const [rawName, rawValue] of Object.entries(input)) {
+      const name = String(rawName || '').trim();
+      if (!name || !NAME_RE.test(name) || RESERVED.has(name)) continue;
+      const value = Number(rawValue);
+      if (!Number.isFinite(value)) continue;
+      next[name] = value;
+    }
+    return next;
+  }
+
+  function openVariablesPanel() {
+    const current = getRuntime();
+    const vars = current.scene.variables && typeof current.scene.variables === 'object'
+      ? current.scene.variables as Record<string, unknown>
+      : {};
+    variableDraft.value = normalizeSceneVariables(vars);
+    variablesPanelOpen.value = true;
+  }
+
+  function closeVariablesPanel() {
+    variablesPanelOpen.value = false;
+  }
+
+  function applyVariables(values: Record<string, number>) {
+    const current = getRuntime();
+    const next = normalizeSceneVariables(values as Record<string, unknown>);
+    current.scene.variables = { ...next };
+    variableDraft.value = { ...next };
+    current.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
+    setStatusText(`变量表已更新（${Object.keys(next).length} 项）`);
+    closeVariablesPanel();
+    return true;
+  }
+
+  function toggleMarkdownBoard() {
+    markdownBoardOpen.value = !markdownBoardOpen.value;
+  }
+
+  function closeMarkdownBoard() {
+    markdownBoardOpen.value = false;
+  }
+
+  function setMarkdownContent(next: string) {
+    markdownContent.value = String(next ?? '');
+    persistMarkdownPreferences();
+  }
+
+  function setMarkdownMode(next: 'edit' | 'preview') {
+    markdownMode.value = next === 'edit' ? 'edit' : 'preview';
+    persistMarkdownPreferences();
+  }
+
+  function setMarkdownFontSize(next: number) {
+    if (!Number.isFinite(next)) return;
+    markdownFontSize.value = Math.max(10, Math.min(32, Math.round(next)));
+    persistMarkdownPreferences();
+  }
+
+  loadMarkdownPreferences();
 
   function getRuntime() {
     const current = ensureRuntime();
@@ -365,6 +476,12 @@ export const useSimulatorStore = defineStore('simulator', () => {
     propertyTitle,
     propertySections,
     propertyValues,
+    variablesPanelOpen,
+    variableDraft,
+    markdownBoardOpen,
+    markdownContent,
+    markdownMode,
+    markdownFontSize,
     timeStepLabel,
     showBoundaryMarginControl,
     demoButtonLabel,
@@ -393,6 +510,14 @@ export const useSimulatorStore = defineStore('simulator', () => {
     setStatusText,
     openPropertyPanel,
     closePropertyPanel,
-    applyPropertyValues
+    applyPropertyValues,
+    openVariablesPanel,
+    closeVariablesPanel,
+    applyVariables,
+    toggleMarkdownBoard,
+    closeMarkdownBoard,
+    setMarkdownContent,
+    setMarkdownMode,
+    setMarkdownFontSize
   };
 });

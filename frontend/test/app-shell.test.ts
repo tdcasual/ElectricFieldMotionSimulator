@@ -66,4 +66,40 @@ describe('App shell', () => {
 
     expect(wrapper.get('#object-count').text()).toContain('对象: 1');
   });
+
+  it('opens markdown board from header button', async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [createPinia()]
+      }
+    });
+
+    const markdownBtn = wrapper.get('#markdown-toggle-btn');
+    expect(markdownBtn.attributes('disabled')).toBeUndefined();
+    expect(markdownBtn.attributes('aria-pressed')).toBe('false');
+
+    await markdownBtn.trigger('click');
+    await nextTick();
+
+    expect(markdownBtn.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.get('[data-testid="markdown-board"]').isVisible()).toBe(true);
+  });
+
+  it('opens variables panel from header button', async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [createPinia()]
+      }
+    });
+
+    const variablesBtn = wrapper.get('#variables-btn');
+    expect(variablesBtn.attributes('disabled')).toBeUndefined();
+    expect(variablesBtn.attributes('aria-pressed')).toBe('false');
+
+    await variablesBtn.trigger('click');
+    await nextTick();
+
+    expect(variablesBtn.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.get('[data-testid="variables-panel"]').isVisible()).toBe(true);
+  });
 });

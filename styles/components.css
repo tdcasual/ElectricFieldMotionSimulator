@@ -290,7 +290,7 @@ hr {
     height: 320px;
     display: flex;
     flex-direction: column;
-    --markdown-font-size: 13px;
+    --markdown-font-size: 16px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -372,7 +372,7 @@ hr {
     border: none;
     outline: none;
     color: var(--text-primary);
-    font-size: var(--markdown-font-size, 13px);
+    font-size: var(--markdown-font-size, 16px);
     line-height: 1.5;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     resize: none;
@@ -386,7 +386,7 @@ hr {
     padding: var(--spacing-md);
     overflow: auto;
     color: var(--text-primary);
-    font-size: var(--markdown-font-size, 13px);
+    font-size: var(--markdown-font-size, 16px);
     line-height: 1.6;
 }
 
@@ -449,6 +449,71 @@ hr {
 .markdown-preview a {
     color: var(--info-blue);
     text-decoration: underline;
+}
+
+.markdown-preview .math-block {
+    margin: 0.45em 0;
+}
+
+.markdown-preview .katex-display {
+    margin: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.markdown-preview .katex {
+    font-size: 1em;
+}
+
+/* 变量面板 */
+.variables-modal {
+    width: min(760px, 92vw);
+    max-width: 92vw;
+}
+
+.variables-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-sm);
+}
+
+.variables-grid {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(140px, 1fr) auto;
+    gap: var(--spacing-sm);
+    align-items: start;
+}
+
+.variables-grid-header {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.variables-input {
+    width: 100%;
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.variables-input:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
+.variables-error,
+.variables-panel-error {
+    margin-top: 4px;
+    color: var(--error-red);
+    font-size: 12px;
+}
+
+.variables-panel-error {
+    margin-top: var(--spacing-sm);
 }
 
 /* 选中高亮 */

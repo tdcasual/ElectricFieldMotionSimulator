@@ -5,6 +5,11 @@ import { useSimulatorStore } from '../src/stores/simulatorStore';
 beforeEach(() => setActivePinia(createPinia()));
 
 describe('simulatorStore demo mode', () => {
+  it('uses readable default markdown font size', () => {
+    const store = useSimulatorStore();
+    expect(store.markdownFontSize).toBe(16);
+  });
+
   it('toggles running state', () => {
     const store = useSimulatorStore();
     expect(store.running).toBe(false);
@@ -43,5 +48,29 @@ describe('simulatorStore demo mode', () => {
     expect(store.showBoundaryMarginControl).toBe(false);
     store.setBoundaryMode('margin');
     expect(store.showBoundaryMarginControl).toBe(true);
+  });
+
+  it('opens variables panel and applies variables to scene', () => {
+    const store = useSimulatorStore();
+    store.openVariablesPanel();
+    expect(store.variablesPanelOpen).toBe(true);
+
+    const ok = store.applyVariables({ a: 3, speedScale: 1.5 });
+    expect(ok).toBe(true);
+    expect(store.variablesPanelOpen).toBe(false);
+    expect(store.variableDraft).toEqual({ a: 3, speedScale: 1.5 });
+  });
+
+  it('toggles markdown board and updates markdown preferences', () => {
+    const store = useSimulatorStore();
+    expect(store.markdownBoardOpen).toBe(false);
+    store.toggleMarkdownBoard();
+    expect(store.markdownBoardOpen).toBe(true);
+    store.setMarkdownMode('edit');
+    store.setMarkdownFontSize(16);
+    store.setMarkdownContent('# Test');
+    expect(store.markdownMode).toBe('edit');
+    expect(store.markdownFontSize).toBe(16);
+    expect(store.markdownContent).toContain('Test');
   });
 });

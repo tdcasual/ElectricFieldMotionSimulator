@@ -4,6 +4,7 @@ import {
   resolveToolEntry,
   getCreationOverrides,
   getObjectCircleBoundary,
+  getObjectPointBoundary,
   buildTangencyCandidates,
   clearTangencyHintState
 } from '../js/interactions/DragDropManager.js';
@@ -57,11 +58,35 @@ test('getObjectCircleBoundary detects supported circle objects', () => {
   assert.equal(nonCircle, null);
 });
 
+test('getObjectPointBoundary detects emitter center point objects', () => {
+  const electronGun = getObjectPointBoundary({
+    type: 'electron-gun',
+    x: 12,
+    y: 34
+  });
+  assert.deepEqual(electronGun, { x: 12, y: 34 });
+
+  const programmableEmitter = getObjectPointBoundary({
+    type: 'programmable-emitter',
+    x: 56,
+    y: 78
+  });
+  assert.deepEqual(programmableEmitter, { x: 56, y: 78 });
+
+  const notEmitter = getObjectPointBoundary({
+    type: 'particle',
+    x: 10,
+    y: 20
+  });
+  assert.equal(notEmitter, null);
+});
+
 test('buildTangencyCandidates collects circles and boundary segments except active object', () => {
   const active = { id: 'active', type: 'electric-field-circle', x: 0, y: 0, radius: 20 };
   const objects = [
     active,
     { id: 'c1', type: 'magnetic-field-circle', shape: 'circle', x: 100, y: 0, radius: 50 },
+    { id: 'e1', type: 'programmable-emitter', x: 12, y: 34 },
     { id: 'r1', type: 'electric-field-rect', x: -20, y: -10, width: 40, height: 20 },
     { id: 't1', type: 'magnetic-field-triangle', shape: 'triangle', x: 10, y: 20, width: 30, height: 20 },
     { id: 'l1', type: 'disappear-zone', x: 0, y: 0, length: 100, angle: 0, lineWidth: 6 }
@@ -70,9 +95,11 @@ test('buildTangencyCandidates collects circles and boundary segments except acti
   const candidates = buildTangencyCandidates(objects, active);
   const circleCount = candidates.filter((item) => item.kind === 'circle').length;
   const segmentCount = candidates.filter((item) => item.kind === 'segment').length;
+  const pointCount = candidates.filter((item) => item.kind === 'point').length;
 
   assert.equal(circleCount, 1);
   assert.equal(segmentCount, 8);
+  assert.equal(pointCount, 1);
   assert.equal(candidates.some((item) => item.objectId === 'active'), false);
 });
 

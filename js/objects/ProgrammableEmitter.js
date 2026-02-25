@@ -83,16 +83,17 @@ export class ProgrammableEmitter extends BaseObject {
 
         return [
             {
-                title: '发射器',
+                title: '基础',
+                group: 'basic',
                 fields: [
                     { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
-                    { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 },
-                    { key: 'barrelLength', label: '喷口偏移', type: 'number', min: 0, step: 1 }
+                    { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 }
                 ]
             },
             {
-                title: '发射计划',
+                title: '发射时序',
+                group: 'basic',
                 fields: [
                     { key: 'startTime', label: '开始时间 (s)', type: 'number', min: 0, step: 0.1 },
                     { key: 'emissionMode', label: '发射模式', type: 'select', options: [
@@ -110,7 +111,9 @@ export class ProgrammableEmitter extends BaseObject {
                 ]
             },
             {
-                title: '速度计划',
+                title: '速度规划',
+                group: 'advanced',
+                defaultCollapsed: true,
                 fields: [
                     { key: 'speedMode', label: '速度模式', type: 'select', options: [
                         { value: 'fixed', label: '固定' },
@@ -140,7 +143,9 @@ export class ProgrammableEmitter extends BaseObject {
                 ]
             },
             {
-                title: '角度计划',
+                title: '角度规划',
+                group: 'advanced',
+                defaultCollapsed: true,
                 fields: [
                     { key: 'angleMode', label: '角度模式', type: 'select', options: [
                         { value: 'fixed', label: '固定' },
@@ -166,7 +171,9 @@ export class ProgrammableEmitter extends BaseObject {
                 ]
             },
             {
-                title: '粒子属性',
+                title: '粒子模板',
+                group: 'advanced',
+                defaultCollapsed: true,
                 fields: [
                     { key: 'particleType', label: '粒子类型', type: 'select', options: [
                         { value: 'electron', label: '电子' },
@@ -213,7 +220,7 @@ export class ProgrammableEmitter extends BaseObject {
         // 发射位置与几何
         this.direction = config.direction ?? 0; // 度，0=向右，90=向下
         this.emissionSpeed = config.emissionSpeed ?? 200; // px/s
-        this.barrelLength = config.barrelLength ?? 25; // 发射口偏移
+        this.barrelLength = config.barrelLength ?? 25; // 兼容字段：点发射模式下不再影响发射位置
 
         // 时间计划
         this.startTime = config.startTime ?? 0; // s
@@ -447,9 +454,8 @@ export class ProgrammableEmitter extends BaseObject {
         const angleDeg = this.pickAngleDeg();
         const angle = angleDeg * Math.PI / 180;
 
-        const barrel = Number.isFinite(this.barrelLength) ? this.barrelLength : 0;
-        const spawnX = baseX + Math.cos(angle) * barrel;
-        const spawnY = baseY + Math.sin(angle) * barrel;
+        const spawnX = baseX;
+        const spawnY = baseY;
 
         const speed = this.pickSpeedPx(plannedCount);
         const vx = Math.cos(angle) * speed;

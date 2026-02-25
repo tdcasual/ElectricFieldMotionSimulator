@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
+import MarkdownBoard from './components/MarkdownBoard.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
+import VariablesPanel from './components/VariablesPanel.vue';
 import { useSimulatorStore } from './stores/simulatorStore';
 
 const simulatorStore = useSimulatorStore();
@@ -15,6 +17,25 @@ const propertyDrawerModel = computed({
       simulatorStore.openPropertyPanel();
     } else {
       simulatorStore.closePropertyPanel();
+    }
+  }
+});
+
+const markdownBoardModel = computed({
+  get: () => simulatorStore.markdownBoardOpen,
+  set: (next: boolean) => {
+    if (!next) simulatorStore.closeMarkdownBoard();
+    else if (!simulatorStore.markdownBoardOpen) simulatorStore.toggleMarkdownBoard();
+  }
+});
+
+const variablesPanelModel = computed({
+  get: () => simulatorStore.variablesPanelOpen,
+  set: (next: boolean) => {
+    if (next) {
+      simulatorStore.openVariablesPanel();
+    } else {
+      simulatorStore.closeVariablesPanel();
     }
   }
 });
@@ -35,6 +56,10 @@ function togglePlayPause() {
 
 function toggleDemoMode() {
   simulatorStore.toggleDemoMode();
+}
+
+function toggleMarkdownBoard() {
+  simulatorStore.toggleMarkdownBoard();
 }
 
 function resetScene() {
@@ -141,6 +166,14 @@ function applyProperties(values: Record<string, unknown>) {
     window.alert(result.error);
   }
 }
+
+function openVariablesPanel() {
+  simulatorStore.openVariablesPanel();
+}
+
+function applyVariables(values: Record<string, number>) {
+  simulatorStore.applyVariables(values);
+}
 </script>
 
 <template>
@@ -160,8 +193,28 @@ function applyProperties(values: Record<string, unknown>) {
           <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景" @click="exportScene">📤 导出</button>
           <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景" @click="openImportDialog">📥 导入</button>
           <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题" @click="toggleTheme">🌙 主题</button>
-          <button id="variables-btn" class="btn" title="变量表" aria-label="变量表" disabled>ƒx 变量</button>
-          <button id="markdown-toggle-btn" class="btn" title="题目板" aria-label="题目板" disabled>📝 题板</button>
+          <button
+            id="variables-btn"
+            class="btn"
+            :class="{ 'btn-primary': simulatorStore.variablesPanelOpen }"
+            title="变量表"
+            aria-label="变量表"
+            :aria-pressed="simulatorStore.variablesPanelOpen ? 'true' : 'false'"
+            @click="openVariablesPanel"
+          >
+            ƒx 变量
+          </button>
+          <button
+            id="markdown-toggle-btn"
+            class="btn"
+            :class="{ 'btn-primary': simulatorStore.markdownBoardOpen }"
+            title="题目板"
+            aria-label="题目板"
+            :aria-pressed="simulatorStore.markdownBoardOpen ? 'true' : 'false'"
+            @click="toggleMarkdownBoard"
+          >
+            📝 题板
+          </button>
           <button
             id="demo-mode-btn"
             class="btn"
@@ -267,6 +320,20 @@ function applyProperties(values: Record<string, unknown>) {
       :sections="simulatorStore.propertySections"
       :values="simulatorStore.propertyValues"
       @apply="applyProperties"
+    />
+    <MarkdownBoard
+      v-model="markdownBoardModel"
+      :content="simulatorStore.markdownContent"
+      :mode="simulatorStore.markdownMode"
+      :font-size="simulatorStore.markdownFontSize"
+      @update:content="simulatorStore.setMarkdownContent"
+      @update:mode="simulatorStore.setMarkdownMode"
+      @update:fontSize="simulatorStore.setMarkdownFontSize"
+    />
+    <VariablesPanel
+      v-model="variablesPanelModel"
+      :variables="simulatorStore.variableDraft"
+      @apply="applyVariables"
     />
 
     <footer id="footer">

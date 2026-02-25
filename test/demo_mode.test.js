@@ -5,6 +5,8 @@ import { Scene } from '../js/core/Scene.js';
 import { Particle } from '../js/objects/Particle.js';
 import { RectElectricField } from '../js/objects/RectElectricField.js';
 import { FluorescentScreen } from '../js/objects/FluorescentScreen.js';
+import { ElectronGun } from '../js/objects/ElectronGun.js';
+import { ProgrammableEmitter } from '../js/objects/ProgrammableEmitter.js';
 import {
   normalizeDemoDefaults,
   buildDemoCreationOverrides,
@@ -16,9 +18,14 @@ function closeTo(actual, expected, epsilon = 1e-9) {
   assert.ok(Math.abs(actual - expected) <= epsilon, `expected ${actual} ≈ ${expected}`);
 }
 
-test('normalizeDemoDefaults sets finite numbers to 1 recursively', () => {
+test('normalizeDemoDefaults keeps angular fields at 0 and other finite numbers at 1', () => {
   const input = {
     type: 'particle',
+    direction: 90,
+    orientation: 180,
+    angle: 45,
+    angleMin: -30,
+    angleMax: 360,
     mass: 9.109e-31,
     radius: 6,
     showEnergy: true,
@@ -31,6 +38,11 @@ test('normalizeDemoDefaults sets finite numbers to 1 recursively', () => {
   const out = normalizeDemoDefaults(input);
 
   assert.equal(out.type, 'particle');
+  assert.equal(out.direction, 0);
+  assert.equal(out.orientation, 0);
+  assert.equal(out.angle, 0);
+  assert.equal(out.angleMin, 0);
+  assert.equal(out.angleMax, 0);
   assert.equal(out.mass, 1);
   assert.equal(out.radius, 1);
   assert.equal(out.showEnergy, true);
@@ -42,6 +54,7 @@ test('buildDemoCreationOverrides normalizes numbers and scales px-space fields',
   const entry = {
     defaults: () => ({
       type: 'particle',
+      direction: 90,
       vx: 0,
       vy: 0,
       radius: 6,
@@ -53,12 +66,37 @@ test('buildDemoCreationOverrides normalizes numbers and scales px-space fields',
 
   const out = buildDemoCreationOverrides(entry, 50);
 
+  assert.equal(out.direction, 0);
   assert.equal(out.vx, 50);
   assert.equal(out.vy, 50);
   assert.equal(out.radius, 50);
   assert.equal(out.mass, 1);
   assert.equal(out.ignoreGravity, true);
   assert.deepEqual(out.speedList, [50, 50]);
+});
+
+test('demo overrides keep electron-gun and programmable-emitter launch angle at 0', async () => {
+  const { registry } = await import('../js/core/registerObjects.js');
+  const gun = buildDemoCreationOverrides(registry.get('electron-gun'), 50);
+  const emitter = buildDemoCreationOverrides(registry.get('programmable-emitter'), 50);
+
+  assert.equal(gun.direction, 0);
+  assert.ok(gun.emissionRate > 0);
+  assert.ok(gun.emissionSpeed > 0);
+
+  assert.equal(emitter.direction, 0);
+  assert.equal(emitter.angleMin, 0);
+  assert.equal(emitter.angleMax, 0);
+  assert.ok(emitter.emissionCount > 0);
+});
+
+test('demo overrides keep emitter barrelLength at default geometry', async () => {
+  const { registry } = await import('../js/core/registerObjects.js');
+  const gun = buildDemoCreationOverrides(registry.get('electron-gun'), 50);
+  const emitter = buildDemoCreationOverrides(registry.get('programmable-emitter'), 50);
+
+  assert.equal(gun.barrelLength, 25);
+  assert.equal(emitter.barrelLength, 25);
 });
 
 test('getNextDemoZoom applies wheel direction and clamps to bounds', () => {
@@ -120,4 +158,24 @@ test('applyDemoZoomToScene rescales objects around anchor and updates scene scal
   closeTo(screen.height, 24);
   closeTo(screen.hits[0].x, 0);
   closeTo(screen.hits[0].y, 10);
+});
+
+test('applyDemoZoomToScene keeps emitter barrelLength stable', () => {
+  const scene = new Scene();
+  scene.settings.pixelsPerMeter = 50;
+
+  const gun = new ElectronGun({ x: 100, y: 100, barrelLength: 25 });
+  const emitter = new ProgrammableEmitter({ x: 150, y: 150, barrelLength: 25 });
+  scene.addObject(gun);
+  scene.addObject(emitter);
+
+  const changed = applyDemoZoomToScene(scene, {
+    newPixelsPerMeter: 100,
+    anchorX: 0,
+    anchorY: 0
+  });
+
+  assert.equal(changed, true);
+  assert.equal(gun.barrelLength, 25);
+  assert.equal(emitter.barrelLength, 25);
 });
