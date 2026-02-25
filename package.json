@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "npm run dev:frontend",
+    "build": "npm run build:frontend",
     "test": "node --test test/*.test.js",
     "dev:frontend": "vite --config frontend/vite.config.ts",
     "build:frontend": "vite build --config frontend/vite.config.ts",

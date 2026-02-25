@@ -14,7 +14,8 @@ export class ThemeManager {
         
         // 监听系统主题变化
         if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            mediaQuery?.addEventListener?.('change', (e) => {
                 if (this.currentTheme === 'auto') {
                     this.applyTheme('auto');
                 }
@@ -26,11 +27,12 @@ export class ThemeManager {
      * 从localStorage加载主题设置
      */
     loadTheme() {
-        const saved = localStorage.getItem('theme-preference');
+        const storage = this.getStorage();
+        const saved = storage?.getItem?.('theme-preference');
         if (saved) return saved;
         
         // 检测系统偏好
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')?.matches) {
             return 'dark';
         }
         
@@ -41,8 +43,20 @@ export class ThemeManager {
      * 保存主题设置
      */
     saveTheme(theme) {
-        localStorage.setItem('theme-preference', theme);
+        const storage = this.getStorage();
+        storage?.setItem?.('theme-preference', theme);
         this.currentTheme = theme;
+    }
+
+    getStorage() {
+        try {
+            const storage = globalThis.localStorage;
+            if (!storage) return null;
+            if (typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') return null;
+            return storage;
+        } catch {
+            return null;
+        }
     }
     
     /**

@@ -37,37 +37,41 @@ def test_theme_manager_imports():
     print("✅ ThemeManager.js 包含所有必要方法")
     return True
 
-def test_main_js_integration():
-    """测试 main.js 中的集成"""
-    main_js_path = Path('js/main.js')
-    
-    if not main_js_path.exists():
-        print("❌ main.js 不存在")
+def test_vue_entry_integration():
+    """测试 Vue 主入口中的主题集成"""
+    app_vue_path = Path('frontend/src/App.vue')
+    store_path = Path('frontend/src/stores/simulatorStore.ts')
+
+    if not app_vue_path.exists():
+        print("❌ frontend/src/App.vue 不存在")
         return False
-    
-    content = main_js_path.read_text(encoding='utf-8')
-    
-    # 检查导入
-    if 'import { ThemeManager }' not in content:
-        print("❌ main.js 没有导入 ThemeManager")
+
+    if not store_path.exists():
+        print("❌ frontend/src/stores/simulatorStore.ts 不存在")
         return False
-    
-    # 检查初始化
-    if 'this.themeManager = new ThemeManager()' not in content:
-        print("❌ main.js 没有初始化 ThemeManager")
+
+    app_content = app_vue_path.read_text(encoding='utf-8')
+    store_content = store_path.read_text(encoding='utf-8')
+
+    # 检查主题按钮 UI
+    if 'id="theme-toggle-btn"' not in app_content:
+        print("❌ App.vue 没有主题切换按钮")
         return False
-    
-    # 检查事件绑定
-    if 'theme-toggle-btn' not in content:
-        print("❌ main.js 没有绑定主题切换按钮事件")
+
+    if 'toggleTheme' not in app_content:
+        print("❌ App.vue 没有绑定主题切换事件")
         return False
-    
-    # 检查切换方法
-    if 'toggleTheme()' not in content:
-        print("❌ main.js 没有定义 toggleTheme 方法")
+
+    # 检查 store -> runtime 主题切换 action
+    if 'function toggleTheme()' not in store_content:
+        print("❌ simulatorStore 没有 toggleTheme action")
         return False
-    
-    print("✅ main.js 完整集成了 ThemeManager")
+
+    if 'getRuntime().toggleTheme();' not in store_content:
+        print("❌ simulatorStore 没有调用 runtime 主题切换")
+        return False
+
+    print("✅ Vue 主入口完整集成了主题切换")
     return True
 
 def test_html_ui_element():
@@ -185,7 +189,7 @@ def main():
     
     tests = [
         ("ThemeManager 模块", test_theme_manager_imports),
-        ("main.js 集成", test_main_js_integration),
+        ("Vue 主入口集成", test_vue_entry_integration),
         ("HTML UI 元素", test_html_ui_element),
         ("CSS 主题变量", test_css_theme_variables),
         ("Canvas 渲染支持", test_canvas_rendering),

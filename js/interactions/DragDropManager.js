@@ -178,6 +178,7 @@ export class DragDropManager {
     constructor(scene, renderer, options = {}) {
         this.scene = scene;
         this.renderer = renderer;
+        this.appAdapter = options.appAdapter || null;
 
         this.draggingObject = null;
         this.dragOffset = { x: 0, y: 0 };
@@ -207,6 +208,29 @@ export class DragDropManager {
         this.canvas = options.canvas || document.getElementById('particle-canvas');
 
         this.init();
+    }
+
+    getAppAdapter() {
+        if (this.appAdapter) return this.appAdapter;
+        return window.app || null;
+    }
+
+    requestSceneRender(options = {}) {
+        const app = this.getAppAdapter();
+        if (app?.requestRender && app.scene === this.scene) {
+            app.requestRender(options);
+            return;
+        }
+
+        if (options.invalidateFields !== false) {
+            this.renderer?.invalidateFields?.();
+        }
+        if (options.forceRender || this.scene.isPaused) {
+            this.renderer?.render?.(this.scene);
+        }
+        if (options.updateUI !== false) {
+            app?.updateUI?.();
+        }
     }
 
     init() {
@@ -283,20 +307,16 @@ export class DragDropManager {
 
         if (object) {
             this.scene.addObject(object);
-            const app = window.app;
-            if (app?.requestRender && app.scene === this.scene) {
-                app.requestRender({ invalidateFields: true });
-            } else {
-                this.renderer?.invalidateFields?.();
-                if (this.scene.isPaused) {
-                    this.renderer?.render?.(this.scene);
-                }
-                window.app?.updateUI?.();
-            }
+            this.requestSceneRender({ invalidateFields: true });
         }
     }
 
     setStatus(text) {
+        const app = this.getAppAdapter();
+        if (typeof app?.setStatusText === 'function') {
+            app.setStatusText(text);
+            return;
+        }
         const el = document.getElementById('status-text');
         if (el) el.textContent = text;
     }
@@ -614,15 +634,7 @@ export class DragDropManager {
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
-            const app = window.app;
-            if (app?.requestRender && app.scene === this.scene) {
-                app.requestRender({ invalidateFields: true, updateUI: false });
-            } else {
-                this.renderer?.invalidateFields?.();
-                if (this.scene.isPaused) {
-                    this.renderer?.render?.(this.scene);
-                }
-            }
+            this.requestSceneRender({ invalidateFields: true, updateUI: false });
         }
     }
 
@@ -844,15 +856,7 @@ export class DragDropManager {
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
-            const app = window.app;
-            if (app?.requestRender && app.scene === this.scene) {
-                app.requestRender({ invalidateFields: true, updateUI: false });
-            } else {
-                this.renderer?.invalidateFields?.();
-                if (this.scene.isPaused) {
-                    this.renderer?.render?.(this.scene);
-                }
-            }
+            this.requestSceneRender({ invalidateFields: true, updateUI: false });
         }
     }
 
@@ -1215,11 +1219,12 @@ export class DragDropManager {
             const dist = Math.hypot(px - cx, py - cy);
             if (dist <= threshold) {
                 this.scene.removeObject(particle);
+                const app = this.getAppAdapter();
                 if (this.scene.selectedObject === particle) {
                     this.scene.selectedObject = null;
-                    window.app?.propertyPanel?.hide?.();
+                    app?.propertyPanel?.hide?.();
                 }
-                window.app?.requestRender?.({ invalidateFields: true, updateUI: false });
+                this.requestSceneRender({ invalidateFields: true, updateUI: false });
                 return true;
             }
         }
@@ -1245,15 +1250,7 @@ export class DragDropManager {
             this.scene.selectedObject = clickedObject;
 
             if (prevSelectedObject !== this.scene.selectedObject) {
-                const app = window.app;
-                if (app?.requestRender && app.scene === this.scene) {
-                    app.requestRender({ invalidateFields: true, updateUI: false });
-                } else {
-                    this.renderer?.invalidateFields?.();
-                    if (this.scene.isPaused) {
-                        this.renderer?.render?.(this.scene);
-                    }
-                }
+                this.requestSceneRender({ invalidateFields: true, updateUI: false });
             }
 
             // 显示右键菜单
