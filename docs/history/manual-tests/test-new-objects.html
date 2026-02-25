@@ -88,7 +88,7 @@
             try {
                 // 测试1: 导入SemiCircleElectricField
                 log('测试1: 导入 SemiCircleElectricField');
-                const SemiModule = await import('./js/objects/SemiCircleElectricField.js');
+                const SemiModule = await import('../../../js/objects/SemiCircleElectricField.js');
                 const SemiCircleElectricField = SemiModule.SemiCircleElectricField;
                 const semiPassed = SemiCircleElectricField !== undefined;
                 addResult('SemiCircleElectricField 导入', semiPassed);
@@ -111,7 +111,7 @@
                 
                 // 测试3: 导入ParallelPlateCapacitor
                 log('测试3: 导入 ParallelPlateCapacitor');
-                const CapacitorModule = await import('./js/objects/ParallelPlateCapacitor.js');
+                const CapacitorModule = await import('../../../js/objects/ParallelPlateCapacitor.js');
                 const ParallelPlateCapacitor = CapacitorModule.ParallelPlateCapacitor;
                 const capPassed = ParallelPlateCapacitor !== undefined;
                 addResult('ParallelPlateCapacitor 导入', capPassed);
@@ -161,7 +161,7 @@
                 
                 // 测试8: DragDropManager导入
                 log('测试8: DragDropManager 导入');
-                const DragModule = await import('./js/interactions/DragDropManager.js');
+                const DragModule = await import('../../../js/interactions/DragDropManager.js');
                 const DragDropManager = DragModule.DragDropManager;
                 const dragPassed = DragDropManager !== undefined;
                 addResult('DragDropManager 导入', dragPassed);

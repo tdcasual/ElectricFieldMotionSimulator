@@ -4,7 +4,8 @@
 你可以把电场、磁场和粒子放到画布里，实时观察轨迹、偏转和回旋运动。
 
 如果你想快速体验：
-- 🖱️ 直接打开 `index.html`
+- 🚀 运行 `npm install && npm run dev:frontend`，然后访问终端提示地址
+- ℹ️ 开发态请使用 Vite；直接 `http-server` 打开根目录不会编译 `.vue` 文件
 - 🚀 或者看更详细的启动说明：[`QUICKSTART.md`](QUICKSTART.md)
 
 ## ✨ 你可以做什么
@@ -38,8 +39,11 @@
 
 迁移与发布文档：
 - 📌 前端对齐清单：[`docs/migration/parity-checklist.md`](docs/migration/parity-checklist.md)
-- 🧠 迁移设计：[`docs/plans/2026-02-12-frontend-framework-migration-design.md`](docs/plans/2026-02-12-frontend-framework-migration-design.md)
-- 🛠️ 迁移实施计划：[`docs/plans/2026-02-12-vue3-rewrite-implementation-plan.md`](docs/plans/2026-02-12-vue3-rewrite-implementation-plan.md)
+- 🧱 当前架构：[`docs/migration/current-vue-architecture.md`](docs/migration/current-vue-architecture.md)
+- 🧠 Vue 原生化设计：[`docs/plans/2026-02-25-vue-native-runtime-design.md`](docs/plans/2026-02-25-vue-native-runtime-design.md)
+- 🛠️ Vue 原生化实施计划：[`docs/plans/2026-02-25-vue-native-runtime-implementation-plan.md`](docs/plans/2026-02-25-vue-native-runtime-implementation-plan.md)
+- 🧹 测试与旧版清理计划：[`docs/plans/2026-02-25-vue-testing-and-legacy-cleanup-plan.md`](docs/plans/2026-02-25-vue-testing-and-legacy-cleanup-plan.md)
+- 🗂️ 历史归档：[`docs/history/README.md`](docs/history/README.md)
 - 🚦 上线检查：[`docs/release/frontend-rewrite-launch-checklist.md`](docs/release/frontend-rewrite-launch-checklist.md)
 - 🧯 回滚预案：[`docs/release/frontend-rewrite-rollback-runbook.md`](docs/release/frontend-rewrite-rollback-runbook.md)
 

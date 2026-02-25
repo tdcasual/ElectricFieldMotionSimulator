@@ -179,7 +179,8 @@ python test_theme_integration.py
 |------|------|
 | `js/utils/ThemeManager.js` | 主题管理核心模块 |
 | `styles/theme.css` | CSS变量定义 |
-| `js/main.js` | 主程序集成 |
+| `frontend/src/App.vue` | 主题按钮与交互入口 |
+| `frontend/src/stores/simulatorStore.ts` | 主题 action 到 runtime 的桥接 |
 | `index.html` | 主题按钮UI |
 | `js/rendering/GridRenderer.js` | 网格主题适配 |
 | `js/rendering/FieldVisualizer.js` | 场可视化主题适配 |

@@ -1,81 +1,81 @@
-# 装置类对象扩展 Checklist（模板）
+# 装置类对象扩展 Checklist（Vue 主线）
 
 > 适用范围：新增“装置类对象”，例如发射器、屏幕、消失区、探测器等。
 
 ## 基本信息
 
 - 对象名称：
-- data-type（工具栏）：
-- Scene 分类（emitters / screens / disappearZones / 其他）：
-- 是否需要每帧更新（update）：
+- `data-type`（工具栏）：
+- Scene 分类（`emitters / screens / disappearZones / 其他`）：
+- 是否需要每帧更新（`update`）：
 - 是否参与碰撞/命中/吸收：
-- 需要的渲染层（field / particle / overlay）：
+- 需要的渲染层（`electric / magnetic / device / particle`）：
 
 ## 步骤清单（按接入顺序）
 
-### 1) 工具入口（UI）
+### 1) 注册表与对象定义
 
-- [ ] `index.html` 添加工具栏 `tool-item`（data-type + 图标 + 文案）
-- [ ] 明确触屏放置逻辑是否需要特殊行为（默认：点击武器化后落点）
+- [ ] 新建 `js/objects/<NewDevice>.js`（继承 `BaseObject`）
+- [ ] 提供 `defaults / schema / containsPoint / serialize / deserialize`
+- [ ] 在 `js/core/registerObjects.js` 注册：
+  - [ ] `type / label / icon / category`
+  - [ ] `rendererKey`
+  - [ ] 需要时补 `physicsHooks`
 
-### 2) 创建逻辑（拖拽/放置）
+### 2) 创建逻辑（Vue + 交互）
 
-- [ ] `js/interactions/DragDropManager.js` 在 `createObject()` 增加 `case`
-- [ ] 填好默认参数（与预期物理尺度一致）
-- [ ] 若需要缩放/拖拽自定义规则，补充对应逻辑
+- [ ] 确认 `frontend/src/stores/simulatorStore.ts` 的工具分组能自动出现新对象
+- [ ] 确认 `frontend/src/components/ToolbarPanel.vue` 渲染出新 `tool-item`
+- [ ] `js/interactions/DragDropManager.js` 如需特殊创建参数，补充 `TOOL_ALIASES / CREATION_OVERRIDES`
 
-### 3) 对象定义（结构与序列化）
-
-- [ ] 新建 `js/objects/<NewDevice>.js` 继承 `BaseObject`
-- [ ] 设定默认值、`containsPoint()`、`serialize()/deserialize()`
-- [ ] 如需每帧行为，实现 `update(dt, scene)`
-
-### 4) Scene 分类与持久化
+### 3) Scene 分类与持久化
 
 - [ ] `js/core/Scene.js`：
-  - [ ] `addObject/removeObject/getAllObjects` 归类
-  - [ ] `serialize()` 加入数组
-  - [ ] `loadFromData()` 做 type → class 映射
+  - [ ] `addObject/removeObject` 分类正确
+  - [ ] `serialize/loadFromData` 兼容
 - [ ] `js/utils/Serializer.js`：
-  - [ ] `validateSceneData()` 允许该字段（新数组/新类型）
+  - [ ] `validateSceneData` 能通过
 
-### 5) 物理行为接入
+### 4) 物理行为接入
 
 - [ ] `js/core/PhysicsEngine.js`：
-  - [ ] `update()` 调用装置逻辑（发射/碰撞/吸收/记录）
-  - [ ] 需要时新增 `handleXxx()` 并确定调用顺序
+  - [ ] `update()` 已正确触发新对象行为
+  - [ ] 如需新增 `handleXxx()`，确认调用时序
 
-### 6) 渲染与选中高亮
+### 5) 渲染与交互
 
-- [ ] `js/core/Renderer.js`：
-  - [ ] `renderFields()` 或 `renderParticles()` 中绘制
-  - [ ] 选中高亮与控制点（如需要）
+- [ ] `js/core/Renderer.js` 对应层可视化正确
+- [ ] 选中高亮/控制点逻辑正确
+- [ ] 拖拽、缩放、右键菜单与属性面板联动正常
 
-### 7) 属性面板
+### 6) 属性编辑（Schema 驱动）
 
-- [ ] `js/ui/PropertyPanel.js`：
-  - [ ] `show()` 增加分发
-  - [ ] `renderXxxProperties()` + 应用按钮逻辑
+- [ ] 对象 `schema()` 字段定义完整（`number/text/select/checkbox/expression`）
+- [ ] `frontend/src/runtime/simulatorRuntime.ts` `buildPropertyPayload/applySelectedProperties` 行为正确
+- [ ] `frontend/src/components/PropertyDrawer.vue` 显示与应用无异常
 
-### 8) 预设/示例（可选）
+### 7) 预设与示例（可选）
 
-- [ ] `js/presets/Presets.js` 增加示例场景
+- [ ] 在 `js/presets/Presets.js` 增加示例场景
 
-### 9) 验证清单（手动）
+### 8) 验证清单（必须）
 
-- [ ] 拖拽创建/触屏放置正常
-- [ ] 复制/删除/保存/导入正常
-- [ ] 暂停/播放/重置下行为正确
-- [ ] 主题切换下渲染清晰
+- [ ] `npm test` 通过
+- [ ] `npm run test:frontend` 通过
+- [ ] `npm run test:e2e` 通过
+- [ ] `npm run build:frontend` 通过
+- [ ] 核心链路手测通过：创建、属性编辑、播放/暂停、导入导出、演示模式
 
-## 触点总览（方便快速定位）
+## 触点总览（快速定位）
 
-- UI：`index.html`
-- 创建：`js/interactions/DragDropManager.js`
-- 对象：`js/objects/`
+- Vue 编排：`frontend/src/App.vue`
+- 统一状态：`frontend/src/stores/simulatorStore.ts`
+- 运行时桥接：`frontend/src/runtime/simulatorRuntime.ts`
+- 创建交互：`js/interactions/DragDropManager.js`
+- 注册表：`js/core/registerObjects.js`
+- 对象模型：`js/objects/`
 - 场景：`js/core/Scene.js`
 - 物理：`js/core/PhysicsEngine.js`
 - 渲染：`js/core/Renderer.js`
-- 属性：`js/ui/PropertyPanel.js`
-- 校验：`js/utils/Serializer.js`
+- 序列化：`js/utils/Serializer.js`
 - 预设：`js/presets/Presets.js`

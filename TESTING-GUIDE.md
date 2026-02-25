@@ -1,90 +1,74 @@
-# 功能测试指南
+# 测试指南（Vue3 主线）
 
-## 测试步骤
+## 环境要求
 
-## 注册表重构回归清单
+- Node.js 20+
+- npm 10+
 
-- 拖拽创建：电场/磁场/粒子/发射器/显示类对象都可正常落点
-- 属性面板：表达式预览、校验提示、可见/禁用逻辑正常
-- 保存/导入：新格式 `objects` 数组可导出并再次导入
-- 播放/暂停：发射器持续发射、荧光屏命中记录、消失线吸收正常
-- 主题切换：工具栏与画布渲染颜色正常
+## 一键质量门禁
 
-## 自动化测试
+```bash
+npm run quality:all
+```
 
-- 主题系统集成测试：`python3 test_theme_integration.py`
-- 单元测试（需要 Node.js 20+）：`npm test` 或 `node --test`
+该命令会串行执行：
 
-### 1. 清除浏览器缓存
-- **Chrome/Edge**: 按 `Ctrl + Shift + Delete`，选择"缓存的图片和文件"，点击清除
-- 或者在开发者工具(F12)中，右键刷新按钮，选择"清空缓存并硬性重新加载"
+- `npm run lint:frontend`
+- `npm test`
+- `npm run test:frontend`
+- `npm run test:e2e`
 
-### 2. 测试主题切换功能
-1. 打开 http://localhost:8000/index.html
-2. 查看右上角的主题切换按钮 (🌙 或 ☀️)
-3. 点击按钮，应该看到：
-   - 背景颜色变化
-   - 按钮图标从 🌙 变为 ☀️ (或反之)
-   - 右下角出现通知："已切换到深色/浅色模式"
+## 分层测试说明
 
-### 3. 测试拖拽功能  
-1. 在左侧工具栏找到"半圆电场"或"平行板电容器"
-2. 按住鼠标左键拖动到中间的画布区域
-3. 松开鼠标，应该看到：
-   - 对象出现在画布上
-   - 半圆电场显示为半圆形状
-   - 平行板电容器显示为两条平行线
+### 1) 引擎与核心逻辑（Node 测试）
 
-### 4. 使用调试页面
-如果主页面有问题，使用调试页面诊断：
+```bash
+npm test
+```
 
-1. 打开 http://localhost:8000/test-debug.html
-2. 右侧会显示详细的调试信息
-3. 点击"测试主题切换"按钮
-4. 拖拽左侧组件到画布
-5. 查看调试日志了解具体问题
+覆盖物理引擎、对象注册、序列化、相切提示、主入口切换等核心逻辑。
 
-### 5. 检查浏览器控制台
-1. 按 F12 打开开发者工具
-2. 切换到 Console 标签
-3. 查找红色错误信息
-4. 如果有错误，记下错误内容
+### 2) Vue 组件与状态层（Vitest）
 
-## 已修复的问题
+```bash
+npm run test:frontend
+```
 
-✅ 修复了 `SemiCircleElectricField` 中的 position.x/y 引用错误
-✅ 修复了 `ParallelPlateCapacitor` 中的 position.x/y 引用错误  
-✅ 修复了 `Renderer.js` 中的 position.x/y 引用错误
-✅ 已在 `DragDropManager.js` 中添加新对象类型的处理
-✅ 已在 `Scene.js` 中添加反序列化支持
-✅ 已在 `PropertyPanel.js` 中添加属性编辑支持
+覆盖 `App` 壳层、工具栏、属性抽屉、运行时桥接、`simulatorStore` 等 Vue 主链路。
 
-## 可能的问题和解决方案
+### 3) 浏览器端关键路径（Playwright）
 
-### 问题1: 拖拽没反应
-**原因**: 浏览器缓存了旧的JavaScript文件
-**解决**: 强制刷新 (Ctrl + F5) 或清空缓存
+```bash
+npm run test:e2e
+```
 
-### 问题2: 主题切换没反应
-**原因**: ThemeManager事件绑定问题
-**解决**: 检查浏览器控制台是否有错误
+覆盖创建对象、属性编辑、播放、场景 IO、演示模式等用户关键流程。
 
-### 问题3: 对象创建但不显示
-**原因**: Canvas渲染问题
-**解决**: 检查 Renderer.js 是否正确加载
+## 手工冒烟（推荐）
 
-## 测试文件
+1. 启动：`npm run dev:frontend`
+2. 访问终端提示地址（默认 `http://localhost:5173`）
+3. 验证以下路径：
+- 拖拽创建对象并移动
+- 打开属性面板并修改参数
+- 播放/暂停/重置模拟
+- 保存、加载、导入、导出场景
+- 演示模式切换与缩放
 
-- **test-debug.html**: 完整的调试界面，包含实时日志
-- **test-simple.html**: 简单的拖拽测试
-- **test-objects-drag.html**: 对象集成测试
-- **test-new-objects.html**: 新对象类测试
+## 常见问题
 
-## 技术细节
+### 页面空白（http-server 直开）
 
-所有修改都是为了修复以下问题：
-- BaseObject 定义了 `x` 和 `y` 属性
-- 新对象类错误地使用了 `position.x` 和 `position.y`
-- Renderer也需要更新以使用正确的属性
+`.vue` 和 `main.ts` 需要 Vite 编译，不能直接用 `http-server` 打开源码目录。  
+请使用：
 
-现在所有代码都使用 `object.x` 和 `object.y`，与BaseObject一致。
+- 开发：`npm run dev:frontend`
+- 静态部署：`npm run build:frontend` 后再服务 `dist`
+
+## 历史手工调试页
+
+旧版手工调试页已归档到：
+
+- `docs/history/manual-tests/`
+
+这些页面用于历史回溯，不属于当前 CI 流程，不作为 Vue 主线验收标准。

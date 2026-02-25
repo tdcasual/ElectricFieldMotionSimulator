@@ -1,7 +1,14 @@
 # 快速开始指南
 
 ## 打开项目
-直接在浏览器中打开 `index.html` 文件即可使用。
+推荐方式（Vue3 主入口）：
+
+1. 安装依赖：`npm install`
+2. 启动前端：`npm run dev:frontend`
+3. 打开终端提示地址（默认 `http://localhost:5173`）
+
+> 注意：开发态不能直接用 `http-server` 打开项目根目录；`.vue` 和 `main.ts` 需要 Vite 编译。
+> 如果一定要用静态服务器，请先构建：`npm run build:frontend`，再启动 `http-server dist`。
 
 ## 新功能演示
 

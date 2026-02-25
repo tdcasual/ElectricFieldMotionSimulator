@@ -19,7 +19,8 @@
 
 | 文件名 | 修改内容 | 影响 |
 |--------|---------|------|
-| `js/main.js` | 导入ThemeManager，初始化，事件绑定 | +3个方法 |
+| `frontend/src/App.vue` | 主题按钮与点击交互绑定 | Vue 组件入口 |
+| `frontend/src/stores/simulatorStore.ts` | 调用 runtime 主题切换 action | 统一状态层 |
 | `styles/theme.css` | 添加浅色主题变量集 | +70行变量 |
 | `index.html` | 添加主题切换按钮 | +1行UI |
 | `js/rendering/GridRenderer.js` | 主题感知网格线颜色 | +10行 |
