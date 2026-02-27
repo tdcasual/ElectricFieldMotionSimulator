@@ -51,4 +51,71 @@ describe('SimulatorRuntime demo mode', () => {
     runtime.unmount();
     expect(dispose).toHaveBeenCalledTimes(1);
   });
+
+  it('builds geometry real/display fields for property payload', () => {
+    const runtime = new SimulatorRuntime();
+    runtime.scene.settings.pixelsPerMeter = 50;
+    const field = registry.create('magnetic-field-circle', {
+      x: 0,
+      y: 0,
+      radius: 50,
+      width: 100,
+      height: 100
+    });
+    runtime.scene.addObject(field);
+    runtime.scene.selectedObject = field as never;
+
+    const payload = runtime.buildPropertyPayload();
+    expect(payload).toBeTruthy();
+    const keys = (payload?.sections ?? [])
+      .flatMap((section) => section.fields ?? [])
+      .map((field) => field.key);
+
+    expect(keys).toContain('radius');
+    expect(keys).toContain('radius__display');
+    expect(payload?.values.radius).toBe(1);
+    expect(payload?.values.radius__display).toBe(50);
+  });
+
+  it('applying display geometry updates object scale without mutating real geometry', () => {
+    const runtime = new SimulatorRuntime();
+    runtime.scene.settings.pixelsPerMeter = 50;
+    const field = registry.create('magnetic-field-circle', {
+      x: 0,
+      y: 0,
+      radius: 50,
+      width: 100,
+      height: 100
+    });
+    runtime.scene.addObject(field);
+    runtime.scene.selectedObject = field as never;
+
+    runtime.applySelectedProperties({ radius__display: '150' });
+    const payload = runtime.buildPropertyPayload();
+
+    expect(field.radius).toBe(150);
+    expect(payload?.values.radius).toBe(1);
+    expect(payload?.values.radius__display).toBe(150);
+  });
+
+  it('applying real geometry updates real and display values', () => {
+    const runtime = new SimulatorRuntime();
+    runtime.scene.settings.pixelsPerMeter = 50;
+    const field = registry.create('magnetic-field-circle', {
+      x: 0,
+      y: 0,
+      radius: 50,
+      width: 100,
+      height: 100
+    });
+    runtime.scene.addObject(field);
+    runtime.scene.selectedObject = field as never;
+
+    runtime.applySelectedProperties({ radius: '2' });
+    const payload = runtime.buildPropertyPayload();
+
+    expect(payload?.values.radius).toBe(2);
+    expect(payload?.values.radius__display).toBe(100);
+    expect(field.radius).toBe(100);
+  });
 });

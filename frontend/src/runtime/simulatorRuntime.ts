@@ -16,6 +16,14 @@ import {
   applyDemoZoomToScene,
   getNextDemoZoom
 } from '../../../js/modes/DemoMode.js';
+import {
+  getObjectGeometryScale,
+  getObjectRealDimension,
+  isGeometryDimensionKey,
+  setObjectDisplayDimension,
+  setObjectRealDimension,
+  syncObjectDisplayGeometry
+} from '../../../js/modes/GeometryScaling.js';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -37,6 +45,8 @@ export type SchemaField = {
     get?: (object: AnyRecord, context: AnyRecord) => unknown;
     set?: (object: AnyRecord, value: unknown, context: AnyRecord) => void;
   };
+  sourceKey?: string;
+  geometryRole?: 'real' | 'display';
 };
 
 export type SchemaSection = {
@@ -79,6 +89,7 @@ type RenderRequest = {
 
 type RuntimeMode = 'normal' | 'demo';
 type HostMode = 'edit' | 'view';
+const DISPLAY_FIELD_SUFFIX = '__display';
 
 function isRecord(value: unknown): value is AnyRecord {
   return !!value && typeof value === 'object';
@@ -95,6 +106,19 @@ function normalizeFieldType(field: SchemaField): string {
     return type;
   }
   return 'text';
+}
+
+function isGeometryEditableSchemaField(field: SchemaField): boolean {
+  if (!field || field.type !== 'number') return false;
+  if (!field.key || !isGeometryDimensionKey(field.key)) return false;
+  if (field.bind && (typeof field.bind.get === 'function' || typeof field.bind.set === 'function')) {
+    return false;
+  }
+  return true;
+}
+
+function displayFieldKeyFor(sourceKey: string): string {
+  return `${sourceKey}${DISPLAY_FIELD_SUFFIX}`;
 }
 
 export class SimulatorRuntime {
@@ -473,7 +497,7 @@ export class SimulatorRuntime {
 
     const entry = registry.get(String(object.type || ''));
     if (!entry || typeof entry.schema !== 'function') return null;
-    const sections = (entry.schema() as SchemaSection[]) || [];
+    const sections = this.buildPropertySectionsForUI((entry.schema() as SchemaSection[]) || []);
     return {
       title: String(entry.label || object.type || '属性'),
       sections,
@@ -488,11 +512,15 @@ export class SimulatorRuntime {
     const entry = registry.get(String(object.type || ''));
     if (!entry || typeof entry.schema !== 'function') return;
 
-    const sections = (entry.schema() as SchemaSection[]) || [];
+    const sections = this.buildPropertySectionsForUI((entry.schema() as SchemaSection[]) || []);
     const errors: string[] = [];
     const context = this.buildBindContext();
     const currentValues = this.buildPropertyValues(object, sections);
-    const mergedValues = { ...currentValues, ...(isRecord(nextValues) ? nextValues : {}) };
+    const incomingValues = isRecord(nextValues) ? nextValues : {};
+    const mergedValues = { ...currentValues, ...incomingValues };
+    const changedFieldKeys = this.computeChangedFieldKeys(sections, currentValues, mergedValues);
+    let geometryChanged = false;
+    let objectScaleUpdated = false;
 
     for (const section of sections) {
       const fields = Array.isArray(section?.fields) ? section.fields : [];
@@ -508,6 +536,30 @@ export class SimulatorRuntime {
             errors.push(`${field.label || field.key}: ${message}`);
             continue;
           }
+        }
+
+        if (field.geometryRole === 'real' && field.sourceKey) {
+          if (!changedFieldKeys.has(field.key)) continue;
+          const rawNumber = Number(raw);
+          if (!setObjectRealDimension(object, field.sourceKey, rawNumber, this.scene)) {
+            errors.push(`${field.label || field.key}: 数值无效`);
+            continue;
+          }
+          geometryChanged = true;
+          continue;
+        }
+
+        if (field.geometryRole === 'display' && field.sourceKey) {
+          if (!changedFieldKeys.has(field.key)) continue;
+          if (objectScaleUpdated) continue;
+          const rawNumber = Number(raw);
+          if (!setObjectDisplayDimension(object, field.sourceKey, rawNumber, this.scene)) {
+            errors.push(`${field.label || field.key}: 显示值无效`);
+            continue;
+          }
+          objectScaleUpdated = true;
+          geometryChanged = true;
+          continue;
         }
 
         if (field.bind && typeof field.bind.set === 'function') {
@@ -546,6 +598,9 @@ export class SimulatorRuntime {
     }
     if (typeof object.resetRuntime === 'function') {
       object.resetRuntime();
+    }
+    if (geometryChanged) {
+      syncObjectDisplayGeometry(object, this.scene);
     }
 
     const invalidateFields = entry.rendererKey !== 'particle';
@@ -650,15 +705,87 @@ export class SimulatorRuntime {
     };
   }
 
+  private buildPropertySectionsForUI(sections: SchemaSection[]): SchemaSection[] {
+    return sections.map((section) => {
+      const fields = Array.isArray(section?.fields) ? section.fields : [];
+      const mappedFields: SchemaField[] = [];
+      for (const field of fields) {
+        if (!field || !field.key) continue;
+        if (!isGeometryEditableSchemaField(field)) {
+          mappedFields.push(field);
+          continue;
+        }
+
+        const baseLabel = String(field.label || field.key);
+        mappedFields.push({
+          ...field,
+          label: `${baseLabel}（真实）`,
+          sourceKey: field.key,
+          geometryRole: 'real'
+        });
+        mappedFields.push({
+          ...field,
+          key: displayFieldKeyFor(field.key),
+          label: `${baseLabel}（显示）`,
+          min: undefined,
+          max: undefined,
+          bind: undefined,
+          validator: undefined,
+          sourceKey: field.key,
+          geometryRole: 'display'
+        });
+      }
+      return {
+        ...section,
+        fields: mappedFields
+      };
+    });
+  }
+
+  private computeChangedFieldKeys(sections: SchemaSection[], currentValues: AnyRecord, mergedValues: AnyRecord): Set<string> {
+    const changed = new Set<string>();
+    for (const section of sections) {
+      const fields = Array.isArray(section?.fields) ? section.fields : [];
+      for (const field of fields) {
+        if (!field?.key) continue;
+        if (!Object.prototype.hasOwnProperty.call(mergedValues, field.key)) continue;
+        const next = mergedValues[field.key];
+        const prev = currentValues[field.key];
+        const type = normalizeFieldType(field);
+        if (type === 'number') {
+          const prevNum = Number(prev);
+          const nextNum = Number(next);
+          if (!Number.isFinite(prevNum) || !Number.isFinite(nextNum) || Math.abs(prevNum - nextNum) > 1e-9) {
+            changed.add(field.key);
+          }
+          continue;
+        }
+        if (type === 'checkbox') {
+          if (!!prev !== !!next) changed.add(field.key);
+          continue;
+        }
+        if (String(prev ?? '') !== String(next ?? '')) {
+          changed.add(field.key);
+        }
+      }
+    }
+    return changed;
+  }
+
   private buildPropertyValues(object: AnyRecord, sections: SchemaSection[]): AnyRecord {
     const values: AnyRecord = {};
     const context = this.buildBindContext();
+    syncObjectDisplayGeometry(object, this.scene);
     for (const section of sections) {
       const fields = Array.isArray(section?.fields) ? section.fields : [];
       for (const field of fields) {
         if (!field || !field.key) continue;
         let value: unknown;
-        if (field.bind && typeof field.bind.get === 'function') {
+        if (field.geometryRole === 'real' && field.sourceKey) {
+          value = getObjectRealDimension(object, field.sourceKey, this.scene);
+        } else if (field.geometryRole === 'display' && field.sourceKey) {
+          value = object[field.sourceKey];
+        } else if (field.bind && typeof field.bind.get === 'function') {
           value = field.bind.get(object, context);
         } else {
           value = object[field.key];
@@ -666,6 +793,7 @@ export class SimulatorRuntime {
         values[field.key] = value;
       }
     }
+    values.__geometryObjectScale = getObjectGeometryScale(object);
     return values;
   }
 

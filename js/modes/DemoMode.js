@@ -1,3 +1,5 @@
+import { ensureSceneGeometryState, syncSceneDisplayGeometry } from './GeometryScaling.js';
+
 export const DEMO_BASE_PIXELS_PER_UNIT = 50;
 export const DEMO_MIN_ZOOM = 0.1;
 export const DEMO_MAX_ZOOM = 20;
@@ -18,6 +20,7 @@ const DEMO_PX_DEFAULT_KEYS = new Set([
   'spotSize',
   'lineWidth',
   'particleRadius',
+  'barrelLength',
   'emissionSpeed',
   'speedMin',
   'speedMax'
@@ -25,22 +28,8 @@ const DEMO_PX_DEFAULT_KEYS = new Set([
 
 const DEMO_PX_ARRAY_KEYS = new Set(['speedList']);
 
-const ZOOM_DIMENSION_KEYS = [
-  'width',
-  'height',
-  'radius',
-  'length',
-  'plateDistance',
-  'depth',
-  'viewGap',
-  'spotSize',
-  'lineWidth',
-  'particleRadius'
-];
-
 const ZOOM_SPEED_KEYS = ['emissionSpeed', 'speedMin', 'speedMax'];
 const DEMO_ANGLE_KEYS = new Set(['direction', 'angle', 'orientation', 'angleMin', 'angleMax']);
-const DEMO_KEEP_DEFAULT_KEYS = new Set(['barrelLength']);
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -80,10 +69,6 @@ function scaleObjectForZoom(object, factor, anchorX, anchorY) {
   } else {
     if (Number.isFinite(object.vx)) object.vx *= factor;
     if (Number.isFinite(object.vy)) object.vy *= factor;
-  }
-
-  for (const key of ZOOM_DIMENSION_KEYS) {
-    scaleNumericField(object, key, factor);
   }
 
   for (const key of ZOOM_SPEED_KEYS) {
@@ -163,9 +148,6 @@ export function normalizeDemoDefaults(value, key = null) {
   }
 
   if (Number.isFinite(value)) {
-    if (key && DEMO_KEEP_DEFAULT_KEYS.has(key)) {
-      return value;
-    }
     if (key && DEMO_ANGLE_KEYS.has(key)) {
       return 0;
     }
@@ -238,6 +220,8 @@ export function applyDemoZoomToScene(scene, { newPixelsPerMeter, anchorX = 0, an
     scene.settings.boundaryMargin *= factor;
   }
 
+  ensureSceneGeometryState(scene);
   scene.settings.pixelsPerMeter = next;
+  syncSceneDisplayGeometry(scene);
   return true;
 }

@@ -3,6 +3,7 @@
  */
 
 import { registry } from './registerObjects.js';
+import { OBJECT_SCALE_KEY, REAL_STORE_KEY } from '../modes/GeometryScaling.js';
 
 export class Scene {
     constructor() {
@@ -11,7 +12,6 @@ export class Scene {
         this.magneticFields = [];
         this.disappearZones = [];
         this.emitters = [];
-        this.screens = [];
         this.particles = [];
         this.selectedObject = null;
         this.isPaused = false;
@@ -105,8 +105,6 @@ export class Scene {
             this.disappearZones.push(object);
         } else if (object.type === 'electron-gun' || object.type === 'programmable-emitter') {
             this.emitters.push(object);
-        } else if (object.type === 'fluorescent-screen') {
-            this.screens.push(object);
         } else if (object.type === 'particle') {
             this.particles.push(object);
         }
@@ -135,9 +133,6 @@ export class Scene {
         } else if (object.type === 'electron-gun' || object.type === 'programmable-emitter') {
             const index = this.emitters.indexOf(object);
             if (index > -1) this.emitters.splice(index, 1);
-        } else if (object.type === 'fluorescent-screen') {
-            const index = this.screens.indexOf(object);
-            if (index > -1) this.screens.splice(index, 1);
         } else if (object.type === 'particle') {
             const index = this.particles.indexOf(object);
             if (index > -1) this.particles.splice(index, 1);
@@ -182,7 +177,6 @@ export class Scene {
         this.magneticFields = [];
         this.disappearZones = [];
         this.emitters = [];
-        this.screens = [];
         this.particles = [];
         this.selectedObject = null;
         this.time = 0;
@@ -213,6 +207,14 @@ export class Scene {
         const newObject = new ObjectClass(data);
         if (typeof newObject.deserialize === 'function') {
             newObject.deserialize(data);
+        }
+        const sourceReal = object?.[REAL_STORE_KEY];
+        if (sourceReal && typeof sourceReal === 'object' && !Array.isArray(sourceReal)) {
+            newObject[REAL_STORE_KEY] = { ...sourceReal };
+        }
+        const sourceScale = Number(object?.[OBJECT_SCALE_KEY]);
+        if (Number.isFinite(sourceScale) && sourceScale > 0) {
+            newObject[OBJECT_SCALE_KEY] = sourceScale;
         }
         this.addObject(newObject);
 
@@ -247,7 +249,6 @@ export class Scene {
         this.magneticFields = [];
         this.disappearZones = [];
         this.emitters = [];
-        this.screens = [];
         this.particles = [];
 
         if (Array.isArray(data.objects)) {
@@ -323,7 +324,6 @@ export class Scene {
 
     hasTimeVaryingFields() {
         const timeVaryingE = this.electricFields.some(field => typeof field.isTimeVarying === 'function' && field.isTimeVarying());
-        const screensActive = this.screens?.some(screen => screen.hits && screen.hits.length > 0);
-        return timeVaryingE || screensActive;
+        return timeVaryingE;
     }
 }

@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { Scene } from '../js/core/Scene.js';
 import { Particle } from '../js/objects/Particle.js';
 import { RectElectricField } from '../js/objects/RectElectricField.js';
-import { FluorescentScreen } from '../js/objects/FluorescentScreen.js';
 import { ElectronGun } from '../js/objects/ElectronGun.js';
 import { ProgrammableEmitter } from '../js/objects/ProgrammableEmitter.js';
 import {
@@ -90,13 +89,13 @@ test('demo overrides keep electron-gun and programmable-emitter launch angle at 
   assert.ok(emitter.emissionCount > 0);
 });
 
-test('demo overrides keep emitter barrelLength at default geometry', async () => {
+test('demo overrides normalize emitter barrelLength to unit baseline', async () => {
   const { registry } = await import('../js/core/registerObjects.js');
   const gun = buildDemoCreationOverrides(registry.get('electron-gun'), 50);
   const emitter = buildDemoCreationOverrides(registry.get('programmable-emitter'), 50);
 
-  assert.equal(gun.barrelLength, 25);
-  assert.equal(emitter.barrelLength, 25);
+  assert.equal(gun.barrelLength, 50);
+  assert.equal(emitter.barrelLength, 50);
 });
 
 test('getNextDemoZoom applies wheel direction and clamps to bounds', () => {
@@ -125,10 +124,6 @@ test('applyDemoZoomToScene rescales objects around anchor and updates scene scal
   const field = new RectElectricField({ x: 30, y: 40, width: 20, height: 10 });
   scene.addObject(field);
 
-  const screen = new FluorescentScreen({ x: 80, y: 60, width: 10, height: 12, spotSize: 2 });
-  screen.hits = [{ x: 0, y: 5, time: 1 }];
-  scene.addObject(screen);
-
   const changed = applyDemoZoomToScene(scene, {
     newPixelsPerMeter: 100,
     anchorX: 5,
@@ -151,16 +146,9 @@ test('applyDemoZoomToScene rescales objects around anchor and updates scene scal
   closeTo(field.y, 75);
   closeTo(field.width, 40);
   closeTo(field.height, 20);
-
-  closeTo(screen.x, 155);
-  closeTo(screen.y, 115);
-  closeTo(screen.width, 20);
-  closeTo(screen.height, 24);
-  closeTo(screen.hits[0].x, 0);
-  closeTo(screen.hits[0].y, 10);
 });
 
-test('applyDemoZoomToScene keeps emitter barrelLength stable', () => {
+test('applyDemoZoomToScene rescales emitter barrelLength with display scale', () => {
   const scene = new Scene();
   scene.settings.pixelsPerMeter = 50;
 
@@ -176,6 +164,6 @@ test('applyDemoZoomToScene keeps emitter barrelLength stable', () => {
   });
 
   assert.equal(changed, true);
-  assert.equal(gun.barrelLength, 25);
-  assert.equal(emitter.barrelLength, 25);
+  assert.equal(gun.barrelLength, 50);
+  assert.equal(emitter.barrelLength, 50);
 });
