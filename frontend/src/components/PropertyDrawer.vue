@@ -195,44 +195,49 @@ function handleContentWheel(event: WheelEvent) {
             <span>{{ isSectionOpen(sectionIndex) ? '收起' : '展开' }}</span>
           </button>
           <div v-if="isSectionOpen(sectionIndex)">
-            <div
-              v-for="field in section.fields ?? []"
-              :key="field.key"
-              class="form-row"
-              :style="{ display: isVisible(field) ? '' : 'none' }"
-            >
-              <label v-if="field.type === 'checkbox'">
-                <input v-model="draft[field.key]" type="checkbox" :disabled="!isEnabled(field)" />
-                {{ field.label ?? field.key }}
-              </label>
-              <template v-else>
-                <label>{{ field.label ?? field.key }}</label>
-                <select
-                  v-if="field.type === 'select'"
-                  v-model="draft[field.key]"
-                  :disabled="!isEnabled(field)"
-                >
-                  <option v-for="option in field.options ?? []" :key="String(option.value)" :value="option.value">
-                    {{ option.label ?? String(option.value) }}
-                  </option>
-                </select>
-                <textarea
-                  v-else-if="field.multiline"
-                  v-model="draft[field.key]"
-                  :rows="field.rows ?? 2"
-                  :disabled="!isEnabled(field)"
-                ></textarea>
-                <input
-                  v-else
-                  v-model="draft[field.key]"
-                  :type="fieldType(field)"
-                  :min="field.min"
-                  :max="field.max"
-                  :step="field.step"
-                  :disabled="!isEnabled(field)"
-                />
+            <dl class="property-rows">
+              <template v-for="field in section.fields ?? []" :key="field.key">
+                <dt class="property-key" :style="{ display: isVisible(field) ? '' : 'none' }">
+                  <label :for="`prop-${sectionIndex}-${field.key}`">{{ field.label ?? field.key }}</label>
+                </dt>
+                <dd class="property-value" :style="{ display: isVisible(field) ? '' : 'none' }">
+                  <input
+                    v-if="field.type === 'checkbox'"
+                    :id="`prop-${sectionIndex}-${field.key}`"
+                    v-model="draft[field.key]"
+                    type="checkbox"
+                    :disabled="!isEnabled(field)"
+                  />
+                  <select
+                    v-else-if="field.type === 'select'"
+                    :id="`prop-${sectionIndex}-${field.key}`"
+                    v-model="draft[field.key]"
+                    :disabled="!isEnabled(field)"
+                  >
+                    <option v-for="option in field.options ?? []" :key="String(option.value)" :value="option.value">
+                      {{ option.label ?? String(option.value) }}
+                    </option>
+                  </select>
+                  <textarea
+                    v-else-if="field.multiline"
+                    :id="`prop-${sectionIndex}-${field.key}`"
+                    v-model="draft[field.key]"
+                    :rows="field.rows ?? 2"
+                    :disabled="!isEnabled(field)"
+                  ></textarea>
+                  <input
+                    v-else
+                    :id="`prop-${sectionIndex}-${field.key}`"
+                    v-model="draft[field.key]"
+                    :type="fieldType(field)"
+                    :min="field.min"
+                    :max="field.max"
+                    :step="field.step"
+                    :disabled="!isEnabled(field)"
+                  />
+                </dd>
               </template>
-            </div>
+            </dl>
           </div>
         </section>
       </div>

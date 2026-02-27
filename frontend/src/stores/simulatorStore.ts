@@ -232,7 +232,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     closeDrawer('property');
   }
 
-  function openPropertyPanel() {
+  function refreshSelectedPropertyPayload() {
     const current = runtime.value;
     if (!current) return false;
     const payload = current.buildPropertyPayload();
@@ -241,6 +241,12 @@ export const useSimulatorStore = defineStore('simulator', () => {
       return false;
     }
     updatePropertyPayload(payload);
+    return true;
+  }
+
+  function openPropertyPanel() {
+    const ok = refreshSelectedPropertyPayload();
+    if (!ok) return false;
     openDrawer('property');
     return true;
   }
@@ -572,7 +578,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   function applyPropertyValues(values: Record<string, unknown>) {
     try {
       getRuntime().applySelectedProperties(values);
-      openPropertyPanel();
+      refreshSelectedPropertyPayload();
       return { ok: true as const };
     } catch (error) {
       const message = error instanceof Error ? error.message : '属性应用失败';
@@ -645,6 +651,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     loadPreset,
     toggleTheme,
     setStatusText,
+    refreshSelectedPropertyPayload,
     openPropertyPanel,
     closePropertyPanel,
     applyPropertyValues,

@@ -12,7 +12,7 @@ describe('VariablesPanel', () => {
       }
     });
 
-    expect(wrapper.get('[data-testid="variables-panel"]').classes()).toContain('phone-sheet');
+    expect(wrapper.get('[data-testid="variables-panel"]').classes()).toContain('drawer-host--sheet');
     expect(wrapper.get('.variables-modal').classes()).toContain('variables-sheet');
   });
 

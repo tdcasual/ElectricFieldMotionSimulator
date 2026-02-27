@@ -61,7 +61,7 @@
 .object-action-bar {
     position: fixed;
     left: 50%;
-    bottom: 52px;
+    bottom: calc(var(--phone-bottom-bar-height, 72px) + 8px);
     transform: translateX(-50%);
     z-index: 120;
     display: flex;
@@ -349,9 +349,9 @@ hr {
 
 .markdown-board.sheet-mode {
     position: fixed;
-    left: 52px;
+    left: 0;
     right: 0;
-    bottom: 40px;
+    bottom: var(--phone-bottom-bar-height, 72px);
     top: auto;
     width: auto;
     height: min(66vh, 520px);
@@ -457,6 +457,36 @@ hr {
     display: none;
 }
 
+.markdown-board.sheet-mode .markdown-board-header {
+    padding: 6px 8px;
+}
+
+.markdown-board.sheet-mode .markdown-font-input {
+    width: 60px;
+    min-height: 36px;
+    height: 36px;
+    font-size: 14px;
+}
+
+.markdown-board.sheet-mode .markdown-tab {
+    min-height: 36px;
+    justify-content: center;
+}
+
+.markdown-board.sheet-mode .btn-icon {
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+}
+
+.markdown-board.sheet-mode .markdown-input,
+.markdown-board.sheet-mode .markdown-preview {
+    padding: 10px;
+}
+
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3,
@@ -530,20 +560,47 @@ hr {
     max-width: 92vw;
 }
 
-.modal-overlay.phone-sheet {
+.modal-overlay.drawer-host--sheet {
     align-items: flex-end;
     justify-content: flex-end;
-    padding-left: 52px;
+    padding-left: 0;
     background: color-mix(in srgb, #000 35%, transparent);
 }
 
 .variables-modal.variables-sheet {
-    width: calc(100vw - 52px);
+    width: 100vw;
     max-width: none;
     min-width: 0;
     max-height: min(68vh, 560px);
     border-radius: 14px 14px 0 0;
     margin: 0;
+}
+
+.variables-modal.variables-sheet .modal-header .btn-icon {
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+}
+
+.variables-modal.variables-sheet .modal-content {
+    overflow-x: hidden;
+    padding: 12px;
+}
+
+.variables-modal.variables-sheet .variables-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.variables-modal.variables-sheet .variables-input,
+.variables-modal.variables-sheet .btn {
+    min-height: 36px;
+}
+
+.variables-modal.variables-sheet .modal-footer {
+    padding: 10px 12px;
 }
 
 .variables-toolbar {
@@ -605,8 +662,8 @@ hr {
 
 @media (max-width: 600px) {
     .object-action-bar {
-        width: calc(100vw - 16px - 52px);
-        left: calc(52px + 8px);
+        width: calc(100vw - 16px);
+        left: 8px;
         transform: none;
         justify-content: space-between;
         border-radius: 14px;
@@ -630,7 +687,7 @@ hr {
     }
 
     .markdown-board.sheet-mode {
-        left: 52px;
+        left: 0;
         right: 0;
         width: auto;
         height: min(70vh, 560px);

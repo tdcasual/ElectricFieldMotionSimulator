@@ -214,39 +214,7 @@ describe('App shell', () => {
     expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(true);
   });
 
-  it('toggles phone tool rail expanded class from header button', async () => {
-    const pinia = createPinia();
-    Object.defineProperty(window, 'innerWidth', {
-      value: 640,
-      configurable: true,
-      writable: true
-    });
-
-    const wrapper = mount(App, {
-      global: {
-        plugins: [pinia]
-      }
-    });
-
-    await nextTick();
-    const appShell = wrapper.get('#app');
-    expect(appShell.classes()).not.toContain('phone-toolbar-open');
-
-    const toggle = wrapper.get('#tool-rail-toggle-btn');
-    await toggle.trigger('click');
-    await nextTick();
-    expect(appShell.classes()).toContain('phone-toolbar-open');
-
-    await wrapper.get('.tool-rail-backdrop').trigger('click');
-    await nextTick();
-    expect(appShell.classes()).not.toContain('phone-toolbar-open');
-
-    await toggle.trigger('click');
-    await nextTick();
-    expect(appShell.classes()).toContain('phone-toolbar-open');
-  });
-
-  it('toggles phone settings sheet and closes via backdrop', async () => {
+  it('toggles phone scene sheet from bottom nav and closes via backdrop', async () => {
     const pinia = createPinia();
     Object.defineProperty(window, 'innerWidth', {
       value: 640,
@@ -264,17 +232,17 @@ describe('App shell', () => {
     const appShell = wrapper.get('#app');
     expect(appShell.classes()).not.toContain('phone-settings-open');
 
-    const toggle = wrapper.get('#settings-sheet-toggle-btn');
-    await toggle.trigger('click');
+    await wrapper.get('#phone-nav-scene-btn').trigger('click');
     await nextTick();
     expect(appShell.classes()).toContain('phone-settings-open');
+    expect(wrapper.find('[data-testid="phone-scene-sheet"]').exists()).toBe(true);
 
-    await wrapper.get('.phone-settings-backdrop').trigger('click');
+    await wrapper.get('.phone-sheet-backdrop').trigger('click');
     await nextTick();
     expect(appShell.classes()).not.toContain('phone-settings-open');
   });
 
-  it('keeps phone tool rail and settings sheet mutually exclusive', async () => {
+  it('keeps phone add and scene sheets mutually exclusive', async () => {
     const pinia = createPinia();
     Object.defineProperty(window, 'innerWidth', {
       value: 640,
@@ -290,17 +258,17 @@ describe('App shell', () => {
 
     await nextTick();
     const appShell = wrapper.get('#app');
-    await wrapper.get('#tool-rail-toggle-btn').trigger('click');
+    await wrapper.get('#phone-nav-add-btn').trigger('click');
     await nextTick();
     expect(appShell.classes()).toContain('phone-toolbar-open');
 
-    await wrapper.get('#settings-sheet-toggle-btn').trigger('click');
+    await wrapper.get('#phone-nav-scene-btn').trigger('click');
     await nextTick();
     expect(appShell.classes()).not.toContain('phone-toolbar-open');
     expect(appShell.classes()).toContain('phone-settings-open');
   });
 
-  it('uses phone secondary actions panel for import/export/theme', async () => {
+  it('uses phone more sheet for import/export/theme', async () => {
     const pinia = createPinia();
     Object.defineProperty(window, 'innerWidth', {
       value: 640,
@@ -318,10 +286,10 @@ describe('App shell', () => {
     expect(wrapper.find('#export-btn').exists()).toBe(false);
     expect(wrapper.find('#import-btn').exists()).toBe(false);
     expect(wrapper.find('#theme-toggle-btn').exists()).toBe(false);
-    expect(wrapper.find('#secondary-actions-toggle-btn').exists()).toBe(true);
+    expect(wrapper.find('#phone-nav-more-btn').exists()).toBe(true);
   });
 
-  it('opens phone secondary actions and triggers export', async () => {
+  it('opens phone more sheet and triggers export', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);
     Object.defineProperty(window, 'innerWidth', {
@@ -339,7 +307,7 @@ describe('App shell', () => {
 
     await nextTick();
     const appShell = wrapper.get('#app');
-    await wrapper.get('#secondary-actions-toggle-btn').trigger('click');
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
     await nextTick();
     expect(appShell.classes()).toContain('phone-secondary-open');
 
@@ -347,6 +315,161 @@ describe('App shell', () => {
     await nextTick();
     expect(exportSpy).toHaveBeenCalledTimes(1);
     expect(appShell.classes()).not.toContain('phone-secondary-open');
+  });
+
+  it('keeps phone more sheet open when clear scene is cancelled', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    const clearSpy = vi.spyOn(store, 'clearScene');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-secondary-open');
+
+    await wrapper.get('#secondary-clear-btn').trigger('click');
+    await nextTick();
+
+    expect(clearSpy).toHaveBeenCalledTimes(0);
+    expect(appShell.classes()).toContain('phone-secondary-open');
+    confirmSpy.mockRestore();
+  });
+
+  it('keeps phone more sheet open when save scene is cancelled', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    const saveSpy = vi.spyOn(store, 'saveScene');
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-secondary-open');
+
+    await wrapper.get('#secondary-save-btn').trigger('click');
+    await nextTick();
+
+    expect(saveSpy).toHaveBeenCalledTimes(0);
+    expect(appShell.classes()).toContain('phone-secondary-open');
+    promptSpy.mockRestore();
+  });
+
+  it('keeps phone more sheet open when save scene fails', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    const saveSpy = vi.spyOn(store, 'saveScene').mockReturnValue(false);
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('   ');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-secondary-open');
+
+    await wrapper.get('#secondary-save-btn').trigger('click');
+    await nextTick();
+
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(appShell.classes()).toContain('phone-secondary-open');
+    promptSpy.mockRestore();
+  });
+
+  it('keeps phone more sheet open when load scene is cancelled', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    const loadSpy = vi.spyOn(store, 'loadScene');
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-secondary-open');
+
+    await wrapper.get('#secondary-load-btn').trigger('click');
+    await nextTick();
+
+    expect(loadSpy).toHaveBeenCalledTimes(0);
+    expect(appShell.classes()).toContain('phone-secondary-open');
+    promptSpy.mockRestore();
+  });
+
+  it('keeps phone more sheet open when load scene fails', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    const loadSpy = vi.spyOn(store, 'loadScene').mockReturnValue(false);
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('unknown');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-secondary-open');
+
+    await wrapper.get('#secondary-load-btn').trigger('click');
+    await nextTick();
+
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    expect(appShell.classes()).toContain('phone-secondary-open');
+    promptSpy.mockRestore();
   });
 
   it('forwards action-bar duplicate and delete events to store actions', async () => {
@@ -360,6 +483,7 @@ describe('App shell', () => {
     (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
     const duplicateSpy = vi.spyOn(store, 'duplicateSelected');
     const deleteSpy = vi.spyOn(store, 'deleteSelected');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     const wrapper = mount(App, {
       global: {
@@ -373,5 +497,218 @@ describe('App shell', () => {
 
     expect(duplicateSpy).toHaveBeenCalledTimes(1);
     expect(deleteSpy).toHaveBeenCalledTimes(1);
+    confirmSpy.mockRestore();
+  });
+
+  it('renders phone bottom navigation and toggles add sheet', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('#phone-bottom-nav').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="phone-add-sheet"]').exists()).toBe(false);
+
+    await wrapper.get('#phone-nav-add-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-add-sheet"]').exists()).toBe(true);
+
+    await wrapper.get('#phone-nav-add-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-add-sheet"]').exists()).toBe(false);
+  });
+
+  it('creates object from phone add sheet tool tap and closes sheet', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.get('#object-count').text()).toContain('对象: 0');
+
+    await wrapper.get('#phone-nav-add-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-add-sheet"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').trigger('click');
+    await nextTick();
+
+    expect(wrapper.get('#object-count').text()).toContain('对象: 1');
+    expect(wrapper.find('[data-testid="phone-add-sheet"]').exists()).toBe(false);
+  });
+
+  it('disables selected sheet entry when no object is selected and enables after selection', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.get('#phone-nav-selected-btn').attributes('disabled')).toBeDefined();
+
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    await nextTick();
+    expect(wrapper.get('#phone-nav-selected-btn').attributes('disabled')).toBeUndefined();
+
+    await wrapper.get('#phone-nav-selected-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-selected-sheet"]').exists()).toBe(true);
+  });
+
+  it('supports direct real/display editing in phone selected sheet', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    (store as unknown as { propertySections: unknown }).propertySections = [
+      {
+        title: '磁场属性',
+        fields: [
+          { key: 'radius', label: '半径（真实）', type: 'number', sourceKey: 'radius', geometryRole: 'real' },
+          { key: 'radius__display', label: '半径（显示）', type: 'number', sourceKey: 'radius', geometryRole: 'display' }
+        ]
+      }
+    ];
+    (store as unknown as { propertyValues: Record<string, unknown> }).propertyValues = {
+      radius: 1,
+      radius__display: 50,
+      __geometryObjectScale: 1
+    };
+    const applySpy = vi.spyOn(store, 'applyPropertyValues');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    await wrapper.get('#phone-nav-selected-btn').trigger('click');
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="phone-selected-sheet"]').exists()).toBe(true);
+    expect(wrapper.get('#phone-selected-scale-value').text()).toContain('1');
+
+    const realInput = wrapper.get('#phone-selected-radius-real');
+    await realInput.setValue('2');
+    await realInput.trigger('change');
+
+    const displayInput = wrapper.get('#phone-selected-radius-display');
+    await displayInput.setValue('120');
+    await displayInput.trigger('change');
+
+    expect(applySpy).toHaveBeenCalledWith({ radius: '2' });
+    expect(applySpy).toHaveBeenCalledWith({ radius__display: '120' });
+  });
+
+  it('hides phone bottom nav while property drawer is open', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { activeDrawer: 'property' | null }).activeDrawer = 'property';
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('#phone-bottom-nav').exists()).toBe(false);
+  });
+
+  it('requires confirmation before deleting from phone action bar', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    const deleteSpy = vi.spyOn(store, 'deleteSelected');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const confirmSpy = vi.spyOn(window, 'confirm');
+
+    confirmSpy.mockReturnValueOnce(false);
+    await wrapper.get('[data-testid="action-delete"]').trigger('click');
+    expect(deleteSpy).toHaveBeenCalledTimes(0);
+
+    confirmSpy.mockReturnValueOnce(true);
+    await wrapper.get('[data-testid="action-delete"]').trigger('click');
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides phone action bar while any phone sheet is open', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(true);
+
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(false);
+
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(true);
   });
 });

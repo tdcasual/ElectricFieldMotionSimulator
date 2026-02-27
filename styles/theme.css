@@ -53,6 +53,27 @@
     --transition-fast: 0.15s ease;
     --transition-normal: 0.2s ease;
     --transition-slow: 0.3s ease;
+
+    /* 工具栏主题（深色：专业仪器感） */
+    --toolbar-panel-bg: #0f1722;
+    --toolbar-panel-border: #243447;
+    --toolbar-title-color: #d9e5f2;
+    --toolbar-group-label: #9ab0c6;
+    --toolbar-group-divider: #1e2d3f;
+    --toolbar-card-bg: #152131;
+    --toolbar-card-bg-hover: #1a2a3f;
+    --toolbar-card-bg-active: #1c304a;
+    --toolbar-card-border: #2a3d54;
+    --toolbar-card-border-hover: #3b5878;
+    --toolbar-card-border-active: #4d7ea6;
+    --toolbar-card-shadow-hover: 0 4px 12px rgba(4, 9, 16, 0.45);
+    --toolbar-card-shadow-active: 0 6px 16px rgba(5, 12, 20, 0.55);
+    --toolbar-icon-color: #8fd6ff;
+    --toolbar-icon-bg: #112133;
+    --toolbar-icon-border: #2d4b66;
+    --toolbar-armed-accent: #59b7ff;
+    --toolbar-preset-bg: #131f2f;
+    --toolbar-preset-border: #2d425a;
 }
 
 /* 浅色模式 */
@@ -91,6 +112,27 @@ body.light-theme {
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
     --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
     --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+
+    /* 工具栏主题（浅色：工程白板） */
+    --toolbar-panel-bg: #f2f4f7;
+    --toolbar-panel-border: #d6dce4;
+    --toolbar-title-color: #2283d9;
+    --toolbar-group-label: #4f5e6d;
+    --toolbar-group-divider: #dce2ea;
+    --toolbar-card-bg: #f7f9fc;
+    --toolbar-card-bg-hover: #eef3f9;
+    --toolbar-card-bg-active: #e5eff9;
+    --toolbar-card-border: #d3dbe5;
+    --toolbar-card-border-hover: #b5c6d8;
+    --toolbar-card-border-active: #86add2;
+    --toolbar-card-shadow-hover: 0 2px 8px rgba(33, 52, 76, 0.1);
+    --toolbar-card-shadow-active: 0 3px 10px rgba(33, 52, 76, 0.14);
+    --toolbar-icon-color: #4b6780;
+    --toolbar-icon-bg: #e8eef5;
+    --toolbar-icon-border: #c7d2df;
+    --toolbar-armed-accent: #2a8fe2;
+    --toolbar-preset-bg: #f4f7fb;
+    --toolbar-preset-border: #ccd7e3;
 }
 
 /* 重置样式 */

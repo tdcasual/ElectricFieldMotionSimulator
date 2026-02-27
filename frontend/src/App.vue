@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
+import PhoneAddSheet from './components/PhoneAddSheet.vue';
+import PhoneBottomNav from './components/PhoneBottomNav.vue';
+import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
@@ -11,16 +14,94 @@ import { useSimulatorStore } from './stores/simulatorStore';
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
 const isCoarsePointer = ref(false);
-const phoneToolRailOpen = ref(false);
-const phoneSettingsOpen = ref(false);
-const phoneSecondaryActionsOpen = ref(false);
+type PhoneSheetKey = 'add' | 'selected' | 'scene' | 'more' | null;
+type GeometryRole = 'real' | 'display';
+type GeometryFieldLike = {
+  key?: string;
+  label?: string;
+  sourceKey?: string;
+  geometryRole?: GeometryRole;
+};
+type GeometrySectionLike = {
+  fields?: GeometryFieldLike[];
+};
+type PhoneGeometryRow = {
+  sourceKey: string;
+  label: string;
+  realKey: string;
+  displayKey: string;
+  realValue: unknown;
+  displayValue: unknown;
+};
+const phoneActiveSheet = ref<PhoneSheetKey>(null);
 const showAuthoringControls = computed(() => !simulatorStore.viewMode);
 const isPhoneLayout = computed(() => simulatorStore.layoutMode === 'phone');
-const phoneToolRailExpanded = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneToolRailOpen.value);
-const phoneSettingsSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneSettingsOpen.value);
-const phoneSecondaryActionsSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneSecondaryActionsOpen.value);
+const phoneAddSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'add');
+const phoneSelectedSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'selected');
+const phoneSceneSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'scene');
+const phoneMoreSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'more');
+const phoneAnySheetOpen = computed(() => phoneAddSheetOpen.value || phoneSelectedSheetOpen.value || phoneSceneSheetOpen.value || phoneMoreSheetOpen.value);
 const PHONE_LAYOUT_MAX_WIDTH = 767;
 const TABLET_LAYOUT_MAX_WIDTH = 1199;
+const DISPLAY_LABEL_SUFFIX_RE = /[（(](真实|显示)[）)]$/;
+
+const phoneSelectedScale = computed(() => {
+  const raw = Number(simulatorStore.propertyValues.__geometryObjectScale);
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  return raw;
+});
+
+const phoneSelectedGeometryRows = computed<PhoneGeometryRow[]>(() => {
+  const sections = simulatorStore.propertySections as GeometrySectionLike[];
+  const values = simulatorStore.propertyValues as Record<string, unknown>;
+  const orderedSourceKeys: string[] = [];
+  const rowBySource = new Map<string, Partial<PhoneGeometryRow>>();
+
+  for (const section of sections) {
+    const fields = Array.isArray(section?.fields) ? section.fields : [];
+    for (const field of fields) {
+      const key = typeof field?.key === 'string' ? field.key : '';
+      const sourceKey = typeof field?.sourceKey === 'string' ? field.sourceKey : '';
+      const geometryRole = field?.geometryRole;
+      if (!key || !sourceKey || (geometryRole !== 'real' && geometryRole !== 'display')) continue;
+
+      let row = rowBySource.get(sourceKey);
+      if (!row) {
+        row = { sourceKey };
+        rowBySource.set(sourceKey, row);
+        orderedSourceKeys.push(sourceKey);
+      }
+
+      const label = String(field.label || sourceKey).replace(DISPLAY_LABEL_SUFFIX_RE, '').trim();
+      if (!row.label && label) {
+        row.label = label;
+      }
+
+      if (geometryRole === 'real') {
+        row.realKey = key;
+        row.realValue = values[key];
+      } else {
+        row.displayKey = key;
+        row.displayValue = values[key];
+      }
+    }
+  }
+
+  const rows: PhoneGeometryRow[] = [];
+  for (const sourceKey of orderedSourceKeys) {
+    const row = rowBySource.get(sourceKey);
+    if (!row?.sourceKey || !row.realKey || !row.displayKey) continue;
+    rows.push({
+      sourceKey: row.sourceKey,
+      label: row.label || row.sourceKey,
+      realKey: row.realKey,
+      displayKey: row.displayKey,
+      realValue: row.realValue,
+      displayValue: row.displayValue
+    });
+  }
+  return rows;
+});
 
 const propertyDrawerModel = computed({
   get: () => simulatorStore.propertyDrawerOpen,
@@ -55,16 +136,22 @@ const variablesPanelModel = computed({
 const showObjectActionBar = computed(() => {
   if (!showAuthoringControls.value) return false;
   if (!simulatorStore.selectedObjectId) return false;
+  if (simulatorStore.activeDrawer !== null) return false;
+  if (isPhoneLayout.value && phoneAnySheetOpen.value) return false;
   return simulatorStore.layoutMode === 'phone' || isCoarsePointer.value;
+});
+
+const showPhoneBottomNav = computed(() => {
+  if (!showAuthoringControls.value) return false;
+  if (!isPhoneLayout.value) return false;
+  return simulatorStore.activeDrawer === null;
 });
 
 watch(
   () => simulatorStore.layoutMode,
   (next) => {
     if (next !== 'phone') {
-      phoneToolRailOpen.value = false;
-      phoneSettingsOpen.value = false;
-      phoneSecondaryActionsOpen.value = false;
+      phoneActiveSheet.value = null;
     }
   }
 );
@@ -73,9 +160,31 @@ watch(
   () => showAuthoringControls.value,
   (visible) => {
     if (visible) return;
-    phoneToolRailOpen.value = false;
-    phoneSettingsOpen.value = false;
-    phoneSecondaryActionsOpen.value = false;
+    phoneActiveSheet.value = null;
+  }
+);
+
+watch(
+  () => simulatorStore.selectedObjectId,
+  (selectedId) => {
+    if (!selectedId) {
+      if (phoneActiveSheet.value === 'selected') {
+        phoneActiveSheet.value = null;
+      }
+      return;
+    }
+    if (phoneSelectedSheetOpen.value) {
+      simulatorStore.refreshSelectedPropertyPayload();
+    }
+  }
+);
+
+watch(
+  () => phoneSelectedSheetOpen.value,
+  (open) => {
+    if (!open) return;
+    if (!simulatorStore.selectedObjectId) return;
+    simulatorStore.refreshSelectedPropertyPayload();
   }
 );
 
@@ -101,11 +210,12 @@ function syncCoarsePointer() {
   isCoarsePointer.value = coarseByMedia || coarseByTouchPoints;
 }
 
-onMounted(() => {
+onMounted(async () => {
   syncLayoutModeFromViewport();
   syncCoarsePointer();
   window.addEventListener('resize', handleWindowResize);
   if (import.meta.env.MODE !== 'test') {
+    await nextTick();
     simulatorStore.mountRuntime();
   }
 });
@@ -134,21 +244,21 @@ function resetScene() {
 }
 
 function clearScene() {
-  if (window.confirm('确定要清空整个场景吗？此操作不可撤销。')) {
-    simulatorStore.clearScene();
-  }
+  if (!window.confirm('确定要清空整个场景吗？此操作不可撤销。')) return false;
+  simulatorStore.clearScene();
+  return true;
 }
 
 function saveScene() {
   const sceneName = window.prompt('请输入场景名称:', 'my-scene');
-  if (!sceneName) return;
-  simulatorStore.saveScene(sceneName);
+  if (!sceneName) return false;
+  return simulatorStore.saveScene(sceneName);
 }
 
 function loadScene() {
   const sceneName = window.prompt('请输入要加载的场景名称:', 'my-scene');
-  if (!sceneName) return;
-  simulatorStore.loadScene(sceneName);
+  if (!sceneName) return false;
+  return simulatorStore.loadScene(sceneName);
 }
 
 function exportScene() {
@@ -242,66 +352,103 @@ function applyVariables(values: Record<string, number>) {
   simulatorStore.applyVariables(values);
 }
 
-function togglePhoneToolRail() {
+function setPhoneActiveSheet(next: PhoneSheetKey) {
   if (!isPhoneLayout.value) return;
-  phoneSettingsOpen.value = false;
-  phoneSecondaryActionsOpen.value = false;
-  phoneToolRailOpen.value = !phoneToolRailOpen.value;
+  if (next === 'selected' && !simulatorStore.selectedObjectId) {
+    phoneActiveSheet.value = null;
+    return;
+  }
+  if (next === 'selected') {
+    simulatorStore.refreshSelectedPropertyPayload();
+  }
+  phoneActiveSheet.value = next;
 }
 
-function closePhoneToolRail() {
-  phoneToolRailOpen.value = false;
+function applyPhoneSelectedQuickValue(payload: { key: string; value: string }) {
+  if (!payload?.key) return;
+  const result = simulatorStore.applyPropertyValues({ [payload.key]: payload.value });
+  if (!result.ok && import.meta.env.MODE !== 'test') {
+    window.alert(result.error);
+  }
+  simulatorStore.refreshSelectedPropertyPayload();
 }
 
-function togglePhoneSettingsSheet() {
-  if (!isPhoneLayout.value) return;
-  phoneToolRailOpen.value = false;
-  phoneSecondaryActionsOpen.value = false;
-  phoneSettingsOpen.value = !phoneSettingsOpen.value;
-}
-
-function closePhoneSettingsSheet() {
-  phoneSettingsOpen.value = false;
-}
-
-function togglePhoneSecondaryActionsSheet() {
-  if (!isPhoneLayout.value) return;
-  phoneToolRailOpen.value = false;
-  phoneSettingsOpen.value = false;
-  phoneSecondaryActionsOpen.value = !phoneSecondaryActionsOpen.value;
-}
-
-function closePhoneSecondaryActionsSheet() {
-  phoneSecondaryActionsOpen.value = false;
+function closePhoneSheets() {
+  phoneActiveSheet.value = null;
 }
 
 function createObjectFromToolbar(type: string) {
   simulatorStore.createObjectAtCenter(type);
   if (isPhoneLayout.value) {
-    closePhoneToolRail();
+    closePhoneSheets();
   }
 }
 
 function loadPresetAndClose(name: string) {
   loadPreset(name);
   if (isPhoneLayout.value) {
-    closePhoneToolRail();
+    closePhoneSheets();
   }
 }
 
-function exportSceneAndCloseSecondary() {
+function exportSceneFromPhoneMore() {
   exportScene();
-  closePhoneSecondaryActionsSheet();
+  closePhoneSheets();
 }
 
-function openImportDialogAndCloseSecondary() {
+function openImportDialogFromPhoneMore() {
   openImportDialog();
-  closePhoneSecondaryActionsSheet();
+  closePhoneSheets();
 }
 
-function toggleThemeAndCloseSecondary() {
+function toggleThemeFromPhoneMore() {
   toggleTheme();
-  closePhoneSecondaryActionsSheet();
+  closePhoneSheets();
+}
+
+function saveSceneFromPhoneMore() {
+  if (saveScene()) closePhoneSheets();
+}
+
+function loadSceneFromPhoneMore() {
+  if (loadScene()) closePhoneSheets();
+}
+
+function clearSceneFromPhoneMore() {
+  if (clearScene()) closePhoneSheets();
+}
+
+function openVariablesPanelFromPhoneMore() {
+  openVariablesPanel();
+  closePhoneSheets();
+}
+
+function toggleMarkdownBoardFromPhoneMore() {
+  toggleMarkdownBoard();
+  closePhoneSheets();
+}
+
+function openSelectedPropertiesFromPhoneSheet() {
+  simulatorStore.openPropertyPanel();
+  closePhoneSheets();
+}
+
+function duplicateSelectedFromPhoneSheet() {
+  simulatorStore.duplicateSelected();
+}
+
+function confirmDeleteSelected() {
+  try {
+    return window.confirm('确定删除当前选中对象吗？此操作不可撤销。');
+  } catch {
+    return true;
+  }
+}
+
+function deleteSelectedFromPhoneSheet() {
+  if (!confirmDeleteSelected()) return;
+  simulatorStore.deleteSelected();
+  closePhoneSheets();
 }
 
 function openSelectedPropertiesFromActionBar() {
@@ -313,6 +460,7 @@ function duplicateSelectedFromActionBar() {
 }
 
 function deleteSelectedFromActionBar() {
+  if (!confirmDeleteSelected()) return;
   simulatorStore.deleteSelected();
 }
 </script>
@@ -328,9 +476,10 @@ function deleteSelectedFromActionBar() {
       'layout-tablet': simulatorStore.layoutMode === 'tablet',
       'layout-phone': simulatorStore.layoutMode === 'phone',
       'classroom-mode': simulatorStore.classroomMode,
-      'phone-toolbar-open': phoneToolRailExpanded,
-      'phone-settings-open': phoneSettingsSheetOpen,
-      'phone-secondary-open': phoneSecondaryActionsSheetOpen
+      'phone-toolbar-open': phoneAddSheetOpen,
+      'phone-settings-open': phoneSceneSheetOpen,
+      'phone-secondary-open': phoneMoreSheetOpen,
+      'phone-selected-open': phoneSelectedSheetOpen
     }"
   >
     <header id="header">
@@ -338,42 +487,13 @@ function deleteSelectedFromActionBar() {
       <div class="header-controls">
         <div class="header-actions">
           <button
-            v-if="showAuthoringControls && isPhoneLayout"
-            id="tool-rail-toggle-btn"
-            class="btn"
-            :class="{ 'btn-primary': phoneToolRailExpanded }"
-            title="切换工具栏"
-            aria-label="切换工具栏"
-            :aria-pressed="phoneToolRailExpanded ? 'true' : 'false'"
-            @click="togglePhoneToolRail"
+            v-if="!isPhoneLayout || !showAuthoringControls"
+            id="play-pause-btn"
+            class="btn btn-primary"
+            title="播放/暂停"
+            aria-label="播放/暂停"
+            @click="togglePlayPause"
           >
-            🧰 工具栏
-          </button>
-          <button
-            v-if="showAuthoringControls && isPhoneLayout"
-            id="settings-sheet-toggle-btn"
-            class="btn"
-            :class="{ 'btn-primary': phoneSettingsSheetOpen }"
-            title="切换参数面板"
-            aria-label="切换参数面板"
-            :aria-pressed="phoneSettingsSheetOpen ? 'true' : 'false'"
-            @click="togglePhoneSettingsSheet"
-          >
-            ⚙ 参数
-          </button>
-          <button
-            v-if="showAuthoringControls && isPhoneLayout"
-            id="secondary-actions-toggle-btn"
-            class="btn"
-            :class="{ 'btn-primary': phoneSecondaryActionsSheetOpen }"
-            title="更多操作"
-            aria-label="更多操作"
-            :aria-pressed="phoneSecondaryActionsSheetOpen ? 'true' : 'false'"
-            @click="togglePhoneSecondaryActionsSheet"
-          >
-            ⋯ 更多
-          </button>
-          <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停" @click="togglePlayPause">
             <span id="play-icon">{{ simulatorStore.running ? '⏸' : '▶' }}</span>
             <span id="play-label">{{ simulatorStore.running ? '暂停' : '播放' }}</span>
           </button>
@@ -391,13 +511,14 @@ function deleteSelectedFromActionBar() {
           </button>
           <button id="reset-btn" class="btn" title="回到起始态" aria-label="回到起始态" @click="resetScene">🔄 回到起始态</button>
           <template v-if="showAuthoringControls">
-            <button id="clear-btn" class="btn" title="清空场景" aria-label="清空场景" @click="clearScene">🗑 清空</button>
-            <button id="save-btn" class="btn" title="保存场景" aria-label="保存场景" @click="saveScene">💾 保存</button>
-            <button id="load-btn" class="btn" title="加载场景" aria-label="加载场景" @click="loadScene">📂 读取</button>
+            <button v-if="!isPhoneLayout" id="clear-btn" class="btn" title="清空场景" aria-label="清空场景" @click="clearScene">🗑 清空</button>
+            <button v-if="!isPhoneLayout" id="save-btn" class="btn" title="保存场景" aria-label="保存场景" @click="saveScene">💾 保存</button>
+            <button v-if="!isPhoneLayout" id="load-btn" class="btn" title="加载场景" aria-label="加载场景" @click="loadScene">📂 读取</button>
             <button v-if="!isPhoneLayout" id="export-btn" class="btn" title="导出场景" aria-label="导出场景" @click="exportScene">📤 导出</button>
             <button v-if="!isPhoneLayout" id="import-btn" class="btn" title="导入场景" aria-label="导入场景" @click="openImportDialog">📥 导入</button>
             <button v-if="!isPhoneLayout" id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题" @click="toggleTheme">🌙 主题</button>
             <button
+              v-if="!isPhoneLayout"
               id="variables-btn"
               class="btn"
               :class="{ 'btn-primary': simulatorStore.variablesPanelOpen }"
@@ -409,6 +530,7 @@ function deleteSelectedFromActionBar() {
               ƒx 变量
             </button>
             <button
+              v-if="!isPhoneLayout"
               id="markdown-toggle-btn"
               class="btn"
               :class="{ 'btn-primary': simulatorStore.markdownBoardOpen }"
@@ -420,6 +542,7 @@ function deleteSelectedFromActionBar() {
               📝 题板
             </button>
             <button
+              v-if="!isPhoneLayout"
               id="demo-mode-btn"
               class="btn"
               :class="{ 'btn-primary': simulatorStore.demoMode }"
@@ -440,11 +563,14 @@ function deleteSelectedFromActionBar() {
             @change="handleImportChange"
           />
         </div>
+        <div v-if="isPhoneLayout" class="phone-status-strip" data-testid="phone-status-strip">
+          <span class="phone-status-text">{{ simulatorStore.statusText }}</span>
+          <span class="phone-status-metrics">对象 {{ simulatorStore.objectCount }} · 粒子 {{ simulatorStore.particleCount }}</span>
+        </div>
         <div
-          v-if="showAuthoringControls"
+          v-if="showAuthoringControls && !isPhoneLayout"
           id="header-settings-panel"
           class="header-settings"
-          :class="{ 'phone-settings-sheet': isPhoneLayout, open: phoneSettingsSheetOpen }"
         >
           <label class="control-label">
             <span>显示能量:</span>
@@ -511,7 +637,7 @@ function deleteSelectedFromActionBar() {
       </div>
     </header>
 
-    <aside v-if="showAuthoringControls" id="toolbar" :class="{ 'phone-open': phoneToolRailExpanded }">
+    <aside v-if="showAuthoringControls && !isPhoneLayout" id="toolbar">
       <h2>组件库</h2>
       <ToolbarPanel :groups="simulatorStore.toolbarGroups" @create="createObjectFromToolbar" />
       <div class="tool-section preset-section">
@@ -521,31 +647,126 @@ function deleteSelectedFromActionBar() {
         <button class="preset-btn" data-preset="capacitor-deflection" @click="loadPresetAndClose('capacitor-deflection')">电容器偏转</button>
       </div>
     </aside>
+    <PhoneAddSheet
+      v-if="showAuthoringControls && isPhoneLayout && phoneAddSheetOpen"
+      :groups="simulatorStore.toolbarGroups"
+      @close="closePhoneSheets"
+      @create="createObjectFromToolbar"
+      @load-preset="loadPresetAndClose"
+    />
+    <PhoneSelectedSheet
+      v-if="showAuthoringControls && isPhoneLayout && phoneSelectedSheetOpen"
+      :selected-object-id="simulatorStore.selectedObjectId"
+      :title="simulatorStore.propertyTitle || '选中对象'"
+      :object-scale="phoneSelectedScale"
+      :geometry-rows="phoneSelectedGeometryRows"
+      @close="closePhoneSheets"
+      @open-properties="openSelectedPropertiesFromPhoneSheet"
+      @duplicate="duplicateSelectedFromPhoneSheet"
+      @delete="deleteSelectedFromPhoneSheet"
+      @update-value="applyPhoneSelectedQuickValue"
+    />
+    <section
+      v-if="showAuthoringControls && isPhoneLayout && phoneSceneSheetOpen"
+      class="phone-sheet phone-scene-sheet"
+      data-testid="phone-scene-sheet"
+      aria-label="场景参数面板"
+    >
+      <div class="phone-sheet-header">
+        <h3>场景参数</h3>
+        <button type="button" class="btn-icon" aria-label="关闭场景参数面板" @click="closePhoneSheets">✖</button>
+      </div>
+      <div class="phone-sheet-body phone-scene-body">
+        <label class="control-label">
+          <span>显示能量:</span>
+          <input id="toggle-energy-overlay" type="checkbox" :checked="simulatorStore.showEnergyOverlay" @change="setShowEnergy" />
+        </label>
+        <label class="control-label">
+          <span>比例尺: 1m =</span>
+          <input
+            id="scale-px-per-meter"
+            type="number"
+            min="0.0001"
+            step="1"
+            :value="simulatorStore.pixelsPerMeter"
+            :disabled="simulatorStore.demoMode"
+            @change="setPixelsPerMeter"
+          />
+          <span>px</span>
+        </label>
+        <label class="control-label">
+          <span>重力 g:</span>
+          <input
+            id="gravity-input"
+            type="number"
+            min="0"
+            step="0.1"
+            :value="simulatorStore.gravity"
+            :disabled="simulatorStore.demoMode"
+            @change="setGravity"
+          />
+          <span>m/s²</span>
+        </label>
+        <label class="control-label">
+          <span>边界:</span>
+          <select id="boundary-mode-select" aria-label="边界处理方式" :value="simulatorStore.boundaryMode" @change="setBoundaryMode">
+            <option value="margin">缓冲消失</option>
+            <option value="remove">出界消失</option>
+            <option value="bounce">反弹</option>
+            <option value="wrap">穿越</option>
+          </select>
+        </label>
+        <label
+          id="boundary-margin-control"
+          class="control-label"
+          :style="{ display: simulatorStore.showBoundaryMarginControl ? '' : 'none' }"
+        >
+          <span>缓冲:</span>
+          <input id="boundary-margin-input" type="number" min="0" step="10" :value="simulatorStore.boundaryMargin" @change="setBoundaryMargin" />
+          <span>px</span>
+        </label>
+        <label class="control-label">
+          <span>时间步长:</span>
+          <input
+            id="timestep-slider"
+            type="range"
+            min="0.001"
+            max="0.05"
+            step="0.001"
+            :value="simulatorStore.timeStep"
+            @input="setTimeStep"
+          />
+          <span id="timestep-value">{{ simulatorStore.timeStepLabel }}</span>
+        </label>
+      </div>
+    </section>
+    <section
+      v-if="showAuthoringControls && isPhoneLayout && phoneMoreSheetOpen"
+      class="phone-sheet phone-more-sheet"
+      data-testid="phone-more-sheet"
+      aria-label="更多操作面板"
+    >
+      <div class="phone-sheet-header">
+        <h3>更多操作</h3>
+        <button type="button" class="btn-icon" aria-label="关闭更多操作面板" @click="closePhoneSheets">✖</button>
+      </div>
+      <div class="phone-sheet-body phone-more-body">
+        <button id="secondary-export-btn" class="btn" type="button" @click="exportSceneFromPhoneMore">📤 导出场景</button>
+        <button id="secondary-import-btn" class="btn" type="button" @click="openImportDialogFromPhoneMore">📥 导入场景</button>
+        <button id="secondary-theme-btn" class="btn" type="button" @click="toggleThemeFromPhoneMore">🌙 切换主题</button>
+        <button id="secondary-save-btn" class="btn" type="button" @click="saveSceneFromPhoneMore">💾 保存场景</button>
+        <button id="secondary-load-btn" class="btn" type="button" @click="loadSceneFromPhoneMore">📂 读取场景</button>
+        <button id="secondary-clear-btn" class="btn" type="button" @click="clearSceneFromPhoneMore">🗑 清空场景</button>
+        <button id="secondary-variables-btn" class="btn" type="button" @click="openVariablesPanelFromPhoneMore">ƒx 变量表</button>
+        <button id="secondary-markdown-btn" class="btn" type="button" @click="toggleMarkdownBoardFromPhoneMore">📝 题板</button>
+      </div>
+    </section>
     <button
-      v-if="phoneToolRailExpanded"
+      v-if="showAuthoringControls && isPhoneLayout && phoneAnySheetOpen"
       type="button"
-      class="tool-rail-backdrop"
-      aria-label="关闭工具栏"
-      @click="closePhoneToolRail"
-    ></button>
-    <button
-      v-if="phoneSettingsSheetOpen"
-      type="button"
-      class="phone-settings-backdrop"
-      aria-label="关闭参数面板"
-      @click="closePhoneSettingsSheet"
-    ></button>
-    <div v-if="phoneSecondaryActionsSheetOpen" class="phone-secondary-actions-sheet">
-      <button id="secondary-export-btn" class="btn" type="button" @click="exportSceneAndCloseSecondary">📤 导出场景</button>
-      <button id="secondary-import-btn" class="btn" type="button" @click="openImportDialogAndCloseSecondary">📥 导入场景</button>
-      <button id="secondary-theme-btn" class="btn" type="button" @click="toggleThemeAndCloseSecondary">🌙 切换主题</button>
-    </div>
-    <button
-      v-if="phoneSecondaryActionsSheetOpen"
-      type="button"
-      class="phone-secondary-backdrop"
-      aria-label="关闭更多操作"
-      @click="closePhoneSecondaryActionsSheet"
+      class="phone-sheet-backdrop"
+      aria-label="关闭手机面板"
+      @click="closePhoneSheets"
     ></button>
 
     <CanvasViewport :fps="simulatorStore.fps" />
@@ -582,6 +803,15 @@ function deleteSelectedFromActionBar() {
       :layout-mode="simulatorStore.layoutMode"
       :variables="simulatorStore.variableDraft"
       @apply="applyVariables"
+    />
+
+    <PhoneBottomNav
+      v-if="showPhoneBottomNav"
+      :model-value="phoneActiveSheet"
+      :running="simulatorStore.running"
+      :has-selection="!!simulatorStore.selectedObjectId"
+      @toggle-play="togglePlayPause"
+      @update:modelValue="setPhoneActiveSheet"
     />
 
     <footer id="footer">
