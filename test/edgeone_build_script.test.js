@@ -7,4 +7,5 @@ test('build:edgeone script exists and uses build-edgeone helper', () => {
   const script = pkg?.scripts?.['build:edgeone'];
   assert.equal(typeof script, 'string');
   assert.match(script, /scripts\/build-edgeone\.mjs/);
+  assert.match(script, /--scene \.\/frontend\/public\/scenes\/material-mock-particle\.json/);
 });

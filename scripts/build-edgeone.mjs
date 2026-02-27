@@ -26,7 +26,10 @@ function copyDirectoryContents(sourceDir, targetDir) {
 }
 
 function run(argv = process.argv.slice(2), cwd = process.cwd()) {
-  const scenePath = path.resolve(cwd, resolveOptionValue(argv, '--scene', './example-scene.json'));
+  const scenePath = path.resolve(
+    cwd,
+    resolveOptionValue(argv, '--scene', './frontend/public/scenes/material-mock-particle.json')
+  );
   const packageName = resolveOptionValue(argv, '--name', 'embed');
   const outputDir = path.resolve(cwd, resolveOptionValue(argv, '--out', './output/embed-packages'));
   const distDir = path.resolve(cwd, './frontend/dist');
