@@ -19,6 +19,15 @@ describe('simulatorStore demo mode', () => {
     expect(store.running).toBe(false);
   });
 
+  it('starts and stops running explicitly', () => {
+    const store = useSimulatorStore();
+    expect(store.running).toBe(false);
+    store.startRunning();
+    expect(store.running).toBe(true);
+    store.stopRunning();
+    expect(store.running).toBe(false);
+  });
+
   it('enters demo mode and restores snapshot on exit', () => {
     const store = useSimulatorStore();
     store.createObjectAtCenter('particle');

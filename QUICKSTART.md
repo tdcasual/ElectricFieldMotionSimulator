@@ -8,7 +8,27 @@
 3. 打开终端提示地址（默认 `http://localhost:5173`）
 
 > 注意：开发态不能直接用 `http-server` 打开项目根目录；`.vue` 和 `main.ts` 需要 Vite 编译。
-> 如果一定要用静态服务器，请先构建：`npm run build:frontend`，再启动 `http-server dist`。
+> 如果一定要用静态服务器，请先构建：`npm run build:frontend`，再启动 `http-server frontend/dist`。
+
+## 容器页与嵌入（Phase 1）
+
+协议文档：`docs/embed-protocol.md`
+
+- 构建后会生成：
+  - `frontend/dist/index.html`（编辑器入口）
+  - `frontend/dist/viewer.html`（容器页入口）
+  - `frontend/dist/embed.js`（嵌入 SDK）
+- `iframe` 示例：
+  - `viewer.html?mode=view&sceneUrl=https://example.com/scene.json`
+- JS 示例：
+  - `const app = new ElectricFieldApp({ mode: 'view', sceneUrl: 'https://example.com/scene.json' });`
+  - `app.inject('#sim-container');`
+  - `await app.play(); await app.pause(); await app.reset();`
+  - `await app.loadScene({ version: '1.0', settings: {}, objects: [] });`
+- 一键导出部署包：
+  - `npm run package:embed`
+  - 默认读取 `example-scene.json`，输出到 `output/embed-packages/<package-name>/`
+  - 可指定参数：`npm run package:embed -- --scene ./my-scene.json --name my-pack --out ./output/embed-packages --no-zip`
 
 ## 新功能演示
 

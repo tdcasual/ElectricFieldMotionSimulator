@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Embed Host Test</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #0b1324;
+      }
+      #sim {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sim"></div>
+    <script src="/embed.js"></script>
+    <script>
+      (function () {
+        var harness = {
+          readyEvents: [],
+          errorEvents: [],
+          commandResults: [],
+          play: function () { return Promise.reject(new Error('app not ready')); },
+          pause: function () { return Promise.reject(new Error('app not ready')); },
+          togglePlay: function () { return Promise.reject(new Error('app not ready')); },
+          reset: function () { return Promise.reject(new Error('app not ready')); },
+          loadScene: function () { return Promise.reject(new Error('app not ready')); }
+        };
+
+        window.__embedHarness = harness;
+
+        var app = new window.ElectricFieldApp({
+          mode: 'view',
+          toolbar: false,
+          sceneUrl: '/scenes/embed-empty.json',
+          onReady: function (payload) {
+            harness.readyEvents.push(payload || {});
+          },
+          onError: function (payload) {
+            harness.errorEvents.push(payload || {});
+          },
+          onCommandResult: function (payload) {
+            harness.commandResults.push(payload || {});
+          }
+        });
+
+        var iframe = app.inject('#sim');
+        iframe.id = 'embed-frame';
+
+        harness.play = function () { return app.play(); };
+        harness.pause = function () { return app.pause(); };
+        harness.togglePlay = function () { return app.togglePlay(); };
+        harness.reset = function () { return app.reset(); };
+        harness.loadScene = function (sceneData) { return app.loadScene(sceneData); };
+      })();
+    </script>
+  </body>
+</html>

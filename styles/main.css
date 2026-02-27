@@ -18,6 +18,17 @@
     --panel-width: 320px;
 }
 
+#app.view-mode {
+    --panel-width: 0px;
+    --header-height: 72px;
+    grid-template-areas:
+        "header"
+        "canvas"
+        "footer";
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--header-height) 1fr 40px;
+}
+
 /* 头部 */
 #header {
     grid-area: header;

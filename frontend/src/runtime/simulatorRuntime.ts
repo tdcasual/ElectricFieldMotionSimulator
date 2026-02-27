@@ -396,6 +396,18 @@ export class SimulatorRuntime {
     return true;
   }
 
+  loadSceneData(data: unknown) {
+    if (!isRecord(data)) return false;
+    const validation = Serializer.validateSceneData(data);
+    if (!validation.valid) return false;
+    this.scene.clear();
+    this.scene.loadFromData(data);
+    this.applyModeSettings();
+    this.callbacks.onPropertyHide?.();
+    this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
+    return true;
+  }
+
   exportScene() {
     Serializer.exportToFile(this.scene, `electric-field-scene-${Date.now()}.json`);
   }

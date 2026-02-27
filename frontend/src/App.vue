@@ -9,6 +9,7 @@ import { useSimulatorStore } from './stores/simulatorStore';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
+const showAuthoringControls = computed(() => !simulatorStore.viewMode);
 
 const propertyDrawerModel = computed({
   get: () => simulatorStore.propertyDrawerOpen,
@@ -177,7 +178,11 @@ function applyVariables(values: Record<string, number>) {
 </script>
 
 <template>
-  <div id="app" data-testid="app-shell" :class="{ 'panel-open': simulatorStore.propertyDrawerOpen }">
+  <div
+    id="app"
+    data-testid="app-shell"
+    :class="{ 'panel-open': simulatorStore.propertyDrawerOpen, 'view-mode': simulatorStore.viewMode }"
+  >
     <header id="header">
       <h1>⚡ 电磁场粒子运动模拟器</h1>
       <div class="header-controls">
@@ -187,45 +192,47 @@ function applyVariables(values: Record<string, number>) {
             <span id="play-label">{{ simulatorStore.running ? '暂停' : '播放' }}</span>
           </button>
           <button id="reset-btn" class="btn" title="回到起始态" aria-label="回到起始态" @click="resetScene">🔄 回到起始态</button>
-          <button id="clear-btn" class="btn" title="清空场景" aria-label="清空场景" @click="clearScene">🗑 清空</button>
-          <button id="save-btn" class="btn" title="保存场景" aria-label="保存场景" @click="saveScene">💾 保存</button>
-          <button id="load-btn" class="btn" title="加载场景" aria-label="加载场景" @click="loadScene">📂 读取</button>
-          <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景" @click="exportScene">📤 导出</button>
-          <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景" @click="openImportDialog">📥 导入</button>
-          <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题" @click="toggleTheme">🌙 主题</button>
-          <button
-            id="variables-btn"
-            class="btn"
-            :class="{ 'btn-primary': simulatorStore.variablesPanelOpen }"
-            title="变量表"
-            aria-label="变量表"
-            :aria-pressed="simulatorStore.variablesPanelOpen ? 'true' : 'false'"
-            @click="openVariablesPanel"
-          >
-            ƒx 变量
-          </button>
-          <button
-            id="markdown-toggle-btn"
-            class="btn"
-            :class="{ 'btn-primary': simulatorStore.markdownBoardOpen }"
-            title="题目板"
-            aria-label="题目板"
-            :aria-pressed="simulatorStore.markdownBoardOpen ? 'true' : 'false'"
-            @click="toggleMarkdownBoard"
-          >
-            📝 题板
-          </button>
-          <button
-            id="demo-mode-btn"
-            class="btn"
-            :class="{ 'btn-primary': simulatorStore.demoMode }"
-            :title="simulatorStore.demoButtonTitle"
-            aria-label="演示模式"
-            :aria-pressed="simulatorStore.demoMode ? 'true' : 'false'"
-            @click="toggleDemoMode"
-          >
-            {{ simulatorStore.demoButtonLabel }}
-          </button>
+          <template v-if="showAuthoringControls">
+            <button id="clear-btn" class="btn" title="清空场景" aria-label="清空场景" @click="clearScene">🗑 清空</button>
+            <button id="save-btn" class="btn" title="保存场景" aria-label="保存场景" @click="saveScene">💾 保存</button>
+            <button id="load-btn" class="btn" title="加载场景" aria-label="加载场景" @click="loadScene">📂 读取</button>
+            <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景" @click="exportScene">📤 导出</button>
+            <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景" @click="openImportDialog">📥 导入</button>
+            <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题" @click="toggleTheme">🌙 主题</button>
+            <button
+              id="variables-btn"
+              class="btn"
+              :class="{ 'btn-primary': simulatorStore.variablesPanelOpen }"
+              title="变量表"
+              aria-label="变量表"
+              :aria-pressed="simulatorStore.variablesPanelOpen ? 'true' : 'false'"
+              @click="openVariablesPanel"
+            >
+              ƒx 变量
+            </button>
+            <button
+              id="markdown-toggle-btn"
+              class="btn"
+              :class="{ 'btn-primary': simulatorStore.markdownBoardOpen }"
+              title="题目板"
+              aria-label="题目板"
+              :aria-pressed="simulatorStore.markdownBoardOpen ? 'true' : 'false'"
+              @click="toggleMarkdownBoard"
+            >
+              📝 题板
+            </button>
+            <button
+              id="demo-mode-btn"
+              class="btn"
+              :class="{ 'btn-primary': simulatorStore.demoMode }"
+              :title="simulatorStore.demoButtonTitle"
+              aria-label="演示模式"
+              :aria-pressed="simulatorStore.demoMode ? 'true' : 'false'"
+              @click="toggleDemoMode"
+            >
+              {{ simulatorStore.demoButtonLabel }}
+            </button>
+          </template>
           <input
             id="import-file-input"
             ref="importFileInput"
@@ -235,7 +242,7 @@ function applyVariables(values: Record<string, number>) {
             @change="handleImportChange"
           />
         </div>
-        <div class="header-settings">
+        <div v-if="showAuthoringControls" class="header-settings">
           <label class="control-label">
             <span>显示能量:</span>
             <input id="toggle-energy-overlay" type="checkbox" :checked="simulatorStore.showEnergyOverlay" @change="setShowEnergy" />
@@ -301,7 +308,7 @@ function applyVariables(values: Record<string, number>) {
       </div>
     </header>
 
-    <aside id="toolbar">
+    <aside v-if="showAuthoringControls" id="toolbar">
       <h2>组件库</h2>
       <ToolbarPanel :groups="simulatorStore.toolbarGroups" @create="simulatorStore.createObjectAtCenter" />
       <div class="tool-section">
@@ -315,6 +322,7 @@ function applyVariables(values: Record<string, number>) {
     <CanvasViewport :fps="simulatorStore.fps" />
 
     <PropertyDrawer
+      v-if="showAuthoringControls"
       v-model="propertyDrawerModel"
       :title="simulatorStore.propertyTitle"
       :sections="simulatorStore.propertySections"
@@ -322,6 +330,7 @@ function applyVariables(values: Record<string, number>) {
       @apply="applyProperties"
     />
     <MarkdownBoard
+      v-if="showAuthoringControls"
       v-model="markdownBoardModel"
       :content="simulatorStore.markdownContent"
       :mode="simulatorStore.markdownMode"
@@ -331,6 +340,7 @@ function applyVariables(values: Record<string, number>) {
       @update:fontSize="simulatorStore.setMarkdownFontSize"
     />
     <VariablesPanel
+      v-if="showAuthoringControls"
       v-model="variablesPanelModel"
       :variables="simulatorStore.variableDraft"
       @apply="applyVariables"
@@ -342,7 +352,7 @@ function applyVariables(values: Record<string, number>) {
       <span id="particle-count">粒子: {{ simulatorStore.particleCount }}</span>
     </footer>
 
-    <div id="context-menu" class="context-menu" style="display: none">
+    <div v-if="showAuthoringControls" id="context-menu" class="context-menu" style="display: none">
       <div id="menu-properties" class="menu-item" @click="openSelectedProperties">⚙️ 属性</div>
       <div id="menu-duplicate" class="menu-item" @click="duplicateSelected">📋 复制</div>
       <div class="menu-separator"></div>

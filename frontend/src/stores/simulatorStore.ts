@@ -7,6 +7,8 @@ import {
   type PropertyPayload,
   type RuntimeSnapshot
 } from '../runtime/simulatorRuntime';
+import type { EmbedConfig, EmbedMode } from '../embed/embedConfig';
+import { resolveSceneSource } from '../embed/sceneSourceResolver';
 
 type ToolbarEntry = {
   type: string;
@@ -87,6 +89,7 @@ const LEGACY_MARKDOWN_FONT_SIZE = 13;
 export const useSimulatorStore = defineStore('simulator', () => {
   const runtime = shallowRef<SimulatorRuntime | null>(null);
   const runtimeMounted = ref(false);
+  const hostMode = ref<EmbedMode>('edit');
 
   const toolbarGroups = ref<ToolbarGroup[]>(buildToolbarGroups());
 
@@ -116,6 +119,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const markdownMode = ref<'edit' | 'preview'>('preview');
   const markdownFontSize = ref(DEFAULT_MARKDOWN_FONT_SIZE);
 
+  const viewMode = computed(() => hostMode.value === 'view');
   const timeStepLabel = computed(() => `${Math.round(timeStep.value * 1000)}ms`);
   const showBoundaryMarginControl = computed(() => boundaryMode.value === 'margin');
   const demoButtonLabel = computed(() => (demoMode.value ? '退出演示' : '演示模式'));
@@ -311,8 +315,66 @@ export const useSimulatorStore = defineStore('simulator', () => {
     runtimeMounted.value = false;
   }
 
+  function setHostMode(next: EmbedMode) {
+    hostMode.value = next === 'view' ? 'view' : 'edit';
+    if (hostMode.value === 'view') {
+      closePropertyPanel();
+      closeVariablesPanel();
+      closeMarkdownBoard();
+    }
+  }
+
+  function loadSceneData(data: Record<string, unknown>) {
+    const ok = getRuntime().loadSceneData(data);
+    if (ok) {
+      closePropertyPanel();
+      setStatusText('场景已加载');
+    } else {
+      setStatusText('场景加载失败');
+    }
+    return ok;
+  }
+
+  async function bootstrapFromEmbed(config: EmbedConfig) {
+    setHostMode(config.mode);
+    const resolved = await resolveSceneSource(config);
+    if (!resolved.ok) {
+      setStatusText(resolved.message);
+      return {
+        ok: false as const,
+        code: resolved.code,
+        error: resolved.message
+      };
+    }
+
+    if (resolved.data) {
+      const loaded = loadSceneData(resolved.data as Record<string, unknown>);
+      if (!loaded) {
+        return {
+          ok: false as const,
+          code: 'validation',
+          error: 'Scene payload rejected by runtime.'
+        };
+      }
+    }
+
+    if (config.autoplay && !running.value) {
+      toggleRunning();
+    }
+
+    return { ok: true as const };
+  }
+
   function toggleRunning() {
     getRuntime().toggleRunning();
+  }
+
+  function startRunning() {
+    getRuntime().start();
+  }
+
+  function stopRunning() {
+    getRuntime().stop();
   }
 
   function toggleDemoMode() {
@@ -459,6 +521,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   return {
     toolbarGroups,
+    hostMode,
+    viewMode,
     running,
     demoMode,
     timeStep,
@@ -488,7 +552,12 @@ export const useSimulatorStore = defineStore('simulator', () => {
     demoButtonTitle,
     mountRuntime,
     unmountRuntime,
+    setHostMode,
+    loadSceneData,
+    bootstrapFromEmbed,
     toggleRunning,
+    startRunning,
+    stopRunning,
     toggleDemoMode,
     setTimeStep,
     setShowEnergyOverlay,

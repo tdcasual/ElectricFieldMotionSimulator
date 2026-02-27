@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createPinia } from 'pinia';
 import App from '../src/App.vue';
+import { useSimulatorStore } from '../src/stores/simulatorStore';
 
 describe('App shell', () => {
   it('renders vue-native simulator layout root', () => {
@@ -101,5 +102,22 @@ describe('App shell', () => {
 
     expect(variablesBtn.attributes('aria-pressed')).toBe('true');
     expect(wrapper.get('[data-testid="variables-panel"]').isVisible()).toBe(true);
+  });
+
+  it('hides authoring controls in view mode', () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    store.setHostMode('view');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    expect(wrapper.find('#toolbar').exists()).toBe(false);
+    expect(wrapper.find('#save-btn').exists()).toBe(false);
+    expect(wrapper.find('#import-btn').exists()).toBe(false);
+    expect(wrapper.find('#play-pause-btn').exists()).toBe(true);
   });
 });
