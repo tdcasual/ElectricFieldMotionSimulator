@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
+import DrawerHost from './DrawerHost.vue';
 
 type VariableRows = Array<{ id: string; name: string; value: string; error: string }>;
 
@@ -133,12 +134,14 @@ function apply() {
 </script>
 
 <template>
-  <div
-    v-if="props.modelValue"
-    class="modal-overlay"
-    :class="{ 'phone-sheet': props.layoutMode === 'phone' }"
-    data-testid="variables-panel"
-    @click.self="close"
+  <DrawerHost
+    :model-value="props.modelValue"
+    variant="variables"
+    :layout-mode="props.layoutMode"
+    backdrop="always"
+    :close-on-backdrop="true"
+    test-id="variables-panel"
+    @update:modelValue="emit('update:modelValue', $event)"
   >
     <div class="modal variables-modal" :class="{ 'variables-sheet': props.layoutMode === 'phone' }">
       <div class="modal-header">
@@ -184,5 +187,5 @@ function apply() {
         <button class="btn btn-primary" data-testid="apply-variables" @click="apply">应用变量</button>
       </div>
     </div>
-  </div>
+  </DrawerHost>
 </template>

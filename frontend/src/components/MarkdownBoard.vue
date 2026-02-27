@@ -2,6 +2,7 @@
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import DrawerHost from './DrawerHost.vue';
 
 const DEFAULT_MARKDOWN_FONT_SIZE = 16;
 
@@ -380,57 +381,67 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside
-    v-show="props.modelValue"
-    ref="boardRef"
-    data-testid="markdown-board"
-    class="markdown-board"
-    :class="[`mode-${currentMode}`, { 'sheet-mode': isSheetMode }]"
-    :style="{
-      left: isSheetMode ? undefined : `${position.left}px`,
-      top: isSheetMode ? undefined : `${position.top}px`,
-      '--markdown-font-size': `${safeFontSize}px`
-    }"
+  <DrawerHost
+    :model-value="props.modelValue"
+    keep-mounted
+    variant="markdown"
+    :layout-mode="props.layoutMode"
+    backdrop="phone"
+    :close-on-backdrop="true"
+    test-id="markdown-board-host"
+    @update:modelValue="emit('update:modelValue', $event)"
   >
-    <div class="markdown-board-header" @pointerdown="beginDrag" @pointermove="onDrag" @pointerup="endDrag" @pointercancel="endDrag">
-      <div class="markdown-board-title">题板</div>
-      <div class="markdown-board-actions">
-        <input
-          class="markdown-font-input"
-          type="number"
-          min="10"
-          max="32"
-          :value="safeFontSize"
-          aria-label="题板字体大小"
-          @change="updateFontSize(($event.target as HTMLInputElement).value)"
-        />
-        <button
-          class="btn markdown-tab"
-          :class="{ active: currentMode === 'edit' }"
-          aria-label="编辑模式"
-          @click="setMode('edit')"
-        >
-          编辑
-        </button>
-        <button
-          class="btn markdown-tab"
-          :class="{ active: currentMode === 'preview' }"
-          aria-label="预览模式"
-          @click="setMode('preview')"
-        >
-          预览
-        </button>
-        <button class="btn-icon" aria-label="关闭题板" @click="close">✖</button>
+    <aside
+      ref="boardRef"
+      data-testid="markdown-board"
+      class="markdown-board"
+      :class="[`mode-${currentMode}`, { 'sheet-mode': isSheetMode }]"
+      :style="{
+        left: isSheetMode ? undefined : `${position.left}px`,
+        top: isSheetMode ? undefined : `${position.top}px`,
+        '--markdown-font-size': `${safeFontSize}px`
+      }"
+    >
+      <div class="markdown-board-header" @pointerdown="beginDrag" @pointermove="onDrag" @pointerup="endDrag" @pointercancel="endDrag">
+        <div class="markdown-board-title">题板</div>
+        <div class="markdown-board-actions">
+          <input
+            class="markdown-font-input"
+            type="number"
+            min="10"
+            max="32"
+            :value="safeFontSize"
+            aria-label="题板字体大小"
+            @change="updateFontSize(($event.target as HTMLInputElement).value)"
+          />
+          <button
+            class="btn markdown-tab"
+            :class="{ active: currentMode === 'edit' }"
+            aria-label="编辑模式"
+            @click="setMode('edit')"
+          >
+            编辑
+          </button>
+          <button
+            class="btn markdown-tab"
+            :class="{ active: currentMode === 'preview' }"
+            aria-label="预览模式"
+            @click="setMode('preview')"
+          >
+            预览
+          </button>
+          <button class="btn-icon" aria-label="关闭题板" @click="close">✖</button>
+        </div>
       </div>
-    </div>
-    <div class="markdown-board-body">
-      <textarea
-        class="markdown-input"
-        :value="localContent"
-        aria-label="题板编辑区"
-        @input="onInput"
-      ></textarea>
-      <div class="markdown-preview" v-html="previewHtml"></div>
-    </div>
-  </aside>
+      <div class="markdown-board-body">
+        <textarea
+          class="markdown-input"
+          :value="localContent"
+          aria-label="题板编辑区"
+          @input="onInput"
+        ></textarea>
+        <div class="markdown-preview" v-html="previewHtml"></div>
+      </div>
+    </aside>
+  </DrawerHost>
 </template>

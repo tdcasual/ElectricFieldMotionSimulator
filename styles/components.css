@@ -39,6 +39,25 @@
     box-shadow: var(--shadow-sm);
 }
 
+.drawer-host {
+    min-width: 0;
+}
+
+.drawer-host--markdown {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 30;
+}
+
+.drawer-host--markdown .markdown-board {
+    pointer-events: auto;
+}
+
+.drawer-host--markdown.drawer-host--backdrop {
+    pointer-events: auto;
+}
+
 .object-action-bar {
     position: fixed;
     left: 50%;

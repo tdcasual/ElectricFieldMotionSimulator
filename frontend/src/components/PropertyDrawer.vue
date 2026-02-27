@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
+import DrawerHost from './DrawerHost.vue';
 
 type SchemaField = {
   key: string;
@@ -157,84 +158,93 @@ function handleContentWheel(event: WheelEvent) {
 </script>
 
 <template>
-  <aside
-    id="property-panel"
-    class="panel"
-    :class="{ open: props.modelValue, 'panel-sheet': props.layoutMode === 'phone' }"
-    :style="{ display: props.modelValue ? 'flex' : 'none' }"
-    data-testid="property-drawer"
-    @wheel.stop
+  <DrawerHost
+    :model-value="props.modelValue"
+    keep-mounted
+    variant="property"
+    :layout-mode="props.layoutMode"
+    backdrop="phone"
+    :close-on-backdrop="true"
+    @update:modelValue="emit('update:modelValue', $event)"
   >
-    <div class="panel-header">
-      <h3>{{ props.title }}</h3>
-      <button id="close-panel-btn" class="btn-icon" aria-label="关闭属性面板" @click="close">✖</button>
-    </div>
-    <div id="property-content" class="panel-content" @wheel="handleContentWheel">
-      <section
-        v-for="(section, sectionIndex) in props.sections"
-        :key="`section-${sectionIndex}`"
-        class="property-section"
-      >
-        <button
-          type="button"
-          class="section-toggle"
-          :data-testid="`section-toggle-${sectionIndex}`"
-          :aria-expanded="isSectionOpen(sectionIndex) ? 'true' : 'false'"
-          @click="toggleSection(sectionIndex)"
+    <aside
+      id="property-panel"
+      class="panel"
+      :class="{ open: props.modelValue, 'panel-sheet': props.layoutMode === 'phone' }"
+      data-testid="property-drawer"
+      @wheel.stop
+    >
+      <div class="panel-header">
+        <h3>{{ props.title }}</h3>
+        <button id="close-panel-btn" class="btn-icon" aria-label="关闭属性面板" @click="close">✖</button>
+      </div>
+      <div id="property-content" class="panel-content" @wheel="handleContentWheel">
+        <section
+          v-for="(section, sectionIndex) in props.sections"
+          :key="`section-${sectionIndex}`"
+          class="property-section"
         >
-          <span>{{ sectionTitle(section, sectionIndex) }}</span>
-          <span>{{ isSectionOpen(sectionIndex) ? '收起' : '展开' }}</span>
-        </button>
-        <div v-if="isSectionOpen(sectionIndex)">
-          <div
-            v-for="field in section.fields ?? []"
-            :key="field.key"
-            class="form-row"
-            :style="{ display: isVisible(field) ? '' : 'none' }"
+          <button
+            type="button"
+            class="section-toggle"
+            :data-testid="`section-toggle-${sectionIndex}`"
+            :aria-expanded="isSectionOpen(sectionIndex) ? 'true' : 'false'"
+            @click="toggleSection(sectionIndex)"
           >
-            <label v-if="field.type === 'checkbox'">
-              <input v-model="draft[field.key]" type="checkbox" :disabled="!isEnabled(field)" />
-              {{ field.label ?? field.key }}
-            </label>
-            <template v-else>
-              <label>{{ field.label ?? field.key }}</label>
-              <select
-                v-if="field.type === 'select'"
-                v-model="draft[field.key]"
-                :disabled="!isEnabled(field)"
-              >
-                <option v-for="option in field.options ?? []" :key="String(option.value)" :value="option.value">
-                  {{ option.label ?? String(option.value) }}
-                </option>
-              </select>
-              <textarea
-                v-else-if="field.multiline"
-                v-model="draft[field.key]"
-                :rows="field.rows ?? 2"
-                :disabled="!isEnabled(field)"
-              ></textarea>
-              <input
-                v-else
-                v-model="draft[field.key]"
-                :type="fieldType(field)"
-                :min="field.min"
-                :max="field.max"
-                :step="field.step"
-                :disabled="!isEnabled(field)"
-              />
-            </template>
+            <span>{{ sectionTitle(section, sectionIndex) }}</span>
+            <span>{{ isSectionOpen(sectionIndex) ? '收起' : '展开' }}</span>
+          </button>
+          <div v-if="isSectionOpen(sectionIndex)">
+            <div
+              v-for="field in section.fields ?? []"
+              :key="field.key"
+              class="form-row"
+              :style="{ display: isVisible(field) ? '' : 'none' }"
+            >
+              <label v-if="field.type === 'checkbox'">
+                <input v-model="draft[field.key]" type="checkbox" :disabled="!isEnabled(field)" />
+                {{ field.label ?? field.key }}
+              </label>
+              <template v-else>
+                <label>{{ field.label ?? field.key }}</label>
+                <select
+                  v-if="field.type === 'select'"
+                  v-model="draft[field.key]"
+                  :disabled="!isEnabled(field)"
+                >
+                  <option v-for="option in field.options ?? []" :key="String(option.value)" :value="option.value">
+                    {{ option.label ?? String(option.value) }}
+                  </option>
+                </select>
+                <textarea
+                  v-else-if="field.multiline"
+                  v-model="draft[field.key]"
+                  :rows="field.rows ?? 2"
+                  :disabled="!isEnabled(field)"
+                ></textarea>
+                <input
+                  v-else
+                  v-model="draft[field.key]"
+                  :type="fieldType(field)"
+                  :min="field.min"
+                  :max="field.max"
+                  :step="field.step"
+                  :disabled="!isEnabled(field)"
+                />
+              </template>
+            </div>
           </div>
-        </div>
-      </section>
-    </div>
-    <div class="panel-actions">
-      <button
-        data-testid="apply-props"
-        class="btn btn-primary"
-        @click="apply"
-      >
-        应用
-      </button>
-    </div>
-  </aside>
+        </section>
+      </div>
+      <div class="panel-actions">
+        <button
+          data-testid="apply-props"
+          class="btn btn-primary"
+          @click="apply"
+        >
+          应用
+        </button>
+      </div>
+    </aside>
+  </DrawerHost>
 </template>

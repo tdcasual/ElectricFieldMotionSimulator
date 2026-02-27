@@ -262,6 +262,15 @@
 }
 
 /* 属性面板 */
+.drawer-host--property {
+    grid-area: panel;
+    min-width: 0;
+}
+
+.drawer-host--property > #property-panel {
+    height: 100%;
+}
+
 .panel {
     grid-area: panel;
     background: var(--bg-secondary);
@@ -373,6 +382,18 @@
     transition: right var(--transition-slow);
     z-index: 100;
     box-shadow: var(--shadow-lg);
+}
+
+#app.layout-tablet .drawer-host--property {
+    position: fixed;
+    inset: 0;
+    grid-area: auto;
+    z-index: 95;
+    pointer-events: none;
+}
+
+#app.layout-tablet .drawer-host--property > #property-panel {
+    pointer-events: auto;
 }
 
 #app.layout-tablet #property-panel.open,
