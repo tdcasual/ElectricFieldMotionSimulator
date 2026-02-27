@@ -12,9 +12,11 @@ const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
 const isCoarsePointer = ref(false);
 const phoneToolRailOpen = ref(false);
+const phoneSettingsOpen = ref(false);
 const showAuthoringControls = computed(() => !simulatorStore.viewMode);
 const isPhoneLayout = computed(() => simulatorStore.layoutMode === 'phone');
 const phoneToolRailExpanded = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneToolRailOpen.value);
+const phoneSettingsSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneSettingsOpen.value);
 const PHONE_LAYOUT_MAX_WIDTH = 767;
 const TABLET_LAYOUT_MAX_WIDTH = 1199;
 
@@ -59,7 +61,17 @@ watch(
   (next) => {
     if (next !== 'phone') {
       phoneToolRailOpen.value = false;
+      phoneSettingsOpen.value = false;
     }
+  }
+);
+
+watch(
+  () => showAuthoringControls.value,
+  (visible) => {
+    if (visible) return;
+    phoneToolRailOpen.value = false;
+    phoneSettingsOpen.value = false;
   }
 );
 
@@ -228,11 +240,22 @@ function applyVariables(values: Record<string, number>) {
 
 function togglePhoneToolRail() {
   if (!isPhoneLayout.value) return;
+  phoneSettingsOpen.value = false;
   phoneToolRailOpen.value = !phoneToolRailOpen.value;
 }
 
 function closePhoneToolRail() {
   phoneToolRailOpen.value = false;
+}
+
+function togglePhoneSettingsSheet() {
+  if (!isPhoneLayout.value) return;
+  phoneToolRailOpen.value = false;
+  phoneSettingsOpen.value = !phoneSettingsOpen.value;
+}
+
+function closePhoneSettingsSheet() {
+  phoneSettingsOpen.value = false;
 }
 
 function createObjectFromToolbar(type: string) {
@@ -272,7 +295,8 @@ function deleteSelectedFromActionBar() {
       'layout-desktop': simulatorStore.layoutMode === 'desktop',
       'layout-tablet': simulatorStore.layoutMode === 'tablet',
       'layout-phone': simulatorStore.layoutMode === 'phone',
-      'phone-toolbar-open': phoneToolRailExpanded
+      'phone-toolbar-open': phoneToolRailExpanded,
+      'phone-settings-open': phoneSettingsSheetOpen
     }"
   >
     <header id="header">
@@ -290,6 +314,18 @@ function deleteSelectedFromActionBar() {
             @click="togglePhoneToolRail"
           >
             🧰 工具栏
+          </button>
+          <button
+            v-if="showAuthoringControls && isPhoneLayout"
+            id="settings-sheet-toggle-btn"
+            class="btn"
+            :class="{ 'btn-primary': phoneSettingsSheetOpen }"
+            title="切换参数面板"
+            aria-label="切换参数面板"
+            :aria-pressed="phoneSettingsSheetOpen ? 'true' : 'false'"
+            @click="togglePhoneSettingsSheet"
+          >
+            ⚙ 参数
           </button>
           <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停" @click="togglePlayPause">
             <span id="play-icon">{{ simulatorStore.running ? '⏸' : '▶' }}</span>
@@ -346,7 +382,12 @@ function deleteSelectedFromActionBar() {
             @change="handleImportChange"
           />
         </div>
-        <div v-if="showAuthoringControls" class="header-settings">
+        <div
+          v-if="showAuthoringControls"
+          id="header-settings-panel"
+          class="header-settings"
+          :class="{ 'phone-settings-sheet': isPhoneLayout, open: phoneSettingsSheetOpen }"
+        >
           <label class="control-label">
             <span>显示能量:</span>
             <input id="toggle-energy-overlay" type="checkbox" :checked="simulatorStore.showEnergyOverlay" @change="setShowEnergy" />
@@ -428,6 +469,13 @@ function deleteSelectedFromActionBar() {
       class="tool-rail-backdrop"
       aria-label="关闭工具栏"
       @click="closePhoneToolRail"
+    ></button>
+    <button
+      v-if="phoneSettingsSheetOpen"
+      type="button"
+      class="phone-settings-backdrop"
+      aria-label="关闭参数面板"
+      @click="closePhoneSettingsSheet"
     ></button>
 
     <CanvasViewport :fps="simulatorStore.fps" />

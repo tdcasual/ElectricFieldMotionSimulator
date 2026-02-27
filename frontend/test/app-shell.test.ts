@@ -220,6 +220,60 @@ describe('App shell', () => {
     expect(appShell.classes()).toContain('phone-toolbar-open');
   });
 
+  it('toggles phone settings sheet and closes via backdrop', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    expect(appShell.classes()).not.toContain('phone-settings-open');
+
+    const toggle = wrapper.get('#settings-sheet-toggle-btn');
+    await toggle.trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-settings-open');
+
+    await wrapper.get('.phone-settings-backdrop').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).not.toContain('phone-settings-open');
+  });
+
+  it('keeps phone tool rail and settings sheet mutually exclusive', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    await wrapper.get('#tool-rail-toggle-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-toolbar-open');
+
+    await wrapper.get('#settings-sheet-toggle-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).not.toContain('phone-toolbar-open');
+    expect(appShell.classes()).toContain('phone-settings-open');
+  });
+
   it('forwards action-bar duplicate and delete events to store actions', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);

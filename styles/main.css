@@ -513,3 +513,46 @@
 #app.layout-phone .header-settings {
     gap: 6px;
 }
+
+#app.layout-phone .header-settings.phone-settings-sheet {
+    display: none;
+    position: fixed;
+    left: 52px;
+    right: 0;
+    top: var(--header-height);
+    z-index: 130;
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    max-height: min(44vh, 320px);
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+#app.layout-phone.phone-settings-open .header-settings.phone-settings-sheet {
+    display: flex;
+}
+
+#app.layout-phone .header-settings.phone-settings-sheet .control-label {
+    min-height: 44px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+}
+
+.phone-settings-backdrop {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: var(--header-height);
+    bottom: 40px;
+    z-index: 125;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: color-mix(in srgb, #000 12%, transparent);
+}
