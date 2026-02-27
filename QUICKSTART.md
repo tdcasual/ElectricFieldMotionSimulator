@@ -31,6 +31,11 @@
   - `npm run package:embed`
   - 默认读取 `example-scene.json`，输出到 `output/embed-packages/<package-name>/`
   - 可指定参数：`npm run package:embed -- --scene ./my-scene.json --name my-pack --out ./output/embed-packages --no-zip`
+- EdgeOne Pages 同站点双入口（推荐）：
+  - 构建命令：`npm run build:edgeone`
+  - 产物目录：`frontend/dist`
+  - 嵌入入口：`/embed/viewer.html?mode=view&sceneUrl=./scene.json&toolbar=0`
+  - SDK 地址：`/embed/embed.js`
 
 ## 新功能演示
 

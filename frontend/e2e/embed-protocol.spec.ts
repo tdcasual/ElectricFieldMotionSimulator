@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
 
 test('embed sdk bridge supports ready event and host commands', async ({ page }) => {
   await page.goto('http://127.0.0.1:5173/embed-host-test.html');
@@ -59,4 +61,25 @@ test('embed host can bootstrap viewer by material id', async ({ page }) => {
 
   const frame = page.frameLocator('#embed-frame');
   await expect(frame.locator('#object-count')).toContainText('1');
+});
+
+test('embed host smoke captures screenshot', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 820 });
+  await page.goto('http://127.0.0.1:5173/embed-host-test.html?materialId=mock-particle');
+
+  await page.waitForFunction(() => {
+    const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
+    return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
+  });
+
+  const frame = page.frameLocator('#embed-frame');
+  await expect(frame.locator('#play-pause-btn')).toBeVisible();
+  await expect(frame.locator('#reset-btn')).toBeVisible();
+  await expect(frame.locator('#object-count')).toContainText('1');
+
+  const screenshotDir = path.resolve(process.cwd(), 'output', 'playwright', 'screenshots');
+  fs.mkdirSync(screenshotDir, { recursive: true });
+  await page.locator('#embed-frame').screenshot({
+    path: path.join(screenshotDir, 'embed-smoke-iframe.png')
+  });
 });
