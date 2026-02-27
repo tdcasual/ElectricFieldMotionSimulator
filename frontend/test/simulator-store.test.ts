@@ -93,4 +93,35 @@ describe('simulatorStore demo mode', () => {
     expect(store.markdownFontSize).toBe(16);
     expect(store.markdownContent).toContain('Test');
   });
+
+  it('keeps only one drawer open at a time', () => {
+    const store = useSimulatorStore();
+
+    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
+    expect(store.propertyDrawerOpen).toBe(true);
+    expect(store.variablesPanelOpen).toBe(false);
+    expect(store.markdownBoardOpen).toBe(false);
+
+    store.openVariablesPanel();
+    expect(store.propertyDrawerOpen).toBe(false);
+    expect(store.variablesPanelOpen).toBe(true);
+    expect(store.markdownBoardOpen).toBe(false);
+
+    store.toggleMarkdownBoard();
+    expect(store.variablesPanelOpen).toBe(false);
+    expect(store.markdownBoardOpen).toBe(true);
+    expect(store.propertyDrawerOpen).toBe(false);
+  });
+
+  it('clears active drawer when switching host mode to view', () => {
+    const store = useSimulatorStore();
+    store.openVariablesPanel();
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe('variables');
+
+    store.setHostMode('view');
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+    expect(store.propertyDrawerOpen).toBe(false);
+    expect(store.variablesPanelOpen).toBe(false);
+    expect(store.markdownBoardOpen).toBe(false);
+  });
 });

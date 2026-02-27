@@ -23,6 +23,7 @@ type ToolbarGroup = {
 };
 
 export type LayoutMode = 'desktop' | 'tablet' | 'phone';
+export type ActiveDrawer = 'property' | 'variables' | 'markdown' | null;
 
 const CATEGORY_LABELS: Record<string, string> = {
   electric: '电场',
@@ -111,13 +112,14 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const boundaryMode = ref<'margin' | 'remove' | 'bounce' | 'wrap'>('margin');
   const boundaryMargin = ref(200);
 
-  const propertyDrawerOpen = ref(false);
+  const activeDrawer = ref<ActiveDrawer>(null);
+  const propertyDrawerOpen = computed(() => activeDrawer.value === 'property');
   const propertyTitle = ref('属性面板');
   const propertySections = ref<PropertyPayload['sections']>([]);
   const propertyValues = ref<Record<string, unknown>>({});
-  const variablesPanelOpen = ref(false);
+  const variablesPanelOpen = computed(() => activeDrawer.value === 'variables');
   const variableDraft = ref<Record<string, number>>({});
-  const markdownBoardOpen = ref(false);
+  const markdownBoardOpen = computed(() => activeDrawer.value === 'markdown');
   const markdownContent = ref('# 题板\n\n- 在这里记录题目和步骤\n- 支持基础 Markdown 语法\n- 支持 LaTeX：$v=\\frac{s}{t}$');
   const markdownMode = ref<'edit' | 'preview'>('preview');
   const markdownFontSize = ref(DEFAULT_MARKDOWN_FONT_SIZE);
@@ -194,8 +196,21 @@ export const useSimulatorStore = defineStore('simulator', () => {
     }
   }
 
+  function openDrawer(target: Exclude<ActiveDrawer, null>) {
+    activeDrawer.value = target;
+  }
+
+  function closeDrawer(target: Exclude<ActiveDrawer, null>) {
+    if (activeDrawer.value !== target) return;
+    activeDrawer.value = null;
+  }
+
+  function closeAllDrawers() {
+    activeDrawer.value = null;
+  }
+
   function closePropertyPanel() {
-    propertyDrawerOpen.value = false;
+    closeDrawer('property');
   }
 
   function openPropertyPanel() {
@@ -207,7 +222,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
       return false;
     }
     updatePropertyPayload(payload);
-    propertyDrawerOpen.value = true;
+    openDrawer('property');
     return true;
   }
 
@@ -248,11 +263,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
       ? current.scene.variables as Record<string, unknown>
       : {};
     variableDraft.value = normalizeSceneVariables(vars);
-    variablesPanelOpen.value = true;
+    openDrawer('variables');
   }
 
   function closeVariablesPanel() {
-    variablesPanelOpen.value = false;
+    closeDrawer('variables');
   }
 
   function applyVariables(values: Record<string, number>) {
@@ -267,11 +282,15 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   function toggleMarkdownBoard() {
-    markdownBoardOpen.value = !markdownBoardOpen.value;
+    if (activeDrawer.value === 'markdown') {
+      closeDrawer('markdown');
+      return;
+    }
+    openDrawer('markdown');
   }
 
   function closeMarkdownBoard() {
-    markdownBoardOpen.value = false;
+    closeDrawer('markdown');
   }
 
   function setMarkdownContent(next: string) {
@@ -321,9 +340,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   function setHostMode(next: EmbedMode) {
     hostMode.value = next === 'view' ? 'view' : 'edit';
     if (hostMode.value === 'view') {
-      closePropertyPanel();
-      closeVariablesPanel();
-      closeMarkdownBoard();
+      closeAllDrawers();
     }
   }
 
@@ -531,6 +548,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     toolbarGroups,
     hostMode,
     layoutMode,
+    activeDrawer,
     viewMode,
     running,
     demoMode,
