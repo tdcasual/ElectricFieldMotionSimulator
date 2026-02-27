@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { DragDropManager } from '../js/interactions/DragDropManager.js';
+import { getObjectRealDimension } from '../js/modes/GeometryScaling.js';
 
 function installDom(markup) {
   const dom = new JSDOM(
@@ -137,7 +138,7 @@ test('onContextMenu ignores missing context menu container', () => {
 
 test('dispose detaches tool-item listeners to prevent duplicate handler execution', () => {
   const cleanup = installDom(`
-    <div class="tool-item" data-type="particle"><span>粒子</span></div>
+    <div class="tool-item" data-type="particle" role="button" aria-pressed="false"><span>粒子</span></div>
     <canvas id="particle-canvas"></canvas>
   `);
 
@@ -179,10 +180,13 @@ test('dispose detaches tool-item listeners to prevent duplicate handler executio
 
     const manager1 = new DragDropManager(scene, renderer, { canvas, appAdapter });
     manager1.isCoarsePointer = true;
+    assert.equal(tool.getAttribute('aria-pressed'), 'false');
     tool.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     assert.equal(statusCalls, 1);
+    assert.equal(tool.getAttribute('aria-pressed'), 'true');
 
     manager1.dispose();
+    assert.equal(tool.getAttribute('aria-pressed'), 'false');
 
     const manager2 = new DragDropManager(scene, renderer, { canvas, appAdapter });
     manager2.isCoarsePointer = true;
@@ -316,6 +320,72 @@ test('read-only interaction lock prevents object dragging', () => {
 
     assert.equal(clickedObject.x, 30);
     assert.equal(clickedObject.y, 40);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('resize handle drag updates display scale without mutating real geometry', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const field = {
+      id: 'obj-magnetic-circle',
+      type: 'magnetic-field',
+      shape: 'circle',
+      x: 100,
+      y: 100,
+      radius: 50,
+      width: 100,
+      height: 100
+    };
+
+    const scene = {
+      settings: { mode: 'normal', pixelsPerMeter: 50, interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return field;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [field];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onMouseDown({
+      button: 0,
+      clientX: 150,
+      clientY: 100
+    });
+    manager.onMouseMove({
+      clientX: 200,
+      clientY: 100
+    });
+    manager.onMouseUp({});
+
+    assert.equal(field.radius, 100);
+    assert.equal(getObjectRealDimension(field, 'radius', scene), 1);
     manager.dispose();
   } finally {
     cleanup();

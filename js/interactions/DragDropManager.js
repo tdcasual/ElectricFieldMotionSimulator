@@ -11,6 +11,7 @@ import {
     DEMO_MIN_ZOOM,
     isDemoMode
 } from '../modes/DemoMode.js';
+import { ensureObjectGeometryState, setObjectDisplayDimension } from '../modes/GeometryScaling.js';
 import { computePointTangencyMatch, computeTangencyMatch } from './TangencyEngine.js';
 
 const TOOL_ALIASES = {
@@ -35,6 +36,19 @@ const CREATION_OVERRIDES = {
 
 const TANGENCY_TOLERANCE_PX = 2;
 const MIN_TANGENCY_RADIUS = 15;
+const RESIZE_SCALE_DIMENSION_PREFERENCE = [
+    'radius',
+    'width',
+    'height',
+    'length',
+    'plateDistance',
+    'depth',
+    'viewGap',
+    'spotSize',
+    'lineWidth',
+    'particleRadius',
+    'barrelLength'
+];
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -341,7 +355,7 @@ export class DragDropManager {
         this.resizeHandle = null;
         this.resizeStart = null;
         if (this.armedToolElement) {
-            this.armedToolElement.classList.remove('active');
+            this.setToolArmedState(this.armedToolElement, false);
         }
         this.armedToolType = null;
         this.armedToolElement = null;
@@ -363,6 +377,9 @@ export class DragDropManager {
 
         // 工具栏拖拽事件
         document.querySelectorAll('.tool-item').forEach(item => {
+            if (item.getAttribute('aria-pressed') == null) {
+                item.setAttribute('aria-pressed', 'false');
+            }
             this.bindEvent(item, 'dragstart', (e) => {
                 if (!e.dataTransfer) return;
                 e.dataTransfer.effectAllowed = 'copy';
@@ -438,6 +455,7 @@ export class DragDropManager {
 
         if (object) {
             this.scene.addObject(object);
+            ensureObjectGeometryState(object, this.scene);
             this.requestSceneRender({ invalidateFields: true });
         }
     }
@@ -464,14 +482,20 @@ export class DragDropManager {
         }
     }
 
+    setToolArmedState(element, armed) {
+        if (!element) return;
+        element.classList.toggle('active', !!armed);
+        element.setAttribute('aria-pressed', armed ? 'true' : 'false');
+    }
+
     armTool(type, element) {
         if (this.armedToolElement) {
-            this.armedToolElement.classList.remove('active');
+            this.setToolArmedState(this.armedToolElement, false);
         }
 
         this.armedToolType = type;
         this.armedToolElement = element || null;
-        this.armedToolElement?.classList.add('active');
+        this.setToolArmedState(this.armedToolElement, true);
 
         const label = element?.title || element?.querySelector?.('span')?.textContent || type;
         this.setStatus(`点击画布放置: ${label}`);
@@ -479,7 +503,7 @@ export class DragDropManager {
 
     disarmTool() {
         if (this.armedToolElement) {
-            this.armedToolElement.classList.remove('active');
+            this.setToolArmedState(this.armedToolElement, false);
         }
         this.armedToolType = null;
         this.armedToolElement = null;
@@ -568,6 +592,25 @@ export class DragDropManager {
         return this.resizeHandle === 'radius' ? 'resize' : null;
     }
 
+    syncDisplayResizeScale(object, preferredKeys = []) {
+        if (!object || typeof object !== 'object') return false;
+        const keys = Array.isArray(preferredKeys) ? preferredKeys.filter((key) => typeof key === 'string') : [];
+        for (const key of RESIZE_SCALE_DIMENSION_PREFERENCE) {
+            if (!keys.includes(key)) {
+                keys.push(key);
+            }
+        }
+
+        for (const key of keys) {
+            const displayValue = Number(object[key]);
+            if (!Number.isFinite(displayValue) || displayValue <= 0) continue;
+            if (setObjectDisplayDimension(object, key, displayValue, this.scene)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     applyTangencySnap(match, mode) {
         if (!match?.snapTarget || !this.draggingObject) return;
         if (mode === 'move') {
@@ -583,10 +626,13 @@ export class DragDropManager {
         if (mode !== 'resize') return;
         if (!isFiniteNumber(match.snapTarget.radius)) return;
         const snappedRadius = Math.max(MIN_TANGENCY_RADIUS, match.snapTarget.radius);
-        this.draggingObject.radius = snappedRadius;
-        if (this.isMagneticResizable(this.draggingObject)) {
-            this.draggingObject.width = snappedRadius * 2;
-            this.draggingObject.height = snappedRadius * 2;
+        if (!setObjectDisplayDimension(this.draggingObject, 'radius', snappedRadius, this.scene)) {
+            this.draggingObject.radius = snappedRadius;
+            if (this.isMagneticResizable(this.draggingObject)) {
+                this.draggingObject.width = snappedRadius * 2;
+                this.draggingObject.height = snappedRadius * 2;
+            }
+            this.syncDisplayResizeScale(this.draggingObject, ['radius']);
         }
     }
 
@@ -790,6 +836,7 @@ export class DragDropManager {
             this.panStartCamera = null;
             this.draggingObject = clickedObject;
             this.scene.selectedObject = clickedObject;
+            ensureObjectGeometryState(clickedObject, this.scene);
             this.isDragging = false;
             this.dragMode = 'move';
             this.resizeHandle = null;
@@ -925,9 +972,13 @@ export class DragDropManager {
         if (this.dragMode === 'resize') {
             if (this.isMagneticResizable(this.draggingObject)) {
                 this.resizeMagneticField(this.draggingObject, pos);
+                const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
+                this.syncDisplayResizeScale(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             } else if (this.isElectricResizable(this.draggingObject)) {
                 this.resizeElectricField(this.draggingObject, pos);
+                const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
+                this.syncDisplayResizeScale(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             }
         } else if (this.draggingObject.type === 'particle') {
@@ -983,6 +1034,8 @@ export class DragDropManager {
             } else {
                 this.lastTap = { time: now, objectId: tappedObject.id };
             }
+        } else if (!tappedObject || wasDragging || this.longPressTriggered) {
+            this.lastTap = { time: 0, objectId: null };
         }
 
         this.isDragging = false;
@@ -1057,6 +1110,7 @@ export class DragDropManager {
             this.panStartCamera = null;
             this.draggingObject = clickedObject;
             this.scene.selectedObject = clickedObject;
+            ensureObjectGeometryState(clickedObject, this.scene);
             this.isDragging = true;
             this.dragMode = 'move';
             this.resizeHandle = null;
@@ -1146,9 +1200,13 @@ export class DragDropManager {
         if (this.dragMode === 'resize') {
             if (this.isMagneticResizable(this.draggingObject)) {
                 this.resizeMagneticField(this.draggingObject, pos);
+                const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
+                this.syncDisplayResizeScale(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             } else if (this.isElectricResizable(this.draggingObject)) {
                 this.resizeElectricField(this.draggingObject, pos);
+                const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
+                this.syncDisplayResizeScale(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             }
         } else if (this.draggingObject.type === 'particle') {
