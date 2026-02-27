@@ -1,8 +1,10 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useSimulatorStore } from '../src/stores/simulatorStore';
+import { Serializer } from '../../js/utils/Serializer.js';
 
 beforeEach(() => setActivePinia(createPinia()));
+afterEach(() => vi.restoreAllMocks());
 
 describe('simulatorStore demo mode', () => {
   it('tracks layout mode with desktop/tablet/phone values', () => {
@@ -134,5 +136,14 @@ describe('simulatorStore demo mode', () => {
     expect(store.propertyDrawerOpen).toBe(false);
     expect(store.variablesPanelOpen).toBe(false);
     expect(store.markdownBoardOpen).toBe(false);
+  });
+
+  it('reports save failure when storage write throws', () => {
+    const store = useSimulatorStore();
+    vi.spyOn(Serializer, 'saveSceneData').mockReturnValue(false);
+
+    const ok = store.saveScene('demo-fail');
+    expect(ok).toBe(false);
+    expect(store.statusText).toBe('场景 "demo-fail" 保存失败');
   });
 });

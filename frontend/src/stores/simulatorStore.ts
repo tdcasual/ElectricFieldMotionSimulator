@@ -505,9 +505,15 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   function saveScene(name: string) {
-    if (!name || !name.trim()) return;
-    getRuntime().saveScene(name.trim());
-    setStatusText(`场景 "${name.trim()}" 已保存`);
+    if (!name || !name.trim()) return false;
+    const sceneName = name.trim();
+    const ok = getRuntime().saveScene(sceneName);
+    if (ok) {
+      setStatusText(`场景 "${sceneName}" 已保存`);
+    } else {
+      setStatusText(`场景 "${sceneName}" 保存失败`);
+    }
+    return ok;
   }
 
   function loadScene(name: string) {

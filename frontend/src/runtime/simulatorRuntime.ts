@@ -381,8 +381,8 @@ export class SimulatorRuntime {
   }
 
   saveScene(name: string) {
-    if (!name || !name.trim()) return;
-    Serializer.saveSceneData(this.scene.serialize(), name.trim());
+    if (!name || !name.trim()) return false;
+    return Serializer.saveSceneData(this.scene.serialize(), name.trim());
   }
 
   loadScene(name: string) {
