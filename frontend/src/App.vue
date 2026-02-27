@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
@@ -11,7 +11,10 @@ import { useSimulatorStore } from './stores/simulatorStore';
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
 const isCoarsePointer = ref(false);
+const phoneToolRailOpen = ref(false);
 const showAuthoringControls = computed(() => !simulatorStore.viewMode);
+const isPhoneLayout = computed(() => simulatorStore.layoutMode === 'phone');
+const phoneToolRailExpanded = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneToolRailOpen.value);
 const PHONE_LAYOUT_MAX_WIDTH = 767;
 const TABLET_LAYOUT_MAX_WIDTH = 1199;
 
@@ -50,6 +53,15 @@ const showObjectActionBar = computed(() => {
   if (!simulatorStore.selectedObjectId) return false;
   return simulatorStore.layoutMode === 'phone' || isCoarsePointer.value;
 });
+
+watch(
+  () => simulatorStore.layoutMode,
+  (next) => {
+    if (next !== 'phone') {
+      phoneToolRailOpen.value = false;
+    }
+  }
+);
 
 function resolveLayoutMode(width: number) {
   if (width <= PHONE_LAYOUT_MAX_WIDTH) return 'phone';
@@ -214,6 +226,29 @@ function applyVariables(values: Record<string, number>) {
   simulatorStore.applyVariables(values);
 }
 
+function togglePhoneToolRail() {
+  if (!isPhoneLayout.value) return;
+  phoneToolRailOpen.value = !phoneToolRailOpen.value;
+}
+
+function closePhoneToolRail() {
+  phoneToolRailOpen.value = false;
+}
+
+function createObjectFromToolbar(type: string) {
+  simulatorStore.createObjectAtCenter(type);
+  if (isPhoneLayout.value) {
+    closePhoneToolRail();
+  }
+}
+
+function loadPresetAndClose(name: string) {
+  loadPreset(name);
+  if (isPhoneLayout.value) {
+    closePhoneToolRail();
+  }
+}
+
 function openSelectedPropertiesFromActionBar() {
   simulatorStore.openPropertyPanel();
 }
@@ -236,13 +271,26 @@ function deleteSelectedFromActionBar() {
       'view-mode': simulatorStore.viewMode,
       'layout-desktop': simulatorStore.layoutMode === 'desktop',
       'layout-tablet': simulatorStore.layoutMode === 'tablet',
-      'layout-phone': simulatorStore.layoutMode === 'phone'
+      'layout-phone': simulatorStore.layoutMode === 'phone',
+      'phone-toolbar-open': phoneToolRailExpanded
     }"
   >
     <header id="header">
       <h1>⚡ 电磁场粒子运动模拟器</h1>
       <div class="header-controls">
         <div class="header-actions">
+          <button
+            v-if="showAuthoringControls && isPhoneLayout"
+            id="tool-rail-toggle-btn"
+            class="btn"
+            :class="{ 'btn-primary': phoneToolRailExpanded }"
+            title="切换工具栏"
+            aria-label="切换工具栏"
+            :aria-pressed="phoneToolRailExpanded ? 'true' : 'false'"
+            @click="togglePhoneToolRail"
+          >
+            🧰 工具栏
+          </button>
           <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停" @click="togglePlayPause">
             <span id="play-icon">{{ simulatorStore.running ? '⏸' : '▶' }}</span>
             <span id="play-label">{{ simulatorStore.running ? '暂停' : '播放' }}</span>
@@ -364,16 +412,23 @@ function deleteSelectedFromActionBar() {
       </div>
     </header>
 
-    <aside v-if="showAuthoringControls" id="toolbar">
+    <aside v-if="showAuthoringControls" id="toolbar" :class="{ 'phone-open': phoneToolRailExpanded }">
       <h2>组件库</h2>
-      <ToolbarPanel :groups="simulatorStore.toolbarGroups" @create="simulatorStore.createObjectAtCenter" />
+      <ToolbarPanel :groups="simulatorStore.toolbarGroups" @create="createObjectFromToolbar" />
       <div class="tool-section preset-section">
         <h3>预设场景</h3>
-        <button class="preset-btn" data-preset="uniform-acceleration" @click="loadPreset('uniform-acceleration')">匀加速运动</button>
-        <button class="preset-btn" data-preset="cyclotron" @click="loadPreset('cyclotron')">回旋运动</button>
-        <button class="preset-btn" data-preset="capacitor-deflection" @click="loadPreset('capacitor-deflection')">电容器偏转</button>
+        <button class="preset-btn" data-preset="uniform-acceleration" @click="loadPresetAndClose('uniform-acceleration')">匀加速运动</button>
+        <button class="preset-btn" data-preset="cyclotron" @click="loadPresetAndClose('cyclotron')">回旋运动</button>
+        <button class="preset-btn" data-preset="capacitor-deflection" @click="loadPresetAndClose('capacitor-deflection')">电容器偏转</button>
       </div>
     </aside>
+    <button
+      v-if="phoneToolRailExpanded"
+      type="button"
+      class="tool-rail-backdrop"
+      aria-label="关闭工具栏"
+      @click="closePhoneToolRail"
+    ></button>
 
     <CanvasViewport :fps="simulatorStore.fps" />
     <ObjectActionBar

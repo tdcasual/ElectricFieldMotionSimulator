@@ -188,6 +188,38 @@ describe('App shell', () => {
     expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(true);
   });
 
+  it('toggles phone tool rail expanded class from header button', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    expect(appShell.classes()).not.toContain('phone-toolbar-open');
+
+    const toggle = wrapper.get('#tool-rail-toggle-btn');
+    await toggle.trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-toolbar-open');
+
+    await wrapper.get('.tool-rail-backdrop').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).not.toContain('phone-toolbar-open');
+
+    await toggle.trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-toolbar-open');
+  });
+
   it('forwards action-bar duplicate and delete events to store actions', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);
