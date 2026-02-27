@@ -101,4 +101,35 @@ describe('host bridge', () => {
     expect(events[0].payload.id).toBe('req-7');
     expect(events[0].payload.ok).toBe(true);
   });
+
+  it('ignores host commands from non-allowlisted origins', () => {
+    const events: Array<{ type: string; payload: Record<string, unknown> }> = [];
+    const store = {
+      startRunning: () => {},
+      stopRunning: () => {},
+      toggleRunning: () => {},
+      resetScene: () => {},
+      loadSceneData: () => true
+    };
+    const dispose = installHostCommandBridge(store, {
+      emit: (type, payload) => events.push({ type, payload }),
+      allowedOrigins: ['https://allowed.example']
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        origin: 'https://evil.example',
+        data: {
+          source: 'electric-field-host',
+          type: 'command',
+          id: 'req-8',
+          command: 'play'
+        }
+      })
+    );
+
+    dispose();
+    expect(events).toHaveLength(0);
+  });
 });

@@ -109,6 +109,7 @@ export function executeHostCommand(store: HostCommandStore, message: HostCommand
 
 type BridgeOptions = {
   emit: (type: string, payload: Record<string, unknown>) => void;
+  allowedOrigins?: string[];
 };
 
 export function installHostCommandBridge(store: HostCommandStore, options: BridgeOptions) {
@@ -116,8 +117,14 @@ export function installHostCommandBridge(store: HostCommandStore, options: Bridg
     return () => {};
   }
 
+  const allowedOrigins = new Set(
+    (Array.isArray(options.allowedOrigins) ? options.allowedOrigins : [])
+      .filter((origin): origin is string => typeof origin === 'string' && origin.trim().length > 0)
+  );
+
   const handler = (event: MessageEvent<unknown>) => {
     if (window.parent !== event.source) return;
+    if (allowedOrigins.size > 0 && !allowedOrigins.has(event.origin)) return;
     const message = parseHostCommandMessage(event.data);
     if (!message) return;
 

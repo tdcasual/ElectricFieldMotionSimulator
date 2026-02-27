@@ -9,6 +9,20 @@ import { useSimulatorStore } from './stores/simulatorStore';
 import { parseEmbedConfigFromSearch } from './embed/embedConfig';
 import { installHostCommandBridge } from './embed/hostBridge';
 
+function resolveParentOrigin(): string | null {
+  if (typeof window === 'undefined') return null;
+  if (window.parent === window) return null;
+  const referrer = typeof document !== 'undefined' ? document.referrer : '';
+  if (!referrer) return null;
+  try {
+    return new URL(referrer).origin;
+  } catch {
+    return null;
+  }
+}
+
+const parentOrigin = resolveParentOrigin();
+
 function emitHostEvent(type: string, payload: Record<string, unknown> = {}) {
   if (typeof window === 'undefined') return;
   if (window.parent === window) return;
@@ -18,7 +32,7 @@ function emitHostEvent(type: string, payload: Record<string, unknown> = {}) {
       type,
       payload
     },
-    '*'
+    parentOrigin ?? '*'
   );
 }
 
@@ -38,7 +52,8 @@ if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
       loadSceneData: (data) => store.loadSceneData(data)
     },
     {
-      emit: (type, payload) => emitHostEvent(type, payload)
+      emit: (type, payload) => emitHostEvent(type, payload),
+      allowedOrigins: parentOrigin ? [parentOrigin] : undefined
     }
   );
 

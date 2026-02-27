@@ -63,11 +63,21 @@
     return params.toString();
   }
 
+  function resolveOrigin(url) {
+    if (!ensureString(url)) return null;
+    try {
+      return new URL(url, window.location.href).origin;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function ElectricFieldApp(options) {
     this.options = options || {};
     this.iframe = null;
     this.messageHandler = null;
     this.pendingCommands = {};
+    this.targetOrigin = ensureString(this.options.targetOrigin) || '*';
   }
 
   ElectricFieldApp.prototype.inject = function (target) {
@@ -84,6 +94,12 @@
     var viewerPath = ensureString(this.options.viewerPath) || 'viewer.html';
     var query = buildQuery(this.options);
     iframe.src = query ? viewerPath + '?' + query : viewerPath;
+    if (this.targetOrigin === '*') {
+      var detectedOrigin = resolveOrigin(iframe.src);
+      if (detectedOrigin) {
+        this.targetOrigin = detectedOrigin;
+      }
+    }
     iframe.style.width = ensureString(this.options.width) || '100%';
     iframe.style.height = ensureString(this.options.height) || '480px';
     iframe.style.border = '0';
@@ -100,6 +116,7 @@
 
     this.messageHandler = function (event) {
       if (!self.iframe || event.source !== self.iframe.contentWindow) return;
+      if (self.targetOrigin !== '*' && event.origin !== self.targetOrigin) return;
       var data = event.data || {};
       if (data.source !== 'electric-field-sim') return;
 
@@ -151,7 +168,7 @@
     var self = this;
     return new Promise(function (resolve, reject) {
       self.pendingCommands[id] = { resolve: resolve, reject: reject };
-      self.iframe.contentWindow.postMessage(message, '*');
+      self.iframe.contentWindow.postMessage(message, self.targetOrigin);
       setTimeout(function () {
         if (!self.pendingCommands[id]) return;
         delete self.pendingCommands[id];
