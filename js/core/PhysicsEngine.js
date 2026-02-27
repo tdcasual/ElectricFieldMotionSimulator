@@ -294,52 +294,6 @@ export class PhysicsEngine {
     }
 
     /**
-     * Fluorescent screen hit handling: record hit and remove particle.
-     */
-    handleScreenHit(particle, scene, screenOverride = null) {
-        const screens = screenOverride ? [screenOverride] : (scene.screens || []);
-        if (!screens.length) return false;
-        const t = scene.time || 0;
-        for (const screen of screens) {
-            const left = screen.x - screen.width / 2;
-            const right = screen.x + screen.width / 2;
-            const top = screen.y - screen.height / 2;
-            const bottom = screen.y + screen.height / 2;
-
-            // 线段与左侧面的交点检测，确保命中后停止在左侧面
-            const prevX = particle.prevX ?? particle.position.x;
-            const prevY = particle.prevY ?? particle.position.y;
-            const currX = particle.position.x;
-            const currY = particle.position.y;
-
-            const dx = currX - prevX;
-            const dy = currY - prevY;
-            if (dx !== 0) {
-                const ratio = (left - prevX) / dx;
-                if (ratio >= 0 && ratio <= 1) {
-                    const hitY = prevY + dy * ratio;
-                    if (hitY >= top && hitY <= bottom) {
-                        // 将粒子位置夹到左侧面，记录命中并移除
-                        particle.position.x = left;
-                        particle.position.y = hitY;
-                        screen.recordHit(left, hitY, t);
-                        return true;
-                    }
-                }
-            }
-
-            // 如果粒子已在屏幕内也视为命中并夹到左侧面
-            if (currX >= left && currX <= right && currY >= top && currY <= bottom) {
-                particle.position.x = left;
-                particle.position.y = currY;
-                screen.recordHit(left, currY, t);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * Parallel-plate capacitor collision: stop particle when it hits a plate.
      */
     handleCapacitorCollision(particle, scene, fieldOverride = null) {

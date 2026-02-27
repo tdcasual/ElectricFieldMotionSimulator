@@ -8,107 +8,120 @@ import { MagneticField } from '../objects/MagneticField.js';
 import { Particle } from '../objects/Particle.js';
 import { ElectronGun } from '../objects/ElectronGun.js';
 import { ProgrammableEmitter } from '../objects/ProgrammableEmitter.js';
-import { FluorescentScreen } from '../objects/FluorescentScreen.js';
 import { DisappearZone } from '../objects/DisappearZone.js';
 
-const ICONS = {
+function normalizeIconMarkup(markup) {
+  const source = String(markup ?? '').trim();
+  return source.replace(/<svg\b([^>]*)>/i, (_all, attrs) => {
+    const attrsWithoutSize = String(attrs ?? '')
+      .replace(/\swidth="[^"]*"/gi, '')
+      .replace(/\sheight="[^"]*"/gi, '');
+    if (/\bclass="[^"]*"/i.test(attrsWithoutSize)) {
+      return `<svg${attrsWithoutSize.replace(/\bclass="([^"]*)"/i, 'class="$1 registry-icon"')}>`;
+    }
+    return `<svg${attrsWithoutSize} class="registry-icon">`;
+  });
+}
+
+const RAW_ICONS = {
   electricRect: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <rect x="4" y="4" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"/>
-      <path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="4.5" y="5" width="15" height="14" rx="1.5" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   electricCircle: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <circle cx="12" cy="12" r="8" stroke="currentColor" fill="none" stroke-width="2"/>
-      <path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="12" cy="12" r="7.2" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   electricSemi: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <path d="M4 12 A8 8 0 0 1 20 12" stroke="currentColor" fill="none" stroke-width="2"/>
-      <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M5 13a7 7 0 0 1 14 0" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <line x1="5" y1="13" x2="19" y2="13" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   capacitor: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <line x1="8" y1="4" x2="8" y2="20" stroke="currentColor" stroke-width="3"/>
-      <line x1="16" y1="4" x2="16" y2="20" stroke="currentColor" stroke-width="3"/>
-      <text x="10" y="14" font-size="10" fill="currentColor">+</text>
-      <text x="4" y="14" font-size="10" fill="currentColor">-</text>
+      <line x1="8.5" y1="5" x2="8.5" y2="19" stroke="currentColor" stroke-width="1.8"/>
+      <line x1="15.5" y1="5" x2="15.5" y2="19" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M4.5 14h2.8" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M11 9h2.8M12.4 7.6v2.8" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   verticalCapacitor: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <rect x="6" y="4" width="4" height="16" stroke="currentColor" fill="none" stroke-width="2"/>
-      <rect x="14" y="4" width="4" height="16" stroke="currentColor" fill="none" stroke-width="2"/>
-      <path d="M6 12h12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="6" y1="8.5" x2="18" y2="8.5" stroke="currentColor" stroke-width="1.8"/>
+      <line x1="6" y1="15.5" x2="18" y2="15.5" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M12 9.8v4.4M10.7 12h2.6" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   magneticRect: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <rect x="4" y="5" width="16" height="14" stroke="currentColor" fill="none" stroke-width="2"/>
-      <circle cx="9" cy="10" r="1.7" fill="currentColor"/>
-      <circle cx="15" cy="10" r="1.7" fill="currentColor"/>
-      <circle cx="9" cy="15" r="1.7" fill="currentColor"/>
-      <circle cx="15" cy="15" r="1.7" fill="currentColor"/>
+      <rect x="4" y="5" width="16" height="14" rx="1.5" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <circle cx="8.5" cy="9.6" r="1.2" fill="currentColor"/>
+      <path d="M14.2 8.4l2.6 2.6M16.8 8.4l-2.6 2.6" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M7.2 13.9l2.6 2.6M9.8 13.9l-2.6 2.6" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="15.5" cy="15.3" r="1.2" fill="currentColor"/>
     </svg>
   `,
   magneticLong: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <rect x="3" y="8" width="18" height="8" stroke="currentColor" fill="none" stroke-width="2"/>
-      <circle cx="7" cy="12" r="1.6" fill="currentColor"/>
-      <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
-      <circle cx="17" cy="12" r="1.6" fill="currentColor"/>
+      <rect x="3.2" y="8.2" width="17.6" height="7.6" rx="1.2" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <circle cx="7" cy="12" r="1.1" fill="currentColor"/>
+      <path d="M10.6 10.8l2.4 2.4M13 10.8l-2.4 2.4" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="17" cy="12" r="1.1" fill="currentColor"/>
     </svg>
   `,
   magneticCircle: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <circle cx="12" cy="12" r="8" stroke="currentColor" fill="none" stroke-width="2"/>
-      <circle cx="12" cy="12" r="2" fill="currentColor"/>
+      <circle cx="12" cy="12" r="7.2" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <circle cx="12" cy="12" r="1.3" fill="currentColor"/>
+      <path d="M8 8l1.8 1.8M9.8 8L8 9.8M14.2 14.2l1.8 1.8M16 14.2l-1.8 1.8" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   magneticTriangle: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <path d="M12 5 L4 19 H20 Z" stroke="currentColor" fill="none" stroke-width="2"/>
-      <circle cx="12" cy="12" r="1.7" fill="currentColor"/>
+      <path d="M12 5L4.8 18.5h14.4Z" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <circle cx="12" cy="11.8" r="1.2" fill="currentColor"/>
+      <path d="M8.2 15l1.8 1.8M10 15l-1.8 1.8" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   electronGun: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <path d="M4 7h10l4 5-4 5H4z" stroke="currentColor" fill="none" stroke-width="2"/>
-      <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2"/>
-      <circle cx="6" cy="12" r="1.5" fill="currentColor"/>
+      <path d="M5 8h7l4 4-4 4H5z" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <line x1="7" y1="12" x2="18.5" y2="12" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M16.2 10.4l2.3 1.6-2.3 1.6" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <circle cx="7" cy="12" r="1.1" fill="currentColor"/>
     </svg>
   `,
   programmableEmitter: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <rect x="4" y="8" width="6" height="8" stroke="currentColor" fill="none" stroke-width="2"/>
-      <path d="M11 12h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <path d="M16 9l4 3-4 3" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="7" cy="12" r="1.3" fill="currentColor"/>
+      <rect x="4.5" y="8" width="5.5" height="8" rx="1" stroke="currentColor" fill="none" stroke-width="1.8"/>
+      <path d="M11.2 12h8.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M15.2 9.8l3 2.2-3 2.2" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="7.2" cy="12" r="1.1" fill="none" stroke="currentColor" stroke-width="1.8"/>
     </svg>
   `,
   particle: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <circle cx="12" cy="12" r="6" fill="currentColor"/>
-    </svg>
-  `,
-  fluorescentScreen: `
-    <svg viewBox="0 0 24 24" width="24" height="24">
-      <rect x="4" y="4" width="8" height="16" stroke="currentColor" fill="none" stroke-width="2"/>
-      <rect x="12" y="6" width="8" height="12" stroke="currentColor" fill="none" stroke-width="2"/>
-      <circle cx="16" cy="12" r="2" fill="currentColor"/>
+      <circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
     </svg>
   `,
   disappearZone: `
     <svg viewBox="0 0 24 24" width="24" height="24">
-      <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
-      <path d="M9 8l-2 2 2 2" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M15 8l2 2-2 2" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2"/>
+      <path d="M8.8 9.5l-2 2.5 2 2.5" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M15.2 9.5l2 2.5-2 2.5" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   `
 };
+
+const ICONS = Object.fromEntries(
+  Object.entries(RAW_ICONS).map(([key, markup]) => [key, normalizeIconMarkup(markup)])
+);
 
 export const registry = new ObjectRegistry();
 
@@ -269,21 +282,6 @@ registry.register('programmable-emitter', {
     onUpdate: (engine, scene, object, dt) => {
       object.update?.(dt, scene);
     }
-  }
-});
-
-registry.register('fluorescent-screen', {
-  class: FluorescentScreen,
-  label: '荧光屏',
-  icon: ICONS.fluorescentScreen,
-  category: 'display',
-  defaults: FluorescentScreen.defaults,
-  schema: FluorescentScreen.schema,
-  rendererKey: 'device',
-  physicsHooks: {
-    stage: 30,
-    onParticleStep: (engine, scene, particle, object) =>
-      engine.handleScreenHit(particle, scene, object)
   }
 });
 

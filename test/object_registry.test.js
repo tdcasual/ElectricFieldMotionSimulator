@@ -40,12 +40,16 @@ test('registry registers all built-in types', async () => {
     'particle',
     'electron-gun',
     'programmable-emitter',
-    'fluorescent-screen',
     'disappear-zone'
   ];
   for (const type of types) {
-    assert.ok(registry.get(type), `missing ${type}`);
+    const entry = registry.get(type);
+    assert.ok(entry, `missing ${type}`);
+    assert.ok(typeof entry.icon === 'string', `missing icon for ${type}`);
+    assert.match(entry.icon, /class="[^"]*\bregistry-icon\b[^"]*"/, `icon class not normalized for ${type}`);
+    assert.doesNotMatch(entry.icon, /<text\b/i, `icon should avoid text nodes for ${type}`);
   }
+  assert.equal(registry.get('fluorescent-screen'), null);
 });
 
 test('registry preserves magnetic variant types', async () => {

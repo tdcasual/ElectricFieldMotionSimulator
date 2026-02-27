@@ -11,10 +11,6 @@ export const ObjectRenderers = {
       renderer.drawDisappearZone(object, scene);
       return;
     }
-    if (object.type === 'fluorescent-screen') {
-      renderer.drawFluorescentScreen(object, scene);
-      return;
-    }
     if (object.type === 'electron-gun') {
       renderer.drawElectronGun(object, scene);
       return;
