@@ -13,10 +13,12 @@ const importFileInput = ref<HTMLInputElement | null>(null);
 const isCoarsePointer = ref(false);
 const phoneToolRailOpen = ref(false);
 const phoneSettingsOpen = ref(false);
+const phoneSecondaryActionsOpen = ref(false);
 const showAuthoringControls = computed(() => !simulatorStore.viewMode);
 const isPhoneLayout = computed(() => simulatorStore.layoutMode === 'phone');
 const phoneToolRailExpanded = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneToolRailOpen.value);
 const phoneSettingsSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneSettingsOpen.value);
+const phoneSecondaryActionsSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneSecondaryActionsOpen.value);
 const PHONE_LAYOUT_MAX_WIDTH = 767;
 const TABLET_LAYOUT_MAX_WIDTH = 1199;
 
@@ -62,6 +64,7 @@ watch(
     if (next !== 'phone') {
       phoneToolRailOpen.value = false;
       phoneSettingsOpen.value = false;
+      phoneSecondaryActionsOpen.value = false;
     }
   }
 );
@@ -72,6 +75,7 @@ watch(
     if (visible) return;
     phoneToolRailOpen.value = false;
     phoneSettingsOpen.value = false;
+    phoneSecondaryActionsOpen.value = false;
   }
 );
 
@@ -241,6 +245,7 @@ function applyVariables(values: Record<string, number>) {
 function togglePhoneToolRail() {
   if (!isPhoneLayout.value) return;
   phoneSettingsOpen.value = false;
+  phoneSecondaryActionsOpen.value = false;
   phoneToolRailOpen.value = !phoneToolRailOpen.value;
 }
 
@@ -251,11 +256,23 @@ function closePhoneToolRail() {
 function togglePhoneSettingsSheet() {
   if (!isPhoneLayout.value) return;
   phoneToolRailOpen.value = false;
+  phoneSecondaryActionsOpen.value = false;
   phoneSettingsOpen.value = !phoneSettingsOpen.value;
 }
 
 function closePhoneSettingsSheet() {
   phoneSettingsOpen.value = false;
+}
+
+function togglePhoneSecondaryActionsSheet() {
+  if (!isPhoneLayout.value) return;
+  phoneToolRailOpen.value = false;
+  phoneSettingsOpen.value = false;
+  phoneSecondaryActionsOpen.value = !phoneSecondaryActionsOpen.value;
+}
+
+function closePhoneSecondaryActionsSheet() {
+  phoneSecondaryActionsOpen.value = false;
 }
 
 function createObjectFromToolbar(type: string) {
@@ -270,6 +287,21 @@ function loadPresetAndClose(name: string) {
   if (isPhoneLayout.value) {
     closePhoneToolRail();
   }
+}
+
+function exportSceneAndCloseSecondary() {
+  exportScene();
+  closePhoneSecondaryActionsSheet();
+}
+
+function openImportDialogAndCloseSecondary() {
+  openImportDialog();
+  closePhoneSecondaryActionsSheet();
+}
+
+function toggleThemeAndCloseSecondary() {
+  toggleTheme();
+  closePhoneSecondaryActionsSheet();
 }
 
 function openSelectedPropertiesFromActionBar() {
@@ -296,7 +328,8 @@ function deleteSelectedFromActionBar() {
       'layout-tablet': simulatorStore.layoutMode === 'tablet',
       'layout-phone': simulatorStore.layoutMode === 'phone',
       'phone-toolbar-open': phoneToolRailExpanded,
-      'phone-settings-open': phoneSettingsSheetOpen
+      'phone-settings-open': phoneSettingsSheetOpen,
+      'phone-secondary-open': phoneSecondaryActionsSheetOpen
     }"
   >
     <header id="header">
@@ -327,6 +360,18 @@ function deleteSelectedFromActionBar() {
           >
             ⚙ 参数
           </button>
+          <button
+            v-if="showAuthoringControls && isPhoneLayout"
+            id="secondary-actions-toggle-btn"
+            class="btn"
+            :class="{ 'btn-primary': phoneSecondaryActionsSheetOpen }"
+            title="更多操作"
+            aria-label="更多操作"
+            :aria-pressed="phoneSecondaryActionsSheetOpen ? 'true' : 'false'"
+            @click="togglePhoneSecondaryActionsSheet"
+          >
+            ⋯ 更多
+          </button>
           <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停" @click="togglePlayPause">
             <span id="play-icon">{{ simulatorStore.running ? '⏸' : '▶' }}</span>
             <span id="play-label">{{ simulatorStore.running ? '暂停' : '播放' }}</span>
@@ -336,9 +381,9 @@ function deleteSelectedFromActionBar() {
             <button id="clear-btn" class="btn" title="清空场景" aria-label="清空场景" @click="clearScene">🗑 清空</button>
             <button id="save-btn" class="btn" title="保存场景" aria-label="保存场景" @click="saveScene">💾 保存</button>
             <button id="load-btn" class="btn" title="加载场景" aria-label="加载场景" @click="loadScene">📂 读取</button>
-            <button id="export-btn" class="btn" title="导出场景" aria-label="导出场景" @click="exportScene">📤 导出</button>
-            <button id="import-btn" class="btn" title="导入场景" aria-label="导入场景" @click="openImportDialog">📥 导入</button>
-            <button id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题" @click="toggleTheme">🌙 主题</button>
+            <button v-if="!isPhoneLayout" id="export-btn" class="btn" title="导出场景" aria-label="导出场景" @click="exportScene">📤 导出</button>
+            <button v-if="!isPhoneLayout" id="import-btn" class="btn" title="导入场景" aria-label="导入场景" @click="openImportDialog">📥 导入</button>
+            <button v-if="!isPhoneLayout" id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题" @click="toggleTheme">🌙 主题</button>
             <button
               id="variables-btn"
               class="btn"
@@ -476,6 +521,18 @@ function deleteSelectedFromActionBar() {
       class="phone-settings-backdrop"
       aria-label="关闭参数面板"
       @click="closePhoneSettingsSheet"
+    ></button>
+    <div v-if="phoneSecondaryActionsSheetOpen" class="phone-secondary-actions-sheet">
+      <button id="secondary-export-btn" class="btn" type="button" @click="exportSceneAndCloseSecondary">📤 导出场景</button>
+      <button id="secondary-import-btn" class="btn" type="button" @click="openImportDialogAndCloseSecondary">📥 导入场景</button>
+      <button id="secondary-theme-btn" class="btn" type="button" @click="toggleThemeAndCloseSecondary">🌙 切换主题</button>
+    </div>
+    <button
+      v-if="phoneSecondaryActionsSheetOpen"
+      type="button"
+      class="phone-secondary-backdrop"
+      aria-label="关闭更多操作"
+      @click="closePhoneSecondaryActionsSheet"
     ></button>
 
     <CanvasViewport :fps="simulatorStore.fps" />

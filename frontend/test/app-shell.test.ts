@@ -274,6 +274,55 @@ describe('App shell', () => {
     expect(appShell.classes()).toContain('phone-settings-open');
   });
 
+  it('uses phone secondary actions panel for import/export/theme', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('#export-btn').exists()).toBe(false);
+    expect(wrapper.find('#import-btn').exists()).toBe(false);
+    expect(wrapper.find('#theme-toggle-btn').exists()).toBe(false);
+    expect(wrapper.find('#secondary-actions-toggle-btn').exists()).toBe(true);
+  });
+
+  it('opens phone secondary actions and triggers export', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    const exportSpy = vi.spyOn(store, 'exportScene');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    await wrapper.get('#secondary-actions-toggle-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-secondary-open');
+
+    await wrapper.get('#secondary-export-btn').trigger('click');
+    await nextTick();
+    expect(exportSpy).toHaveBeenCalledTimes(1);
+    expect(appShell.classes()).not.toContain('phone-secondary-open');
+  });
+
   it('forwards action-bar duplicate and delete events to store actions', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);
