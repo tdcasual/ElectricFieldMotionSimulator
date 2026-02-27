@@ -49,3 +49,14 @@ test('embed sdk bridge supports ready event and host commands', async ({ page })
   });
   expect(String((invalid as { code?: unknown }).code ?? '')).toBe('validation');
 });
+
+test('embed host can bootstrap viewer by material id', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5173/embed-host-test.html?materialId=mock-particle');
+  await page.waitForFunction(() => {
+    const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
+    return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
+  });
+
+  const frame = page.frameLocator('#embed-frame');
+  await expect(frame.locator('#object-count')).toContainText('1');
+});

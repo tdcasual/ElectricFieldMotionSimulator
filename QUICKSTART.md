@@ -20,8 +20,10 @@
   - `frontend/dist/embed.js`（嵌入 SDK）
 - `iframe` 示例：
   - `viewer.html?mode=view&sceneUrl=https://example.com/scene.json`
+  - `viewer.html?mode=view&materialId=mock-particle`
 - JS 示例：
   - `const app = new ElectricFieldApp({ mode: 'view', sceneUrl: 'https://example.com/scene.json' });`
+  - `const app2 = new ElectricFieldApp({ mode: 'view', materialId: 'mock-particle' });`
   - `app.inject('#sim-container');`
   - `await app.play(); await app.pause(); await app.reset();`
   - `await app.loadScene({ version: '1.0', settings: {}, objects: [] });`

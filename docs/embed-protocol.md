@@ -105,6 +105,17 @@ Current known codes:
 - `invalid-command`: unsupported command name.
 - `timeout`: SDK-side timeout waiting for `command-result`.
 
+## 4.1 Local Mock `materialId` (current phase)
+
+Current phase ships a local mock material registry in:
+- `frontend/src/embed/materialMockRegistry.ts`
+
+Built-in ids:
+- `mock-empty` -> `/scenes/embed-empty.json`
+- `mock-particle` -> `/scenes/material-mock-particle.json`
+
+This is a temporary backend-free adapter. Later phases can replace it with a remote material service while keeping the same `materialId` entry point.
+
 ## 5. SDK Mapping (`embed.js`)
 
 `ElectricFieldApp` public methods:

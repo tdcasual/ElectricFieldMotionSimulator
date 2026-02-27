@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "settings": {},
+  "objects": [
+    {
+      "type": "particle",
+      "x": 240,
+      "y": 180,
+      "charge": -1,
+      "mass": 1,
+      "velocityX": 0,
+      "velocityY": 0
+    }
+  ]
+}

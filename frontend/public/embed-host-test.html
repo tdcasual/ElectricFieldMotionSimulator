@@ -36,10 +36,12 @@
 
         window.__embedHarness = harness;
 
-        var app = new window.ElectricFieldApp({
+        var params = new URLSearchParams(window.location.search);
+        var materialId = params.get('materialId');
+        var sceneUrl = params.get('sceneUrl') || '/scenes/embed-empty.json';
+        var appOptions = {
           mode: 'view',
           toolbar: false,
-          sceneUrl: '/scenes/embed-empty.json',
           onReady: function (payload) {
             harness.readyEvents.push(payload || {});
           },
@@ -49,7 +51,14 @@
           onCommandResult: function (payload) {
             harness.commandResults.push(payload || {});
           }
-        });
+        };
+        if (materialId) {
+          appOptions.materialId = materialId;
+        } else {
+          appOptions.sceneUrl = sceneUrl;
+        }
+
+        var app = new window.ElectricFieldApp(appOptions);
 
         var iframe = app.inject('#sim');
         iframe.id = 'embed-frame';

@@ -54,4 +54,34 @@ describe('scene source resolver', () => {
     if (result.ok) return;
     expect(result.code).toBe('validation');
   });
+
+  it('resolves scene from material id via resolver', async () => {
+    const config = parseEmbedConfigFromSearch('?materialId=mock-particle');
+    const result = await resolveSceneSource(config, {
+      materialResolver: async (materialId) => {
+        if (materialId !== 'mock-particle') return null;
+        return {
+          sceneData: {
+            version: '1.0',
+            settings: {},
+            objects: [{ type: 'particle', x: 240, y: 180 }]
+          }
+        };
+      }
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.source).toBe('materialId');
+    expect(result.data.objects).toHaveLength(1);
+  });
+
+  it('returns material-not-found when material id cannot be resolved', async () => {
+    const config = parseEmbedConfigFromSearch('?materialId=missing-id');
+    const result = await resolveSceneSource(config, {
+      materialResolver: async () => null
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('material-not-found');
+  });
 });
