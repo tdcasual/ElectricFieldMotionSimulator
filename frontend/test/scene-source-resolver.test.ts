@@ -55,6 +55,22 @@ describe('scene source resolver', () => {
     expect(result.code).toBe('validation');
   });
 
+  it('preserves camera and variables fields from inline payload', async () => {
+    const encoded = encodeURIComponent(JSON.stringify({
+      version: '1.0',
+      settings: {},
+      camera: { offsetX: 120, offsetY: -32 },
+      variables: { alpha: 2 },
+      objects: []
+    }));
+    const config = parseEmbedConfigFromSearch(`?sceneData=${encoded}`);
+    const result = await resolveSceneSource(config);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.data as Record<string, unknown>).camera).toEqual({ offsetX: 120, offsetY: -32 });
+    expect((result.data as Record<string, unknown>).variables).toEqual({ alpha: 2 });
+  });
+
   it('resolves scene from material id via resolver', async () => {
     const config = parseEmbedConfigFromSearch('?materialId=mock-particle');
     const result = await resolveSceneSource(config, {
