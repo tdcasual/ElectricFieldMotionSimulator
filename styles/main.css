@@ -353,62 +353,79 @@
 }
 
 /* 响应式布局 */
-@media (max-width: 1200px) {
-    #app {
-        --header-height: 120px;
-        grid-template-columns: 60px 1fr;
-        grid-template-areas:
-            "toolbar header"
-            "toolbar canvas"
-            "toolbar footer";
-    }
-    
-    #property-panel {
-        position: fixed;
-        right: -320px;
-        top: var(--header-height);
-        bottom: 40px;
-        width: 320px;
-        transition: right var(--transition-slow);
-        z-index: 100;
-        box-shadow: var(--shadow-lg);
-    }
-    
-    #property-panel.open {
-        right: 0;
-    }
-    
-    #toolbar .tool-item span,
-    #toolbar h2,
-    #toolbar h3 {
-        display: none;
-    }
-    
-    #toolbar {
-        padding: var(--spacing-sm);
-    }
+#app.layout-tablet,
+#app.layout-phone {
+    --header-height: 120px;
+    grid-template-columns: 60px 1fr;
+    grid-template-areas:
+        "toolbar header"
+        "toolbar canvas"
+        "toolbar footer";
 }
 
-@media (max-width: 768px) {
-    #app {
-        --header-height: 128px;
-        grid-template-columns: 52px 1fr;
-    }
+#app.layout-tablet #property-panel,
+#app.layout-phone #property-panel {
+    position: fixed;
+    right: -320px;
+    top: var(--header-height);
+    bottom: 40px;
+    width: 320px;
+    transition: right var(--transition-slow);
+    z-index: 100;
+    box-shadow: var(--shadow-lg);
+}
 
-    #header {
-        padding: var(--spacing-xs) var(--spacing-sm);
-    }
+#app.layout-tablet #property-panel.open,
+#app.layout-phone #property-panel.open {
+    right: 0;
+}
 
-    #header h1 {
-        display: none;
-    }
+#app.layout-tablet #toolbar .tool-item span,
+#app.layout-tablet #toolbar h2,
+#app.layout-tablet #toolbar h3,
+#app.layout-phone #toolbar .tool-item span,
+#app.layout-phone #toolbar h2,
+#app.layout-phone #toolbar h3 {
+    display: none;
+}
 
-    #timestep-slider {
-        width: 80px;
-    }
+#app.layout-tablet #toolbar,
+#app.layout-phone #toolbar {
+    padding: var(--spacing-sm);
+}
 
-    #property-panel {
-        width: 100vw;
-        right: -100vw;
-    }
+#app.layout-phone {
+    --header-height: 132px;
+    grid-template-columns: 52px 1fr;
+}
+
+#app.layout-phone #header {
+    padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+#app.layout-phone #header h1 {
+    display: none;
+}
+
+#app.layout-phone #timestep-slider {
+    width: 80px;
+}
+
+#app.layout-phone #property-panel {
+    width: calc(100vw - 52px);
+    right: calc(-100vw + 52px);
+}
+
+#app.layout-phone #toolbar .preset-section {
+    display: none;
+}
+
+#app.layout-phone .header-actions .btn {
+    font-size: 11px;
+    padding: 4px 6px;
+}
+
+#app.layout-phone .header-actions,
+#app.layout-phone .header-settings {
+    gap: 6px;
 }

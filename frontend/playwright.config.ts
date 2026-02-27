@@ -25,8 +25,26 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
+      name: 'desktop-chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /.*\.spec\.ts/,
+      testIgnore: /touch-core-path\.spec\.ts/
+    },
+    {
+      name: 'tablet-chromium',
+      use: {
+        ...devices['iPad (gen 7)'],
+        browserName: 'chromium'
+      },
+      testMatch: /touch-core-path\.spec\.ts/
+    },
+    {
+      name: 'phone-chromium',
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'chromium'
+      },
+      testMatch: /touch-core-path\.spec\.ts/
     }
   ]
 });

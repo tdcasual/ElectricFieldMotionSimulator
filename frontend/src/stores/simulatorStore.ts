@@ -22,6 +22,8 @@ type ToolbarGroup = {
   entries: ToolbarEntry[];
 };
 
+export type LayoutMode = 'desktop' | 'tablet' | 'phone';
+
 const CATEGORY_LABELS: Record<string, string> = {
   electric: '电场',
   magnetic: '磁场',
@@ -90,6 +92,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const runtime = shallowRef<SimulatorRuntime | null>(null);
   const runtimeMounted = ref(false);
   const hostMode = ref<EmbedMode>('edit');
+  const layoutMode = ref<LayoutMode>('desktop');
 
   const toolbarGroups = ref<ToolbarGroup[]>(buildToolbarGroups());
 
@@ -324,6 +327,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
     }
   }
 
+  function setLayoutMode(next: LayoutMode) {
+    if (next !== 'desktop' && next !== 'tablet' && next !== 'phone') return;
+    layoutMode.value = next;
+  }
+
   function loadSceneData(data: Record<string, unknown>) {
     const ok = getRuntime().loadSceneData(data);
     if (ok) {
@@ -522,6 +530,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   return {
     toolbarGroups,
     hostMode,
+    layoutMode,
     viewMode,
     running,
     demoMode,
@@ -553,6 +562,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     mountRuntime,
     unmountRuntime,
     setHostMode,
+    setLayoutMode,
     loadSceneData,
     bootstrapFromEmbed,
     toggleRunning,

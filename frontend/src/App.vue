@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import MarkdownBoard from './components/MarkdownBoard.vue';
+import ObjectActionBar from './components/ObjectActionBar.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
@@ -9,7 +10,10 @@ import { useSimulatorStore } from './stores/simulatorStore';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
+const isCoarsePointer = ref(false);
 const showAuthoringControls = computed(() => !simulatorStore.viewMode);
+const PHONE_LAYOUT_MAX_WIDTH = 767;
+const TABLET_LAYOUT_MAX_WIDTH = 1199;
 
 const propertyDrawerModel = computed({
   get: () => simulatorStore.propertyDrawerOpen,
@@ -41,14 +45,48 @@ const variablesPanelModel = computed({
   }
 });
 
+const showObjectActionBar = computed(() => {
+  if (!showAuthoringControls.value) return false;
+  if (!simulatorStore.selectedObjectId) return false;
+  return simulatorStore.layoutMode === 'phone' || isCoarsePointer.value;
+});
+
+function resolveLayoutMode(width: number) {
+  if (width <= PHONE_LAYOUT_MAX_WIDTH) return 'phone';
+  if (width <= TABLET_LAYOUT_MAX_WIDTH) return 'tablet';
+  return 'desktop';
+}
+
+function syncLayoutModeFromViewport() {
+  if (typeof window === 'undefined') return;
+  simulatorStore.setLayoutMode(resolveLayoutMode(window.innerWidth));
+}
+
+function handleWindowResize() {
+  syncLayoutModeFromViewport();
+}
+
+function syncCoarsePointer() {
+  if (typeof window === 'undefined') return;
+  const coarseByMedia = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+  const coarseByTouchPoints = (navigator.maxTouchPoints ?? 0) > 0;
+  isCoarsePointer.value = coarseByMedia || coarseByTouchPoints;
+}
+
 onMounted(() => {
-  if (import.meta.env.MODE === 'test') return;
-  simulatorStore.mountRuntime();
+  syncLayoutModeFromViewport();
+  syncCoarsePointer();
+  window.addEventListener('resize', handleWindowResize);
+  if (import.meta.env.MODE !== 'test') {
+    simulatorStore.mountRuntime();
+  }
 });
 
 onBeforeUnmount(() => {
-  if (import.meta.env.MODE === 'test') return;
-  simulatorStore.unmountRuntime();
+  window.removeEventListener('resize', handleWindowResize);
+  if (import.meta.env.MODE !== 'test') {
+    simulatorStore.unmountRuntime();
+  }
 });
 
 function togglePlayPause() {
@@ -175,13 +213,31 @@ function openVariablesPanel() {
 function applyVariables(values: Record<string, number>) {
   simulatorStore.applyVariables(values);
 }
+
+function openSelectedPropertiesFromActionBar() {
+  simulatorStore.openPropertyPanel();
+}
+
+function duplicateSelectedFromActionBar() {
+  simulatorStore.duplicateSelected();
+}
+
+function deleteSelectedFromActionBar() {
+  simulatorStore.deleteSelected();
+}
 </script>
 
 <template>
   <div
     id="app"
     data-testid="app-shell"
-    :class="{ 'panel-open': simulatorStore.propertyDrawerOpen, 'view-mode': simulatorStore.viewMode }"
+    :class="{
+      'panel-open': simulatorStore.propertyDrawerOpen,
+      'view-mode': simulatorStore.viewMode,
+      'layout-desktop': simulatorStore.layoutMode === 'desktop',
+      'layout-tablet': simulatorStore.layoutMode === 'tablet',
+      'layout-phone': simulatorStore.layoutMode === 'phone'
+    }"
   >
     <header id="header">
       <h1>⚡ 电磁场粒子运动模拟器</h1>
@@ -311,7 +367,7 @@ function applyVariables(values: Record<string, number>) {
     <aside v-if="showAuthoringControls" id="toolbar">
       <h2>组件库</h2>
       <ToolbarPanel :groups="simulatorStore.toolbarGroups" @create="simulatorStore.createObjectAtCenter" />
-      <div class="tool-section">
+      <div class="tool-section preset-section">
         <h3>预设场景</h3>
         <button class="preset-btn" data-preset="uniform-acceleration" @click="loadPreset('uniform-acceleration')">匀加速运动</button>
         <button class="preset-btn" data-preset="cyclotron" @click="loadPreset('cyclotron')">回旋运动</button>
@@ -320,6 +376,12 @@ function applyVariables(values: Record<string, number>) {
     </aside>
 
     <CanvasViewport :fps="simulatorStore.fps" />
+    <ObjectActionBar
+      v-if="showObjectActionBar"
+      @open-properties="openSelectedPropertiesFromActionBar"
+      @duplicate="duplicateSelectedFromActionBar"
+      @delete="deleteSelectedFromActionBar"
+    />
 
     <PropertyDrawer
       v-if="showAuthoringControls"

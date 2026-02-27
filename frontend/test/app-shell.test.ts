@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createPinia } from 'pinia';
@@ -119,5 +119,98 @@ describe('App shell', () => {
     expect(wrapper.find('#save-btn').exists()).toBe(false);
     expect(wrapper.find('#import-btn').exists()).toBe(false);
     expect(wrapper.find('#play-pause-btn').exists()).toBe(true);
+  });
+
+  it('applies phone layout class from store mode', () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    (store as unknown as { setLayoutMode?: (mode: string) => void }).setLayoutMode?.('phone');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    expect(wrapper.get('#app').classes()).toContain('layout-phone');
+  });
+
+  it('syncs layout mode from viewport width on mount and resize', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(store.layoutMode).toBe('phone');
+    expect(wrapper.get('#app').classes()).toContain('layout-phone');
+
+    window.innerWidth = 900;
+    window.dispatchEvent(new Event('resize'));
+    await nextTick();
+    expect(store.layoutMode).toBe('tablet');
+    expect(wrapper.get('#app').classes()).toContain('layout-tablet');
+
+    window.innerWidth = 1366;
+    window.dispatchEvent(new Event('resize'));
+    await nextTick();
+    expect(store.layoutMode).toBe('desktop');
+    expect(wrapper.get('#app').classes()).toContain('layout-desktop');
+  });
+
+  it('shows object action bar in phone mode when an object is selected', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(true);
+  });
+
+  it('forwards action-bar duplicate and delete events to store actions', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    const duplicateSpy = vi.spyOn(store, 'duplicateSelected');
+    const deleteSpy = vi.spyOn(store, 'deleteSelected');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    await wrapper.get('[data-testid="action-duplicate"]').trigger('click');
+    await wrapper.get('[data-testid="action-delete"]').trigger('click');
+
+    expect(duplicateSpy).toHaveBeenCalledTimes(1);
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
   });
 });

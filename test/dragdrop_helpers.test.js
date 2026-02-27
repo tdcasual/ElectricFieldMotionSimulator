@@ -6,7 +6,9 @@ import {
   getObjectCircleBoundary,
   getObjectPointBoundary,
   buildTangencyCandidates,
-  clearTangencyHintState
+  clearTangencyHintState,
+  computePinchDistance,
+  computeDemoPinchZoom
 } from '../js/interactions/DragDropManager.js';
 
 test('resolveToolEntry maps toolbar aliases', () => {
@@ -111,4 +113,28 @@ test('clearTangencyHintState resets runtime hint safely', () => {
   };
   clearTangencyHintState(scene);
   assert.equal(scene.interaction.tangencyHint, null);
+});
+
+test('computePinchDistance returns euclidean distance for two touch points', () => {
+  const distance = computePinchDistance(
+    { x: 0, y: 0 },
+    { x: 3, y: 4 }
+  );
+  assert.equal(distance, 5);
+});
+
+test('computeDemoPinchZoom scales from pinch ratio and clamps to limits', () => {
+  const scaled = computeDemoPinchZoom(1, 100, 150, { min: 0.5, max: 4 });
+  assert.equal(scaled, 1.5);
+
+  const minClamped = computeDemoPinchZoom(1, 100, 20, { min: 0.5, max: 4 });
+  assert.equal(minClamped, 0.5);
+
+  const maxClamped = computeDemoPinchZoom(2, 100, 300, { min: 0.5, max: 4 });
+  assert.equal(maxClamped, 4);
+});
+
+test('computeDemoPinchZoom falls back to current zoom when pinch baseline is invalid', () => {
+  const unchanged = computeDemoPinchZoom(1.25, 0, 140, { min: 0.5, max: 4 });
+  assert.equal(unchanged, 1.25);
 });

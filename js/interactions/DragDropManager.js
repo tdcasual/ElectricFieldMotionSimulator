@@ -3,7 +3,14 @@
  */
 
 import { registry } from '../core/registerObjects.js';
-import { buildDemoCreationOverrides, isDemoMode } from '../modes/DemoMode.js';
+import {
+    applyDemoZoomToScene,
+    buildDemoCreationOverrides,
+    DEMO_BASE_PIXELS_PER_UNIT,
+    DEMO_MAX_ZOOM,
+    DEMO_MIN_ZOOM,
+    isDemoMode
+} from '../modes/DemoMode.js';
 import { computePointTangencyMatch, computeTangencyMatch } from './TangencyEngine.js';
 
 const TOOL_ALIASES = {
@@ -28,6 +35,10 @@ const CREATION_OVERRIDES = {
 
 const TANGENCY_TOLERANCE_PX = 2;
 const MIN_TANGENCY_RADIUS = 15;
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
 
 export function resolveToolEntry(type) {
     return TOOL_ALIASES[type] || { type, overrides: {} };
@@ -200,6 +211,30 @@ export function clearTangencyHintState(scene) {
     scene.interaction.tangencyHint = null;
 }
 
+export function computePinchDistance(pointA, pointB) {
+    if (!pointA || !pointB) return 0;
+    if (!Number.isFinite(pointA.x) || !Number.isFinite(pointA.y)) return 0;
+    if (!Number.isFinite(pointB.x) || !Number.isFinite(pointB.y)) return 0;
+    return Math.hypot(pointA.x - pointB.x, pointA.y - pointB.y);
+}
+
+export function computeDemoPinchZoom(startZoom, startDistance, currentDistance, options = {}) {
+    const min = Number.isFinite(options.min) && options.min > 0 ? options.min : DEMO_MIN_ZOOM;
+    const max = Number.isFinite(options.max) && options.max >= min ? options.max : DEMO_MAX_ZOOM;
+    const zoom = Number.isFinite(startZoom) && startZoom > 0 ? startZoom : 1;
+    if (!Number.isFinite(startDistance) || startDistance <= 0) {
+        return clamp(zoom, min, max);
+    }
+    if (!Number.isFinite(currentDistance) || currentDistance <= 0) {
+        return clamp(zoom, min, max);
+    }
+    const scale = currentDistance / startDistance;
+    if (!Number.isFinite(scale) || scale <= 0) {
+        return clamp(zoom, min, max);
+    }
+    return clamp(zoom * scale, min, max);
+}
+
 export class DragDropManager {
     constructor(scene, renderer, options = {}) {
         this.scene = scene;
@@ -229,6 +264,8 @@ export class DragDropManager {
         this.isPanning = false;
         this.panStartScreen = null;
         this.panStartCamera = null;
+        this.touchPoints = new Map();
+        this.pinchGesture = null;
 
         // 允许外部传入 canvas（测试页面或自定义场景）
         this.canvas = options.canvas || document.getElementById('particle-canvas');
@@ -545,8 +582,106 @@ export class DragDropManager {
         };
     }
 
+    isDemoTouchEvent(eventLike) {
+        return eventLike?.pointerType !== 'mouse' && isDemoMode(this.scene);
+    }
+
+    updateTouchPoint(pointerId, screenPos) {
+        if (!Number.isFinite(pointerId) || !screenPos) return;
+        if (!Number.isFinite(screenPos.x) || !Number.isFinite(screenPos.y)) return;
+        this.touchPoints.set(pointerId, { x: screenPos.x, y: screenPos.y });
+    }
+
+    getPinchPoints() {
+        if (!(this.touchPoints instanceof Map) || this.touchPoints.size < 2) return null;
+        const points = Array.from(this.touchPoints.values());
+        if (points.length < 2) return null;
+        return [points[0], points[1]];
+    }
+
+    getCurrentDemoZoom() {
+        const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
+            ? this.scene.settings.pixelsPerMeter
+            : DEMO_BASE_PIXELS_PER_UNIT;
+        return pixelsPerMeter / DEMO_BASE_PIXELS_PER_UNIT;
+    }
+
+    clearPointerInteractionState() {
+        this.clearLongPressTimer();
+        this.isDragging = false;
+        this.draggingObject = null;
+        this.pointerDownPos = null;
+        this.pointerDownObject = null;
+        this.longPressTriggered = false;
+        this.clearTangencyHint();
+        this.dragMode = 'move';
+        this.resizeHandle = null;
+        this.resizeStart = null;
+        this.isPanning = false;
+        this.panStartScreen = null;
+        this.panStartCamera = null;
+        if (this.activePointerId != null) {
+            this.canvas?.releasePointerCapture?.(this.activePointerId);
+        }
+        this.activePointerId = null;
+        if (this.canvas) {
+            this.canvas.style.cursor = 'default';
+        }
+    }
+
+    beginPinchGesture() {
+        const points = this.getPinchPoints();
+        if (!points) return false;
+        const startDistance = computePinchDistance(points[0], points[1]);
+        if (!Number.isFinite(startDistance) || startDistance <= 0) return false;
+        this.pinchGesture = {
+            startDistance,
+            startZoom: this.getCurrentDemoZoom()
+        };
+        this.clearPointerInteractionState();
+        return true;
+    }
+
+    applyPinchGesture() {
+        const points = this.getPinchPoints();
+        if (!points) return false;
+        if (!this.pinchGesture) {
+            return this.beginPinchGesture();
+        }
+
+        const distance = computePinchDistance(points[0], points[1]);
+        const nextZoom = computeDemoPinchZoom(
+            this.pinchGesture.startZoom,
+            this.pinchGesture.startDistance,
+            distance,
+            { min: DEMO_MIN_ZOOM, max: DEMO_MAX_ZOOM }
+        );
+        const nextPixelsPerMeter = DEMO_BASE_PIXELS_PER_UNIT * nextZoom;
+        const midpoint = {
+            x: (points[0].x + points[1].x) / 2,
+            y: (points[0].y + points[1].y) / 2
+        };
+        const anchor = this.screenToWorld(midpoint);
+        const changed = applyDemoZoomToScene(this.scene, {
+            newPixelsPerMeter: nextPixelsPerMeter,
+            anchorX: anchor.x,
+            anchorY: anchor.y
+        });
+        this.scene.settings.gravity = 0;
+        if (!changed) return true;
+        this.requestSceneRender({ invalidateFields: true, updateUI: true });
+        return true;
+    }
+
     onPointerDown(e) {
         if (!this.canvas) return;
+        if (this.isDemoTouchEvent(e)) {
+            this.updateTouchPoint(e.pointerId, this.getScreenPos(e));
+            if (this.touchPoints.size >= 2) {
+                this.beginPinchGesture();
+                return;
+            }
+        }
         if (this.activePointerId !== null) return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
 
@@ -676,6 +811,13 @@ export class DragDropManager {
     }
 
     onPointerMove(e) {
+        if (this.isDemoTouchEvent(e) && this.touchPoints.has(e.pointerId)) {
+            this.updateTouchPoint(e.pointerId, this.getScreenPos(e));
+            if (this.touchPoints.size >= 2) {
+                this.applyPinchGesture();
+                return;
+            }
+        }
         if (this.activePointerId !== e.pointerId) return;
         const screenPos = this.getScreenPos(e);
         const thresholdSq = e.pointerType === 'mouse' ? 1 : 9;
@@ -746,6 +888,15 @@ export class DragDropManager {
     }
 
     onPointerUp(e) {
+        if (this.isDemoTouchEvent(e)) {
+            this.touchPoints.delete(e.pointerId);
+            if (this.touchPoints.size < 2) {
+                this.pinchGesture = null;
+            }
+            if (this.activePointerId === null) {
+                return;
+            }
+        }
         if (this.activePointerId !== e.pointerId) return;
 
         const tappedObject = this.pointerDownObject;
@@ -786,6 +937,15 @@ export class DragDropManager {
     }
 
     onPointerCancel(e) {
+        if (this.isDemoTouchEvent(e)) {
+            this.touchPoints.delete(e.pointerId);
+            if (this.touchPoints.size < 2) {
+                this.pinchGesture = null;
+            }
+            if (this.activePointerId === null) {
+                return;
+            }
+        }
         if (this.activePointerId !== e.pointerId) return;
         this.clearLongPressTimer();
         this.isDragging = false;

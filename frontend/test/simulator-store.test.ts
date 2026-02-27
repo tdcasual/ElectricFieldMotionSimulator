@@ -5,6 +5,17 @@ import { useSimulatorStore } from '../src/stores/simulatorStore';
 beforeEach(() => setActivePinia(createPinia()));
 
 describe('simulatorStore demo mode', () => {
+  it('tracks layout mode with desktop/tablet/phone values', () => {
+    const store = useSimulatorStore();
+    expect((store as unknown as { layoutMode?: string }).layoutMode).toBe('desktop');
+
+    (store as unknown as { setLayoutMode: (mode: string) => void }).setLayoutMode('tablet');
+    expect((store as unknown as { layoutMode?: string }).layoutMode).toBe('tablet');
+
+    (store as unknown as { setLayoutMode: (mode: string) => void }).setLayoutMode('phone');
+    expect((store as unknown as { layoutMode?: string }).layoutMode).toBe('phone');
+  });
+
   it('uses readable default markdown font size', () => {
     const store = useSimulatorStore();
     expect(store.markdownFontSize).toBe(16);

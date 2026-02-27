@@ -39,6 +39,32 @@
     box-shadow: var(--shadow-sm);
 }
 
+.object-action-bar {
+    position: fixed;
+    left: 50%;
+    bottom: 52px;
+    transform: translateX(-50%);
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    box-shadow: var(--shadow-md);
+}
+
+.object-action-btn {
+    min-width: 72px;
+    min-height: 44px;
+    justify-content: center;
+}
+
+.object-action-danger {
+    border-color: color-mix(in srgb, var(--error-red) 60%, var(--border-color));
+}
+
 .btn-icon {
     padding: var(--spacing-xs);
     background: transparent;
@@ -529,6 +555,19 @@ hr {
 }
 
 @media (max-width: 600px) {
+    .object-action-bar {
+        width: calc(100vw - 16px - 52px);
+        left: calc(52px + 8px);
+        transform: none;
+        justify-content: space-between;
+        border-radius: 14px;
+    }
+
+    .object-action-btn {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
     .modal {
         min-width: unset;
         width: 92vw;
