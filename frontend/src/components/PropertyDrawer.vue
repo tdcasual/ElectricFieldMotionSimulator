@@ -6,6 +6,8 @@ type SchemaField = {
   key: string;
   label?: string;
   type?: string;
+  unit?: string;
+  geometryRole?: 'real' | 'display';
   min?: number;
   max?: number;
   step?: number;
@@ -49,6 +51,7 @@ const emit = defineEmits<{
 
 const draft = reactive<Record<string, unknown>>({});
 const sectionOpenState = reactive<Record<number, boolean>>({});
+const MAX_QUICK_FIELDS = 4;
 
 function replaceDraft(next: Record<string, unknown>) {
   for (const key of Object.keys(draft)) {
@@ -163,6 +166,23 @@ const densityLabel = computed(() => {
   if (props.densityMode === 'comfortable') return '密度: 舒适';
   return '密度: 紧凑';
 });
+
+const quickFields = computed<SchemaField[]>(() => {
+  if (props.layoutMode !== 'phone') return [];
+
+  const candidateFields: SchemaField[] = [];
+  for (const section of props.sections ?? []) {
+    for (const field of section.fields ?? []) {
+      if (!field?.key) continue;
+      if (field.geometryRole === 'display') continue;
+      if (field.multiline) continue;
+      if (field.type === 'checkbox') continue;
+      candidateFields.push(field);
+    }
+  }
+
+  return candidateFields.filter((field) => isVisible(field)).slice(0, MAX_QUICK_FIELDS);
+});
 </script>
 
 <template>
@@ -198,6 +218,45 @@ const densityLabel = computed(() => {
         </div>
       </div>
       <div id="property-content" class="panel-content" @wheel="handleContentWheel">
+        <section v-if="quickFields.length" class="property-section" data-testid="property-quick-edit">
+          <div class="property-quick-title">快捷编辑</div>
+          <dl class="property-rows">
+            <template v-for="field in quickFields" :key="`quick-${field.key}`">
+              <dt class="property-key">
+                <label :for="`quick-${field.key}`">{{ field.label ?? field.key }}</label>
+              </dt>
+              <dd class="property-value" data-testid="quick-field">
+                <input
+                  v-if="field.type === 'checkbox'"
+                  :id="`quick-${field.key}`"
+                  v-model="draft[field.key]"
+                  type="checkbox"
+                  :disabled="!isEnabled(field)"
+                />
+                <select
+                  v-else-if="field.type === 'select'"
+                  :id="`quick-${field.key}`"
+                  v-model="draft[field.key]"
+                  :disabled="!isEnabled(field)"
+                >
+                  <option v-for="option in field.options ?? []" :key="String(option.value)" :value="option.value">
+                    {{ option.label ?? String(option.value) }}
+                  </option>
+                </select>
+                <input
+                  v-else
+                  :id="`quick-${field.key}`"
+                  v-model="draft[field.key]"
+                  :type="fieldType(field)"
+                  :min="field.min"
+                  :max="field.max"
+                  :step="field.step"
+                  :disabled="!isEnabled(field)"
+                />
+              </dd>
+            </template>
+          </dl>
+        </section>
         <section
           v-for="(section, sectionIndex) in props.sections"
           :key="`section-${sectionIndex}`"

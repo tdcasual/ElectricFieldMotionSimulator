@@ -109,4 +109,29 @@ describe('PropertyDrawer', () => {
 
     expect(wrapper.find('[data-testid="density-toggle"]').exists()).toBe(true);
   });
+
+  it('renders quick edit group with top fields on phone', () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        layoutMode: 'phone',
+        sections: [
+          {
+            title: '基础',
+            fields: [
+              { key: 'x', label: 'X', type: 'number' },
+              { key: 'y', label: 'Y', type: 'number' },
+              { key: 'radius', label: '半径', type: 'number' },
+              { key: 'strength', label: '场强', type: 'number' },
+              { key: 'hidden', label: '隐藏', type: 'checkbox' }
+            ]
+          }
+        ],
+        values: { x: 1, y: 2, radius: 3, strength: 4, hidden: false }
+      }
+    });
+
+    expect(wrapper.find('[data-testid="property-quick-edit"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-testid="quick-field"]').length).toBe(4);
+  });
 });
