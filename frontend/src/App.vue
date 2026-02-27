@@ -327,6 +327,7 @@ function deleteSelectedFromActionBar() {
       'layout-desktop': simulatorStore.layoutMode === 'desktop',
       'layout-tablet': simulatorStore.layoutMode === 'tablet',
       'layout-phone': simulatorStore.layoutMode === 'phone',
+      'classroom-mode': simulatorStore.classroomMode,
       'phone-toolbar-open': phoneToolRailExpanded,
       'phone-settings-open': phoneSettingsSheetOpen,
       'phone-secondary-open': phoneSecondaryActionsSheetOpen
@@ -375,6 +376,18 @@ function deleteSelectedFromActionBar() {
           <button id="play-pause-btn" class="btn btn-primary" title="播放/暂停" aria-label="播放/暂停" @click="togglePlayPause">
             <span id="play-icon">{{ simulatorStore.running ? '⏸' : '▶' }}</span>
             <span id="play-label">{{ simulatorStore.running ? '暂停' : '播放' }}</span>
+          </button>
+          <button
+            v-if="showAuthoringControls && !isPhoneLayout"
+            id="classroom-mode-btn"
+            class="btn"
+            :class="{ 'btn-primary': simulatorStore.classroomMode }"
+            title="课堂演示模式"
+            aria-label="课堂演示模式"
+            :aria-pressed="simulatorStore.classroomMode ? 'true' : 'false'"
+            @click="simulatorStore.toggleClassroomMode"
+          >
+            {{ simulatorStore.classroomMode ? '退出课堂' : '课堂演示' }}
           </button>
           <button id="reset-btn" class="btn" title="回到起始态" aria-label="回到起始态" @click="resetScene">🔄 回到起始态</button>
           <template v-if="showAuthoringControls">

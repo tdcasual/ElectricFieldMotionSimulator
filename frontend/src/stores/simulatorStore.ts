@@ -111,6 +111,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const gravity = ref(10);
   const boundaryMode = ref<'margin' | 'remove' | 'bounce' | 'wrap'>('margin');
   const boundaryMargin = ref(200);
+  const classroomMode = ref(false);
 
   const activeDrawer = ref<ActiveDrawer>(null);
   const propertyDrawerOpen = computed(() => activeDrawer.value === 'property');
@@ -180,6 +181,24 @@ export const useSimulatorStore = defineStore('simulator', () => {
           window.localStorage.setItem('sim.markdown.fontSize', String(migrated));
         }
       }
+    } catch {
+      // ignore persistence errors
+    }
+  }
+
+  function loadClassroomPreference() {
+    if (typeof window === 'undefined') return;
+    try {
+      classroomMode.value = window.localStorage.getItem('sim.ui.classroomMode') === '1';
+    } catch {
+      classroomMode.value = false;
+    }
+  }
+
+  function persistClassroomPreference() {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('sim.ui.classroomMode', classroomMode.value ? '1' : '0');
     } catch {
       // ignore persistence errors
     }
@@ -310,6 +329,16 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   loadMarkdownPreferences();
+  loadClassroomPreference();
+
+  function setClassroomMode(next: boolean) {
+    classroomMode.value = !!next;
+    persistClassroomPreference();
+  }
+
+  function toggleClassroomMode() {
+    setClassroomMode(!classroomMode.value);
+  }
 
   function getRuntime() {
     const current = ensureRuntime();
@@ -548,6 +577,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     toolbarGroups,
     hostMode,
     layoutMode,
+    classroomMode,
     activeDrawer,
     viewMode,
     running,
@@ -581,6 +611,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
     unmountRuntime,
     setHostMode,
     setLayoutMode,
+    setClassroomMode,
+    toggleClassroomMode,
     loadSceneData,
     bootstrapFromEmbed,
     toggleRunning,

@@ -504,6 +504,56 @@
     background: color-mix(in srgb, #000 14%, transparent);
 }
 
+#app.classroom-mode:not(.layout-phone) {
+    --header-height: 132px;
+}
+
+#app.classroom-mode:not(.layout-phone) #header h1 {
+    font-size: 24px;
+}
+
+#app.classroom-mode:not(.layout-phone) .header-actions .btn {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 15px;
+}
+
+#app.classroom-mode:not(.layout-phone) .control-label {
+    min-height: 40px;
+    font-size: 15px;
+}
+
+#app.classroom-mode:not(.layout-phone) .control-label input[type="number"],
+#app.classroom-mode:not(.layout-phone) .control-label select {
+    min-height: 34px;
+    font-size: 14px;
+}
+
+#app.classroom-mode:not(.layout-phone) #toolbar h2 {
+    font-size: 20px;
+}
+
+#app.classroom-mode:not(.layout-phone) #toolbar h3 {
+    font-size: 15px;
+}
+
+#app.classroom-mode:not(.layout-phone) .tool-item {
+    min-height: 48px;
+}
+
+#app.classroom-mode:not(.layout-phone) .tool-item span {
+    font-size: 15px;
+}
+
+#app.classroom-mode:not(.layout-phone) #footer {
+    font-size: 14px;
+}
+
+#app.classroom-mode:not(.layout-phone) #fps-counter {
+    font-size: 14px;
+    padding: 6px 10px;
+}
+
 #app.layout-phone .header-actions .btn {
     font-size: 11px;
     padding: 4px 6px;

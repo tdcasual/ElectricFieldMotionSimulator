@@ -21,6 +21,17 @@ describe('simulatorStore demo mode', () => {
     expect(store.markdownFontSize).toBe(16);
   });
 
+  it('toggles classroom mode state', () => {
+    const store = useSimulatorStore();
+    expect((store as unknown as { classroomMode?: boolean }).classroomMode).toBe(false);
+
+    (store as unknown as { toggleClassroomMode: () => void }).toggleClassroomMode();
+    expect((store as unknown as { classroomMode?: boolean }).classroomMode).toBe(true);
+
+    (store as unknown as { setClassroomMode: (next: boolean) => void }).setClassroomMode(false);
+    expect((store as unknown as { classroomMode?: boolean }).classroomMode).toBe(false);
+  });
+
   it('toggles running state', () => {
     const store = useSimulatorStore();
     expect(store.running).toBe(false);

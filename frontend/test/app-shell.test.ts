@@ -135,6 +135,32 @@ describe('App shell', () => {
     expect(wrapper.get('#app').classes()).toContain('layout-phone');
   });
 
+  it('toggles classroom mode class from header action button', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 1366,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    expect(appShell.classes()).not.toContain('classroom-mode');
+
+    const btn = wrapper.get('#classroom-mode-btn');
+    expect(btn.attributes('aria-pressed')).toBe('false');
+    await btn.trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('classroom-mode');
+    expect(btn.attributes('aria-pressed')).toBe('true');
+  });
+
   it('syncs layout mode from viewport width on mount and resize', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);
