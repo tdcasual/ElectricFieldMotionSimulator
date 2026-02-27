@@ -96,4 +96,17 @@ describe('PropertyDrawer', () => {
 
     expect(wrapper.get('#property-panel').classes()).toContain('panel-sheet');
   });
+
+  it('shows density toggle in phone layout', () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        layoutMode: 'phone',
+        sections: [],
+        values: {}
+      }
+    });
+
+    expect(wrapper.find('[data-testid="density-toggle"]').exists()).toBe(true);
+  });
 });

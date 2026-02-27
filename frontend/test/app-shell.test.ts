@@ -147,6 +147,27 @@ describe('App shell', () => {
     expect(wrapper.get('#app').classes()).toContain('layout-phone');
   });
 
+  it('applies phone density class from store', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    (store as unknown as { setPhoneDensityMode?: (mode: string) => void }).setPhoneDensityMode?.('compact');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.get('#app').classes()).toContain('phone-density-compact');
+  });
+
   it('toggles classroom mode class from header action button', async () => {
     const pinia = createPinia();
     Object.defineProperty(window, 'innerWidth', {

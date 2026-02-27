@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import DrawerHost from './DrawerHost.vue';
 
 type SchemaField = {
@@ -28,12 +28,14 @@ const props = withDefaults(
     modelValue: boolean;
     title?: string;
     layoutMode?: 'desktop' | 'tablet' | 'phone';
+    densityMode?: 'compact' | 'comfortable';
     sections?: SchemaSection[];
     values?: Record<string, unknown>;
   }>(),
   {
     title: '属性面板',
     layoutMode: 'desktop',
+    densityMode: 'compact',
     sections: () => [],
     values: () => ({})
   }
@@ -42,6 +44,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (event: 'update:modelValue', next: boolean): void;
   (event: 'apply', values: Record<string, unknown>): void;
+  (event: 'toggle-density'): void;
 }>();
 
 const draft = reactive<Record<string, unknown>>({});
@@ -155,6 +158,11 @@ function handleContentWheel(event: WheelEvent) {
   event.preventDefault();
   container.scrollTop += event.deltaY;
 }
+
+const densityLabel = computed(() => {
+  if (props.densityMode === 'comfortable') return '密度: 舒适';
+  return '密度: 紧凑';
+});
 </script>
 
 <template>
@@ -176,7 +184,18 @@ function handleContentWheel(event: WheelEvent) {
     >
       <div class="panel-header">
         <h3>{{ props.title }}</h3>
-        <button id="close-panel-btn" class="btn-icon" aria-label="关闭属性面板" @click="close">✖</button>
+        <div class="panel-header-actions">
+          <button
+            v-if="props.layoutMode === 'phone'"
+            type="button"
+            class="btn"
+            data-testid="density-toggle"
+            @click="emit('toggle-density')"
+          >
+            {{ densityLabel }}
+          </button>
+          <button id="close-panel-btn" class="btn-icon" aria-label="关闭属性面板" @click="close">✖</button>
+        </div>
       </div>
       <div id="property-content" class="panel-content" @wheel="handleContentWheel">
         <section

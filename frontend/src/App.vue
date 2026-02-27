@@ -151,6 +151,10 @@ const phoneSheetSwipeGesture = createSwipeCloseGesture(() => {
   closePhoneSheets();
 });
 
+const phoneDensityClass = computed(() =>
+  simulatorStore.phoneDensityMode === 'comfortable' ? 'phone-density-comfortable' : 'phone-density-compact'
+);
+
 watch(
   () => simulatorStore.layoutMode,
   (next) => {
@@ -488,7 +492,8 @@ function deleteSelectedFromActionBar() {
       'phone-toolbar-open': phoneAddSheetOpen,
       'phone-settings-open': phoneSceneSheetOpen,
       'phone-secondary-open': phoneMoreSheetOpen,
-      'phone-selected-open': phoneSelectedSheetOpen
+      'phone-selected-open': phoneSelectedSheetOpen,
+      [phoneDensityClass]: true
     }"
   >
     <header id="header">
@@ -803,6 +808,8 @@ function deleteSelectedFromActionBar() {
       :layout-mode="simulatorStore.layoutMode"
       :sections="simulatorStore.propertySections"
       :values="simulatorStore.propertyValues"
+      :density-mode="simulatorStore.phoneDensityMode"
+      @toggle-density="simulatorStore.togglePhoneDensityMode"
       @apply="applyProperties"
     />
     <MarkdownBoard
