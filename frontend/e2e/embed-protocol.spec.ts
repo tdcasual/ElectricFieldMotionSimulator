@@ -119,3 +119,39 @@ test('view mode right-click on object does not crash without context menu node',
   await expect(frame.locator('#play-pause-btn')).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
+
+test('view mode blocks pointer edits on canvas objects', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.waitForFunction(() => {
+    const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
+    return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
+  });
+
+  await page.evaluate(async () => {
+    const harness = (window as unknown as { __embedHarness?: { loadScene: (payload: unknown) => Promise<unknown> } }).__embedHarness;
+    await harness?.loadScene({
+      version: '1.0',
+      settings: { pixelsPerMeter: 50, gravity: 0 },
+      objects: [
+        { type: 'electric-field-rect', x: 80, y: 80, width: 420, height: 260, strength: 1000, direction: 90 }
+      ]
+    });
+  });
+
+  const frame = page.frameLocator('#embed-frame');
+  const before = await frame.locator('#canvas-container').screenshot();
+  const canvas = frame.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+
+  const startX = box!.x + 180;
+  const startY = box!.y + 160;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 140, startY + 40, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(80);
+
+  const after = await frame.locator('#canvas-container').screenshot();
+  expect(after.equals(before)).toBe(true);
+});

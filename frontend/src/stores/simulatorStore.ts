@@ -259,6 +259,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
         closePropertyPanel();
       }
     });
+    runtime.value.setHostMode(hostMode.value);
     return runtime.value;
   }
 
@@ -368,6 +369,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   function setHostMode(next: EmbedMode) {
     hostMode.value = next === 'view' ? 'view' : 'edit';
+    runtime.value?.setHostMode(hostMode.value);
     if (hostMode.value === 'view') {
       closeAllDrawers();
     }

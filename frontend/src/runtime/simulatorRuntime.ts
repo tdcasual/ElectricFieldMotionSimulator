@@ -78,6 +78,7 @@ type RenderRequest = {
 };
 
 type RuntimeMode = 'normal' | 'demo';
+type HostMode = 'edit' | 'view';
 
 function isRecord(value: unknown): value is AnyRecord {
   return !!value && typeof value === 'object';
@@ -109,6 +110,7 @@ export class SimulatorRuntime {
 
   private dragDropManager: DragDropManager | null = null;
   private mode: RuntimeMode = 'normal';
+  private hostMode: HostMode = 'edit';
   private demoSession: { snapshot: AnyRecord; wasRunning: boolean } | null = null;
   private readonly demoState = {
     zoom: 1,
@@ -157,6 +159,7 @@ export class SimulatorRuntime {
     this.mounted = true;
     this.mode = 'normal';
     this.scene.settings.mode = this.mode;
+    this.applyHostInteractionSettings();
 
     this.renderer.init();
     this.syncViewportFromRenderer();
@@ -220,6 +223,25 @@ export class SimulatorRuntime {
 
   isDemoMode() {
     return this.mode === 'demo';
+  }
+
+  setHostMode(next: HostMode) {
+    const normalized = next === 'view' ? 'view' : 'edit';
+    const changed = this.hostMode !== normalized;
+    this.hostMode = normalized;
+    this.applyHostInteractionSettings();
+
+    if (this.hostMode === 'view') {
+      this.scene.selectedObject = null;
+      if (this.scene.interaction && typeof this.scene.interaction === 'object') {
+        this.scene.interaction.tangencyHint = null;
+      }
+      this.callbacks.onPropertyHide?.();
+    }
+
+    if (changed || this.hostMode === 'view') {
+      this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: false });
+    }
   }
 
   toggleDemoMode() {
@@ -568,6 +590,7 @@ export class SimulatorRuntime {
 
   private applyModeSettings() {
     this.scene.settings.mode = this.mode;
+    this.applyHostInteractionSettings();
     if (this.mode !== 'demo') return;
     this.scene.settings.gravity = 0;
     const ppm = this.demoState.basePixelsPerMeter * this.demoState.zoom;
@@ -577,6 +600,11 @@ export class SimulatorRuntime {
     if (!Number.isFinite(this.scene.settings.boundaryMargin) || this.scene.settings.boundaryMargin <= 0) {
       this.scene.settings.boundaryMargin = this.demoState.basePixelsPerMeter;
     }
+  }
+
+  private applyHostInteractionSettings() {
+    this.scene.settings.hostMode = this.hostMode;
+    this.scene.settings.interactionLocked = this.hostMode === 'view';
   }
 
   private handleDemoWheel(event: WheelEvent) {

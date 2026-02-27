@@ -193,3 +193,131 @@ test('dispose detaches tool-item listeners to prevent duplicate handler executio
     cleanup();
   }
 });
+
+test('selection change requests UI sync so store state updates immediately', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-1',
+      type: 'electric-field-rect',
+      x: 20,
+      y: 20,
+      width: 100,
+      height: 80,
+      containsPoint: () => true
+    };
+
+    const renderCalls = [];
+    const scene = {
+      settings: { mode: 'normal' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender(options) {
+          renderCalls.push(options);
+        },
+        updateUI() {}
+      }
+    });
+
+    manager.onMouseDown({
+      button: 0,
+      clientX: 50,
+      clientY: 50
+    });
+
+    assert.equal(renderCalls.length, 1);
+    assert.equal(renderCalls[0]?.updateUI, true);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('read-only interaction lock prevents object dragging', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-1',
+      type: 'electric-field-rect',
+      x: 30,
+      y: 40,
+      width: 100,
+      height: 80,
+      containsPoint: () => true
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: true, hostMode: 'view' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onMouseDown({
+      button: 0,
+      clientX: 40,
+      clientY: 50
+    });
+    manager.onMouseMove({
+      clientX: 220,
+      clientY: 180
+    });
+    manager.onMouseUp({});
+
+    assert.equal(clickedObject.x, 30);
+    assert.equal(clickedObject.y, 40);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});

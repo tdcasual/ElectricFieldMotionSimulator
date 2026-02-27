@@ -299,6 +299,10 @@ export class DragDropManager {
         }
     }
 
+    isInteractionLocked() {
+        return this.scene?.settings?.interactionLocked === true || this.scene?.settings?.hostMode === 'view';
+    }
+
     bindEvent(target, type, handler, options = undefined) {
         if (!target?.addEventListener || typeof handler !== 'function') return;
         target.addEventListener(type, handler, options);
@@ -368,6 +372,7 @@ export class DragDropManager {
             // 触屏设备：点击工具后，再点击画布放置对象（替代原生拖拽）
             this.bindEvent(item, 'click', (e) => {
                 if (!this.isCoarsePointer) return;
+                if (this.isInteractionLocked()) return;
                 e.preventDefault();
                 this.toggleArmedTool(item);
             });
@@ -383,6 +388,7 @@ export class DragDropManager {
         this.bindEvent(this.canvas, 'drop', (e) => {
             e.preventDefault();
             if (!e.dataTransfer) return;
+            if (this.isInteractionLocked()) return;
             const type = e.dataTransfer.getData('component-type');
             const screen = this.getScreenPos(e);
             const world = this.screenToWorld(screen);
@@ -407,6 +413,10 @@ export class DragDropManager {
     }
 
     createObject(type, x, y) {
+        if (this.isInteractionLocked()) {
+            this.setStatus('只读模式下无法编辑场景');
+            return;
+        }
         const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
             ? this.scene.settings.pixelsPerMeter
             : 1;
@@ -443,6 +453,7 @@ export class DragDropManager {
     }
 
     toggleArmedTool(item) {
+        if (this.isInteractionLocked()) return;
         const type = item?.dataset?.type;
         if (!type) return;
 
@@ -742,6 +753,7 @@ export class DragDropManager {
         }
         if (this.activePointerId !== null) return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (this.isInteractionLocked()) return;
 
         this.clearTangencyHint();
 
@@ -864,7 +876,7 @@ export class DragDropManager {
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
-            this.requestSceneRender({ invalidateFields: true, updateUI: false });
+            this.requestSceneRender({ invalidateFields: true, updateUI: true });
         }
     }
 
@@ -959,7 +971,7 @@ export class DragDropManager {
 
         const tappedObject = this.pointerDownObject;
         const wasDragging = this.isDragging;
-        const shouldHandleTap = !wasDragging && tappedObject && !this.longPressTriggered && e.pointerType !== 'mouse';
+        const shouldHandleTap = !this.isInteractionLocked() && !wasDragging && tappedObject && !this.longPressTriggered && e.pointerType !== 'mouse';
 
         this.clearLongPressTimer();
 
@@ -1030,6 +1042,7 @@ export class DragDropManager {
 
     onMouseDown(e) {
         if (e.button !== 0) return; // 只处理左键
+        if (this.isInteractionLocked()) return;
         this.clearTangencyHint();
 
         const screenPos = this.getScreenPos(e);
@@ -1111,7 +1124,7 @@ export class DragDropManager {
         }
 
         if (prevSelectedObject !== this.scene.selectedObject) {
-            this.requestSceneRender({ invalidateFields: true, updateUI: false });
+            this.requestSceneRender({ invalidateFields: true, updateUI: true });
         }
     }
 
@@ -1488,6 +1501,7 @@ export class DragDropManager {
 
     onContextMenu(e) {
         e.preventDefault();
+        if (this.isInteractionLocked()) return;
         const fromTouch = e.sourceCapabilities?.firesTouchEvents === true;
         if (fromTouch) return;
 
@@ -1505,7 +1519,7 @@ export class DragDropManager {
             this.scene.selectedObject = clickedObject;
 
             if (prevSelectedObject !== this.scene.selectedObject) {
-                this.requestSceneRender({ invalidateFields: true, updateUI: false });
+                this.requestSceneRender({ invalidateFields: true, updateUI: true });
             }
 
             // 显示右键菜单

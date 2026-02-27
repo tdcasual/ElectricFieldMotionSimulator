@@ -17,7 +17,8 @@ test('touch path place object and long-press open property panel', async ({ page
   await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
 
   await page.touchscreen.tap(x, y);
-  await page.waitForTimeout(120);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+
   await page.touchscreen.tap(x, y);
 
   await expect(page.locator('#property-panel')).toBeVisible();
