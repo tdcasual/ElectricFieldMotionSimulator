@@ -83,3 +83,39 @@ test('embed host smoke captures screenshot', async ({ page }) => {
     path: path.join(screenshotDir, 'embed-smoke-iframe.png')
   });
 });
+
+test('view mode right-click on object does not crash without context menu node', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => {
+    pageErrors.push(String(error));
+  });
+
+  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.waitForFunction(() => {
+    const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
+    return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
+  });
+
+  await page.evaluate(async () => {
+    const harness = (window as unknown as { __embedHarness?: { loadScene: (payload: unknown) => Promise<unknown> } }).__embedHarness;
+    await harness?.loadScene({
+      version: '1.0',
+      settings: { pixelsPerMeter: 50, gravity: 0 },
+      objects: [
+        { type: 'electric-field-rect', x: 50, y: 50, width: 800, height: 500, Ex: 100, Ey: 0 }
+      ]
+    });
+  });
+
+  const frame = page.frameLocator('#embed-frame');
+  await expect(frame.locator('#object-count')).toContainText('1');
+
+  const canvas = frame.locator('#particle-canvas');
+  await canvas.click({
+    button: 'right',
+    position: { x: 250, y: 200 }
+  });
+
+  await expect(frame.locator('#play-pause-btn')).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
