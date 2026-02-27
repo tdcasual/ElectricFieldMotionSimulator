@@ -8,6 +8,40 @@ import { ProgrammableEmitter } from '../js/objects/ProgrammableEmitter.js';
 import { Presets } from '../js/presets/Presets.js';
 import { Serializer } from '../js/utils/Serializer.js';
 
+function withLocalStorageMock(mock, run) {
+  const hadLocalStorage = Object.prototype.hasOwnProperty.call(globalThis, 'localStorage');
+  const original = globalThis.localStorage;
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    writable: true,
+    value: mock
+  });
+  try {
+    run();
+  } finally {
+    if (hadLocalStorage) {
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        writable: true,
+        value: original
+      });
+    } else {
+      // @ts-ignore
+      delete globalThis.localStorage;
+    }
+  }
+}
+
+function withMutedConsoleError(run) {
+  const original = console.error;
+  console.error = () => {};
+  try {
+    run();
+  } finally {
+    console.error = original;
+  }
+}
+
 test('Scene.duplicateObject creates a new id and preserves particle properties', () => {
   const scene = new Scene();
   const particle = new Particle({
@@ -75,6 +109,73 @@ test('Serializer.validateSceneData rejects invalid objects array', () => {
   const result = Serializer.validateSceneData(data);
   assert.equal(result.valid, false);
   assert.equal(result.error, '对象数据格式无效');
+});
+
+test('Serializer.saveSceneData returns false when storage write throws', () => {
+  withMutedConsoleError(() => {
+    withLocalStorageMock(
+      {
+        setItem() {
+          throw new Error('QuotaExceededError');
+        }
+      },
+      () => {
+        const ok = Serializer.saveSceneData({ version: '1.0', objects: [] }, 'demo');
+        assert.equal(ok, false);
+      }
+    );
+  });
+});
+
+test('Serializer.loadScene returns null when storage read throws', () => {
+  withMutedConsoleError(() => {
+    withLocalStorageMock(
+      {
+        getItem() {
+          throw new Error('SecurityError');
+        }
+      },
+      () => {
+        const data = Serializer.loadScene('demo');
+        assert.equal(data, null);
+      }
+    );
+  });
+});
+
+test('Serializer.listScenes returns empty list when storage length access throws', () => {
+  withMutedConsoleError(() => {
+    withLocalStorageMock(
+      {
+        key() {
+          return null;
+        },
+        get length() {
+          throw new Error('SecurityError');
+        }
+      },
+      () => {
+        const scenes = Serializer.listScenes();
+        assert.deepEqual(scenes, []);
+      }
+    );
+  });
+});
+
+test('Serializer.deleteScene returns false when storage remove throws', () => {
+  withMutedConsoleError(() => {
+    withLocalStorageMock(
+      {
+        removeItem() {
+          throw new Error('SecurityError');
+        }
+      },
+      () => {
+        const ok = Serializer.deleteScene('demo');
+        assert.equal(ok, false);
+      }
+    );
+  });
 });
 
 test('Particle.deserialize supports legacy x/y/vx/vy format', () => {

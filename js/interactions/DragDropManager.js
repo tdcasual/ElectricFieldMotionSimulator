@@ -240,6 +240,9 @@ export class DragDropManager {
         this.scene = scene;
         this.renderer = renderer;
         this.appAdapter = options.appAdapter || null;
+        this.cleanupListeners = [];
+        this.contextMenuCloseHandler = null;
+        this.contextMenuCloseTimer = null;
 
         this.draggingObject = null;
         this.dragOffset = { x: 0, y: 0 };
@@ -296,6 +299,58 @@ export class DragDropManager {
         }
     }
 
+    bindEvent(target, type, handler, options = undefined) {
+        if (!target?.addEventListener || typeof handler !== 'function') return;
+        target.addEventListener(type, handler, options);
+        this.cleanupListeners.push(() => {
+            target.removeEventListener(type, handler, options);
+        });
+    }
+
+    clearContextMenuCloseHandler() {
+        if (!this.contextMenuCloseHandler) return;
+        document.removeEventListener('click', this.contextMenuCloseHandler);
+        this.contextMenuCloseHandler = null;
+    }
+
+    clearContextMenuCloseTimer() {
+        if (this.contextMenuCloseTimer == null) return;
+        clearTimeout(this.contextMenuCloseTimer);
+        this.contextMenuCloseTimer = null;
+    }
+
+    dispose() {
+        this.clearLongPressTimer();
+        this.clearContextMenuCloseTimer();
+        this.clearContextMenuCloseHandler();
+        this.clearPointerInteractionState();
+        this.clearTangencyHint();
+        this.touchPoints?.clear?.();
+        this.pinchGesture = null;
+        this.draggingObject = null;
+        this.pointerDownPos = null;
+        this.pointerDownObject = null;
+        this.isPanning = false;
+        this.panStartScreen = null;
+        this.panStartCamera = null;
+        this.dragMode = 'move';
+        this.resizeHandle = null;
+        this.resizeStart = null;
+        if (this.armedToolElement) {
+            this.armedToolElement.classList.remove('active');
+        }
+        this.armedToolType = null;
+        this.armedToolElement = null;
+        while (this.cleanupListeners.length) {
+            const remove = this.cleanupListeners.pop();
+            try {
+                remove?.();
+            } catch {
+                // ignore dispose cleanup failures
+            }
+        }
+    }
+
     init() {
         if (!this.canvas) {
             console.warn('DragDropManager: canvas not found, skipping canvas event binding.');
@@ -304,13 +359,14 @@ export class DragDropManager {
 
         // 工具栏拖拽事件
         document.querySelectorAll('.tool-item').forEach(item => {
-            item.addEventListener('dragstart', (e) => {
+            this.bindEvent(item, 'dragstart', (e) => {
+                if (!e.dataTransfer) return;
                 e.dataTransfer.effectAllowed = 'copy';
                 e.dataTransfer.setData('component-type', item.dataset.type);
             });
 
             // 触屏设备：点击工具后，再点击画布放置对象（替代原生拖拽）
-            item.addEventListener('click', (e) => {
+            this.bindEvent(item, 'click', (e) => {
                 if (!this.isCoarsePointer) return;
                 e.preventDefault();
                 this.toggleArmedTool(item);
@@ -318,13 +374,15 @@ export class DragDropManager {
         });
 
         // Canvas接收拖拽
-        this.canvas.addEventListener('dragover', (e) => {
+        this.bindEvent(this.canvas, 'dragover', (e) => {
             e.preventDefault();
+            if (!e.dataTransfer) return;
             e.dataTransfer.dropEffect = 'copy';
         });
 
-        this.canvas.addEventListener('drop', (e) => {
+        this.bindEvent(this.canvas, 'drop', (e) => {
             e.preventDefault();
+            if (!e.dataTransfer) return;
             const type = e.dataTransfer.getData('component-type');
             const screen = this.getScreenPos(e);
             const world = this.screenToWorld(screen);
@@ -334,18 +392,18 @@ export class DragDropManager {
 
         // Canvas内对象拖拽（Pointer Events 优先，兼容触屏）
         if (window.PointerEvent) {
-            this.canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
-            this.canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
-            this.canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
-            this.canvas.addEventListener('pointercancel', (e) => this.onPointerCancel(e));
+            this.bindEvent(this.canvas, 'pointerdown', (e) => this.onPointerDown(e));
+            this.bindEvent(this.canvas, 'pointermove', (e) => this.onPointerMove(e));
+            this.bindEvent(this.canvas, 'pointerup', (e) => this.onPointerUp(e));
+            this.bindEvent(this.canvas, 'pointercancel', (e) => this.onPointerCancel(e));
         } else {
-            this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
-            this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
-            this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+            this.bindEvent(this.canvas, 'mousedown', (e) => this.onMouseDown(e));
+            this.bindEvent(this.canvas, 'mousemove', (e) => this.onMouseMove(e));
+            this.bindEvent(this.canvas, 'mouseup', (e) => this.onMouseUp(e));
         }
 
         // 右键菜单
-        this.canvas.addEventListener('contextmenu', (e) => this.onContextMenu(e));
+        this.bindEvent(this.canvas, 'contextmenu', (e) => this.onContextMenu(e));
     }
 
     createObject(type, x, y) {
@@ -1452,16 +1510,21 @@ export class DragDropManager {
 
             // 显示右键菜单
             const contextMenu = document.getElementById('context-menu');
+            if (!contextMenu) return;
             contextMenu.style.left = e.clientX + 'px';
             contextMenu.style.top = e.clientY + 'px';
             contextMenu.style.display = 'block';
+            this.clearContextMenuCloseTimer();
+            this.clearContextMenuCloseHandler();
 
             // 点击外部关闭菜单
-            setTimeout(() => {
+            this.contextMenuCloseTimer = setTimeout(() => {
                 const closeMenu = () => {
                     contextMenu.style.display = 'none';
-                    document.removeEventListener('click', closeMenu);
+                    this.clearContextMenuCloseHandler();
                 };
+                this.contextMenuCloseTimer = null;
+                this.contextMenuCloseHandler = closeMenu;
                 document.addEventListener('click', closeMenu);
             }, 0);
         }

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { registry } from '../../js/core/registerObjects.js';
 import { SimulatorRuntime } from '../src/runtime/simulatorRuntime';
 
@@ -35,5 +35,20 @@ describe('SimulatorRuntime demo mode', () => {
     expect(runtime.getSnapshot().mode).toBe('normal');
     expect(runtime.getSnapshot().objectCount).toBe(1);
     runtime.unmount();
+  });
+
+  it('unmount disposes drag-drop manager when present', () => {
+    const runtime = new SimulatorRuntime() as unknown as {
+      mounted: boolean;
+      dragDropManager: { dispose: () => void } | null;
+      unmount: () => void;
+    };
+
+    const dispose = vi.fn();
+    runtime.mounted = true;
+    runtime.dragDropManager = { dispose };
+
+    runtime.unmount();
+    expect(dispose).toHaveBeenCalledTimes(1);
   });
 });

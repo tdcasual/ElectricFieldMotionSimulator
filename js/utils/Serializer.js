@@ -14,18 +14,23 @@ export class Serializer {
      * 保存任意场景数据到localStorage（可包含 UI 扩展字段）
      */
     static saveSceneData(data, name) {
-        const json = JSON.stringify(data);
-        localStorage.setItem(`scene_${name}`, json);
+        try {
+            const json = JSON.stringify(data);
+            localStorage.setItem(`scene_${name}`, json);
+            return true;
+        } catch (error) {
+            console.error('保存场景失败:', error);
+            return false;
+        }
     }
     
     /**
      * 从localStorage加载场景
      */
     static loadScene(name) {
-        const data = localStorage.getItem(`scene_${name}`);
-        if (!data) return null;
-        
         try {
+            const data = localStorage.getItem(`scene_${name}`);
+            if (!data) return null;
             const parsed = JSON.parse(data);
             return parsed;
         } catch (error) {
@@ -78,21 +83,32 @@ export class Serializer {
      * 获取所有保存的场景
      */
     static listScenes() {
-        const scenes = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('scene_')) {
-                scenes.push(key.replace('scene_', ''));
+        try {
+            const scenes = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (typeof key === 'string' && key.startsWith('scene_')) {
+                    scenes.push(key.replace('scene_', ''));
+                }
             }
+            return scenes;
+        } catch (error) {
+            console.error('获取场景列表失败:', error);
+            return [];
         }
-        return scenes;
     }
     
     /**
      * 删除场景
      */
     static deleteScene(name) {
-        localStorage.removeItem(`scene_${name}`);
+        try {
+            localStorage.removeItem(`scene_${name}`);
+            return true;
+        } catch (error) {
+            console.error('删除场景失败:', error);
+            return false;
+        }
     }
     
     /**

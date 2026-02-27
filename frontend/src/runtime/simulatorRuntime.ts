@@ -182,13 +182,14 @@ export class SimulatorRuntime {
     if (!this.mounted) return;
     this.stop();
     this.mounted = false;
+    this.dragDropManager?.dispose?.();
+    this.dragDropManager = null;
     const particleCanvas = document.getElementById('particle-canvas');
     if (particleCanvas instanceof HTMLCanvasElement) {
       particleCanvas.removeEventListener('wheel', this.handleDemoWheelBound);
     }
     window.removeEventListener('resize', this.handleResizeBound);
     document.removeEventListener('show-properties', this.handleShowPropertiesBound);
-    this.dragDropManager = null;
   }
 
   getSnapshot(): RuntimeSnapshot {
