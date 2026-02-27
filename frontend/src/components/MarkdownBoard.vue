@@ -8,11 +8,13 @@ const DEFAULT_MARKDOWN_FONT_SIZE = 16;
 const props = withDefaults(
   defineProps<{
     modelValue: boolean;
+    layoutMode?: 'desktop' | 'tablet' | 'phone';
     content?: string;
     mode?: 'edit' | 'preview';
     fontSize?: number;
   }>(),
   {
+    layoutMode: 'desktop',
     content: '',
     mode: 'preview',
     fontSize: DEFAULT_MARKDOWN_FONT_SIZE
@@ -53,6 +55,7 @@ const safeFontSize = computed(() => {
 });
 
 const currentMode = computed<'edit' | 'preview'>(() => (props.mode === 'edit' ? 'edit' : 'preview'));
+const isSheetMode = computed(() => props.layoutMode === 'phone');
 
 function close() {
   emit('update:modelValue', false);
@@ -339,6 +342,7 @@ const previewHtml = computed(() => parseMarkdownToHtml(localContent.value));
 
 function beginDrag(event: PointerEvent) {
   if (!props.modelValue) return;
+  if (isSheetMode.value) return;
   if (event.button !== 0) return;
   const target = event.target as HTMLElement | null;
   if (target?.closest('button, input')) return;
@@ -381,10 +385,10 @@ onBeforeUnmount(() => {
     ref="boardRef"
     data-testid="markdown-board"
     class="markdown-board"
-    :class="`mode-${currentMode}`"
+    :class="[`mode-${currentMode}`, { 'sheet-mode': isSheetMode }]"
     :style="{
-      left: `${position.left}px`,
-      top: `${position.top}px`,
+      left: isSheetMode ? undefined : `${position.left}px`,
+      top: isSheetMode ? undefined : `${position.top}px`,
       '--markdown-font-size': `${safeFontSize}px`
     }"
   >

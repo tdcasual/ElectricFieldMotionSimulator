@@ -416,6 +416,24 @@
     right: calc(-100vw + 52px);
 }
 
+#app.layout-phone #property-panel.panel-sheet {
+    top: auto;
+    bottom: 40px;
+    left: 52px;
+    right: 0;
+    width: auto;
+    max-height: min(70vh, 560px);
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    border-radius: 14px 14px 0 0;
+    transform: translateY(100%);
+    transition: transform var(--transition-slow);
+}
+
+#app.layout-phone #property-panel.panel-sheet.open {
+    transform: translateY(0);
+}
+
 #app.layout-phone #toolbar .preset-section {
     display: none;
 }

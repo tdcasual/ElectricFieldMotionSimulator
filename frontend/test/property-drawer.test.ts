@@ -83,4 +83,17 @@ describe('PropertyDrawer', () => {
     await wrapper.get('[data-testid="section-toggle-1"]').trigger('click');
     expect(wrapper.text()).toContain('高级参数');
   });
+
+  it('adds sheet class when layout mode is phone', () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        layoutMode: 'phone',
+        sections: [{ fields: [{ key: 'mass', type: 'number' }] }],
+        values: { mass: 1 }
+      }
+    });
+
+    expect(wrapper.get('#property-panel').classes()).toContain('panel-sheet');
+  });
 });

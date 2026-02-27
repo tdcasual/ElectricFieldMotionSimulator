@@ -26,11 +26,13 @@ const props = withDefaults(
   defineProps<{
     modelValue: boolean;
     title?: string;
+    layoutMode?: 'desktop' | 'tablet' | 'phone';
     sections?: SchemaSection[];
     values?: Record<string, unknown>;
   }>(),
   {
     title: '属性面板',
+    layoutMode: 'desktop',
     sections: () => [],
     values: () => ({})
   }
@@ -158,7 +160,7 @@ function handleContentWheel(event: WheelEvent) {
   <aside
     id="property-panel"
     class="panel"
-    :class="{ open: props.modelValue }"
+    :class="{ open: props.modelValue, 'panel-sheet': props.layoutMode === 'phone' }"
     :style="{ display: props.modelValue ? 'flex' : 'none' }"
     data-testid="property-drawer"
     @wheel.stop

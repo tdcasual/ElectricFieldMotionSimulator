@@ -27,4 +27,15 @@ describe('MarkdownBoard', () => {
     expect(preview.find('.katex').exists()).toBe(true);
     expect(preview.find('.katex-display').exists()).toBe(true);
   });
+
+  it('switches to sheet mode in phone layout', () => {
+    const wrapper = mount(MarkdownBoard, {
+      props: {
+        modelValue: true,
+        layoutMode: 'phone'
+      }
+    });
+
+    expect(wrapper.get('[data-testid="markdown-board"]').classes()).toContain('sheet-mode');
+  });
 });

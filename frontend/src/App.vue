@@ -387,6 +387,7 @@ function deleteSelectedFromActionBar() {
       v-if="showAuthoringControls"
       v-model="propertyDrawerModel"
       :title="simulatorStore.propertyTitle"
+      :layout-mode="simulatorStore.layoutMode"
       :sections="simulatorStore.propertySections"
       :values="simulatorStore.propertyValues"
       @apply="applyProperties"
@@ -394,6 +395,7 @@ function deleteSelectedFromActionBar() {
     <MarkdownBoard
       v-if="showAuthoringControls"
       v-model="markdownBoardModel"
+      :layout-mode="simulatorStore.layoutMode"
       :content="simulatorStore.markdownContent"
       :mode="simulatorStore.markdownMode"
       :font-size="simulatorStore.markdownFontSize"
@@ -404,6 +406,7 @@ function deleteSelectedFromActionBar() {
     <VariablesPanel
       v-if="showAuthoringControls"
       v-model="variablesPanelModel"
+      :layout-mode="simulatorStore.layoutMode"
       :variables="simulatorStore.variableDraft"
       @apply="applyVariables"
     />

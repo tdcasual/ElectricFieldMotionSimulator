@@ -6,9 +6,11 @@ type VariableRows = Array<{ id: string; name: string; value: string; error: stri
 const props = withDefaults(
   defineProps<{
     modelValue: boolean;
+    layoutMode?: 'desktop' | 'tablet' | 'phone';
     variables?: Record<string, number>;
   }>(),
   {
+    layoutMode: 'desktop',
     variables: () => ({})
   }
 );
@@ -134,10 +136,11 @@ function apply() {
   <div
     v-if="props.modelValue"
     class="modal-overlay"
+    :class="{ 'phone-sheet': props.layoutMode === 'phone' }"
     data-testid="variables-panel"
     @click.self="close"
   >
-    <div class="modal variables-modal">
+    <div class="modal variables-modal" :class="{ 'variables-sheet': props.layoutMode === 'phone' }">
       <div class="modal-header">
         <h3>变量表</h3>
         <button class="btn-icon" aria-label="关闭变量表" @click="close">✖</button>
