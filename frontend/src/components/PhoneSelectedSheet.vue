@@ -104,8 +104,9 @@ function emitNumberChange(key: string, event: Event) {
           </div>
         </div>
       </div>
+      <p v-else class="phone-selected-empty">当前对象暂无可快捷编辑的几何参数</p>
       <div class="phone-selected-actions">
-        <button id="phone-selected-properties-btn" class="btn" type="button" @click="emit('open-properties')">属性</button>
+        <button id="phone-selected-properties-btn" class="btn btn-primary" type="button" @click="emit('open-properties')">属性</button>
         <button id="phone-selected-duplicate-btn" class="btn" type="button" @click="emit('duplicate')">复制</button>
         <button id="phone-selected-delete-btn" class="btn object-action-danger" type="button" @click="emit('delete')">删除</button>
       </div>

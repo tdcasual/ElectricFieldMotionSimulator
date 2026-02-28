@@ -1183,24 +1183,48 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-more-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.phone-more-section {
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+}
+
+.phone-more-section-title {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.phone-more-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
 }
 
-.phone-more-body .btn {
+.phone-more-grid .btn {
     min-height: 44px;
     justify-content: center;
 }
 
-.phone-more-body .btn:active {
+.phone-more-grid .btn:active {
     transform: translateY(1px) scale(0.985);
+}
+
+.phone-more-danger {
+    grid-column: 1 / -1;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .phone-nav-btn,
     .phone-sheet-header .btn-icon,
-    .phone-more-body .btn {
+    .phone-more-grid .btn {
         transition: none;
     }
 }
@@ -1215,6 +1239,12 @@ body.light-theme .preset-btn:hover {
     margin: 0 0 6px;
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+.phone-selected-empty {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 .phone-selected-geometry-list {
@@ -1269,13 +1299,17 @@ body.light-theme .preset-btn:hover {
 
 .phone-selected-actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
 }
 
 .phone-selected-actions .btn {
     min-height: 44px;
     justify-content: center;
+}
+
+.phone-selected-actions #phone-selected-delete-btn {
+    grid-column: 1 / -1;
 }
 
 .phone-add-sheet .phone-sheet-body {
