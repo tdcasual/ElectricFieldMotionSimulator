@@ -128,17 +128,24 @@ test('swipe down on phone scene sheet header closes sheet', async ({ page }, tes
   await expect(sceneSheet).toBeVisible();
 
   const header = page.locator('[data-testid="phone-scene-sheet"] .phone-sheet-header');
+  const headerBox = await header.boundingBox();
+  expect(headerBox).not.toBeNull();
+  const startX = headerBox!.x + headerBox!.width / 2;
+  const startY = headerBox!.y + headerBox!.height / 2;
+  const endY = headerBox!.y + headerBox!.height + 120;
   await header.dispatchEvent('pointerdown', {
     bubbles: true,
     pointerType: 'touch',
-    clientX: 120,
-    clientY: 160
+    pointerId: 11,
+    clientX: startX,
+    clientY: startY
   });
-  await header.dispatchEvent('pointerup', {
+  await page.locator('body').dispatchEvent('pointerup', {
     bubbles: true,
     pointerType: 'touch',
-    clientX: 118,
-    clientY: 250
+    pointerId: 11,
+    clientX: startX + 2,
+    clientY: endY
   });
 
   await expect(sceneSheet).toBeHidden();
@@ -182,10 +189,16 @@ test('phone density toggle changes property panel row density', async ({ page },
   const rowBefore = await page.locator('#property-panel .section-toggle').first().evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
+  const inputBefore = await page.locator('#property-panel .property-value input, #property-panel .property-value select').first().evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
 
   await page.locator('[data-testid="density-toggle"]').tap();
 
   const rowAfter = await page.locator('#property-panel .section-toggle').first().evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+  const inputAfter = await page.locator('#property-panel .property-value input, #property-panel .property-value select').first().evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
 
@@ -198,7 +211,10 @@ test('phone density toggle changes property panel row density', async ({ page },
     return el.getBoundingClientRect().height;
   });
 
+  expect(rowBefore).toBeGreaterThanOrEqual(44);
+  expect(inputBefore).toBeGreaterThanOrEqual(44);
   expect(rowAfter).toBeGreaterThan(rowBefore);
+  expect(inputAfter).toBeGreaterThan(inputBefore);
   expect(moreSaveAfter).toBeGreaterThan(moreSaveBefore);
 });
 
@@ -256,7 +272,10 @@ test('phone landscape density toggle scales nav and sheet controls', async ({ pa
     return el.getBoundingClientRect().height;
   });
 
+  expect(navPlayBefore).toBeGreaterThanOrEqual(44);
+  expect(moreSaveBefore).toBeGreaterThanOrEqual(44);
   expect(navPlayAfter).toBeGreaterThan(navPlayBefore);
+  expect(navPlayAfter).toBeGreaterThanOrEqual(44);
   expect(moreSaveAfter).toBeGreaterThan(moreSaveBefore);
-  expect(moreSaveAfter).toBeLessThanOrEqual(44);
+  expect(moreSaveAfter).toBeGreaterThanOrEqual(44);
 });

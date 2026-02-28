@@ -96,4 +96,27 @@ describe('swipeCloseGesture', () => {
 
     expect(closeSpy).toHaveBeenCalledTimes(0);
   });
+
+  it('closes when pointerup happens on document after starting on header', () => {
+    const closeSpy = vi.fn();
+    const gesture = createSwipeCloseGesture(closeSpy);
+    const header = document.createElement('div');
+
+    gesture.onPointerDown({
+      pointerType: 'touch',
+      pointerId: 7,
+      clientX: 120,
+      clientY: 120,
+      currentTarget: header
+    });
+
+    const pointerUp = new Event('pointerup', { bubbles: true, cancelable: true });
+    Object.defineProperty(pointerUp, 'pointerType', { value: 'touch' });
+    Object.defineProperty(pointerUp, 'pointerId', { value: 7 });
+    Object.defineProperty(pointerUp, 'clientX', { value: 122 });
+    Object.defineProperty(pointerUp, 'clientY', { value: 220 });
+    document.dispatchEvent(pointerUp);
+
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+  });
 });
