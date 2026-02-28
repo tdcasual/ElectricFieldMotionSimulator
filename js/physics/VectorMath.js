@@ -17,13 +17,6 @@ export class Vector {
     }
     
     /**
-     * 向量减法
-     */
-    subtract(v) {
-        return new Vector(this.x - v.x, this.y - v.y, this.z - v.z);
-    }
-    
-    /**
      * 标量乘法
      */
     multiply(scalar) {
@@ -64,13 +57,6 @@ export class Vector {
     }
     
     /**
-     * 向量模长的平方
-     */
-    magnitudeSquared() {
-        return this.x * this.x + this.y * this.y + this.z * this.z;
-    }
-    
-    /**
      * 归一化（单位向量）
      */
     normalize() {
@@ -80,32 +66,10 @@ export class Vector {
     }
     
     /**
-     * 限制向量模长
-     */
-    limit(max) {
-        const mag = this.magnitude();
-        if (mag > max) {
-            return this.normalize().multiply(max);
-        }
-        return new Vector(this.x, this.y, this.z);
-    }
-    
-    /**
      * 设置向量模长
      */
     setMagnitude(newMag) {
         return this.normalize().multiply(newMag);
-    }
-    
-    /**
-     * 向量夹角
-     */
-    angleBetween(v) {
-        const dot = this.dot(v);
-        const mag1 = this.magnitude();
-        const mag2 = v.magnitude();
-        if (mag1 === 0 || mag2 === 0) return 0;
-        return Math.acos(dot / (mag1 * mag2));
     }
     
     /**
