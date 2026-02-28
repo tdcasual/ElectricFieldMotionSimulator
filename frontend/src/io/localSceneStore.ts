@@ -56,8 +56,3 @@ export function loadScene(name: string): SceneData | null {
     return null;
   }
 }
-
-export function deleteScene(name: string) {
-  if (!name || !name.trim()) return;
-  getStorage().removeItem(keyFor(name.trim()));
-}
