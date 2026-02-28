@@ -102,8 +102,18 @@ export class PhysicsEngine {
 
         // Remove particles
         if (toRemove.length) {
-            scene.particles = scene.particles.filter(p => !toRemove.includes(p));
-            if (toRemove.includes(scene.selectedObject)) {
+            const uniqueToRemove = [...new Set(toRemove)];
+            if (typeof scene.removeObject === 'function') {
+                for (const particle of uniqueToRemove) {
+                    scene.removeObject(particle);
+                }
+            } else {
+                scene.particles = scene.particles.filter(p => !uniqueToRemove.includes(p));
+                if (Array.isArray(scene.objects)) {
+                    scene.objects = scene.objects.filter(object => !uniqueToRemove.includes(object));
+                }
+            }
+            if (uniqueToRemove.includes(scene.selectedObject)) {
                 scene.selectedObject = null;
             }
         }
