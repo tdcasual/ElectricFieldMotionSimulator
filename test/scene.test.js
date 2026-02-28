@@ -178,7 +178,7 @@ test('Serializer.deleteScene returns false when storage remove throws', () => {
   });
 });
 
-test('Particle.deserialize supports legacy x/y/vx/vy format', () => {
+test('Particle.deserialize ignores legacy x/y/vx/vy kinematics payload', () => {
   const particle = new Particle({ x: 1, y: 2, vx: 3, vy: 4 });
 
   particle.deserialize({
@@ -190,10 +190,10 @@ test('Particle.deserialize supports legacy x/y/vx/vy format', () => {
     charge: -2
   });
 
-  assert.equal(particle.position.x, 10);
-  assert.equal(particle.position.y, 20);
-  assert.equal(particle.velocity.x, 30);
-  assert.equal(particle.velocity.y, 40);
+  assert.equal(particle.position.x, 1);
+  assert.equal(particle.position.y, 2);
+  assert.equal(particle.velocity.x, 3);
+  assert.equal(particle.velocity.y, 4);
   assert.equal(particle.mass, 1);
   assert.equal(particle.charge, -2);
 });

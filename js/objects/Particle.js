@@ -316,10 +316,10 @@ export class Particle extends BaseObject {
         super.deserialize(data);
         const position = Array.isArray(data.position)
             ? data.position
-            : [data.x ?? this.x ?? 0, data.y ?? this.y ?? 0, 0];
+            : this.position.toArray();
         const velocity = Array.isArray(data.velocity)
             ? data.velocity
-            : [data.vx ?? 0, data.vy ?? 0, 0];
+            : this.velocity.toArray();
 
         this.position = Vector.fromArray(position);
         this.velocity = Vector.fromArray(velocity);
