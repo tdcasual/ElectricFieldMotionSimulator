@@ -140,6 +140,9 @@ export class Scene {
 
         const index = this.objects.indexOf(object);
         if (index > -1) this.objects.splice(index, 1);
+        if (this.selectedObject === object) {
+            this.selectedObject = null;
+        }
 
         return this;
     }

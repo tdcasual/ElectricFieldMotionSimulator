@@ -92,6 +92,24 @@ test('Scene.duplicateObject offsets x/y and preserves properties for fields', ()
   assert.equal(dup.direction, field.direction);
 });
 
+test('Scene.removeObject clears selected object when removing current selection', () => {
+  const scene = new Scene();
+  const field = new RectElectricField({
+    x: 10,
+    y: 20,
+    width: 30,
+    height: 40
+  });
+
+  scene.addObject(field);
+  scene.selectedObject = field;
+  scene.removeObject(field);
+
+  assert.equal(scene.selectedObject, null);
+  assert.equal(scene.objects.includes(field), false);
+  assert.equal(scene.electricFields.includes(field), false);
+});
+
 test('Serializer.validateSceneData fills missing objects array', () => {
   const data = { version: '1.0' };
   const result = Serializer.validateSceneData(data);
