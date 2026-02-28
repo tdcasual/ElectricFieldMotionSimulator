@@ -77,3 +77,69 @@ test('tap blank area resets tap chain before reopening properties', async ({ pag
   await expect(page.getByTestId('object-action-bar')).toBeVisible();
   await expect(page.locator('#property-panel')).toBeHidden();
 });
+
+test('phone sheet controls keep touch targets at least 44px', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only ergonomics check');
+  }
+  const phoneNav = page.locator('#phone-bottom-nav');
+  await expect(phoneNav).toBeVisible();
+
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+
+  const sceneCloseButtonHeight = await page.locator('[data-testid="phone-scene-sheet"] .btn-icon').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+  const gravityInputHeight = await page.locator('[data-testid="phone-scene-sheet"] #gravity-input').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+  const boundarySelectHeight = await page.locator('[data-testid="phone-scene-sheet"] #boundary-mode-select').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+
+  expect(sceneCloseButtonHeight).toBeGreaterThanOrEqual(44);
+  expect(gravityInputHeight).toBeGreaterThanOrEqual(44);
+  expect(boundarySelectHeight).toBeGreaterThanOrEqual(44);
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  const moreExportButtonHeight = await page.locator('#secondary-export-btn').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+  expect(moreExportButtonHeight).toBeGreaterThanOrEqual(44);
+});
+
+test('swipe down on phone scene sheet header closes sheet', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only gesture check');
+  }
+  const phoneNav = page.locator('#phone-bottom-nav');
+  await expect(phoneNav).toBeVisible();
+
+  await page.locator('#phone-nav-scene-btn').tap();
+  const sceneSheet = page.getByTestId('phone-scene-sheet');
+  await expect(sceneSheet).toBeVisible();
+
+  const header = page.locator('[data-testid="phone-scene-sheet"] .phone-sheet-header');
+  await header.dispatchEvent('pointerdown', {
+    bubbles: true,
+    pointerType: 'touch',
+    clientX: 120,
+    clientY: 160
+  });
+  await header.dispatchEvent('pointerup', {
+    bubbles: true,
+    pointerType: 'touch',
+    clientX: 118,
+    clientY: 250
+  });
+
+  await expect(sceneSheet).toBeHidden();
+});

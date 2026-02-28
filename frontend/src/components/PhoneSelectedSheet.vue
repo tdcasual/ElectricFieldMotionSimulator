@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { createSwipeCloseGesture } from '../utils/swipeCloseGesture';
 
 type PhoneGeometryRow = {
   sourceKey: string;
@@ -32,6 +33,9 @@ const emit = defineEmits<{
   (event: 'update-value', payload: { key: string; value: string }): void;
   (event: 'close'): void;
 }>();
+const sheetSwipeGesture = createSwipeCloseGesture(() => {
+  emit('close');
+});
 
 const scaleLabel = computed(() => {
   const value = Number(props.objectScale);
@@ -57,7 +61,12 @@ function emitNumberChange(key: string, event: Event) {
 
 <template>
   <section class="phone-sheet phone-selected-sheet" data-testid="phone-selected-sheet" aria-label="选中对象快捷面板">
-    <div class="phone-sheet-header">
+    <div
+      class="phone-sheet-header"
+      @pointerdown="sheetSwipeGesture.onPointerDown"
+      @pointerup="sheetSwipeGesture.onPointerUp"
+      @pointercancel="sheetSwipeGesture.onPointerCancel"
+    >
       <h3>{{ props.title }}</h3>
       <button type="button" class="btn-icon" aria-label="关闭选中对象面板" @click="emit('close')">✖</button>
     </div>

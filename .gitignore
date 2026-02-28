@@ -6,3 +6,4 @@ frontend/dist/
 output/
 test-results/
 output/playwright/
+artifacts/

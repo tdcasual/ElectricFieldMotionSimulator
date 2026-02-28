@@ -1002,16 +1002,31 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-sheet-header {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 10px;
+    padding: 14px 10px 6px;
     border-bottom: 1px solid var(--border-color);
+    touch-action: pan-y;
+    user-select: none;
+}
+
+.phone-sheet-header::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 5px;
+    width: 44px;
+    height: 4px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    background: color-mix(in srgb, var(--text-muted) 45%, transparent);
 }
 
 .phone-sheet-header .btn-icon {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1035,7 +1050,7 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-scene-body .control-label {
-    min-height: 36px;
+    min-height: 44px;
     padding: 4px 6px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
@@ -1044,7 +1059,7 @@ body.light-theme .preset-btn:hover {
 
 .phone-scene-body .control-label input[type="number"],
 .phone-scene-body .control-label select {
-    min-height: 36px;
+    min-height: 44px;
     padding: 4px 6px;
 }
 
@@ -1054,7 +1069,7 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-scene-body .control-label input[type="range"] {
-    min-height: 36px;
+    min-height: 44px;
 }
 
 .phone-more-body {
@@ -1064,7 +1079,7 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-more-body .btn {
-    min-height: 36px;
+    min-height: 44px;
     justify-content: center;
 }
 
@@ -1116,7 +1131,7 @@ body.light-theme .preset-btn:hover {
 
 .phone-selected-geometry-field input {
     width: 100%;
-    min-height: 36px;
+    min-height: 44px;
     padding: 4px 6px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
@@ -1137,7 +1152,7 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-selected-actions .btn {
-    min-height: 36px;
+    min-height: 44px;
     justify-content: center;
 }
 
@@ -1150,12 +1165,12 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-add-sheet .tool-item {
-    min-height: 40px;
+    min-height: 44px;
 }
 
 .phone-add-sheet .toolbar-group-toggle,
 .phone-add-sheet .preset-btn {
-    min-height: 36px;
+    min-height: 44px;
 }
 
 .phone-add-sheet .preset-section {

@@ -1,5 +1,26 @@
 import { expect, test, type Page } from '@playwright/test';
 
+async function ensurePlaybackPaused(page: Page) {
+  const desktopPlayButton = page.locator('#play-pause-btn');
+  if (await desktopPlayButton.isVisible().catch(() => false)) {
+    const desktopLabel = page.locator('#play-label');
+    const currentLabel = (await desktopLabel.textContent())?.trim() ?? '';
+    if (currentLabel === '暂停') {
+      await desktopPlayButton.click();
+      await expect(desktopLabel).toHaveText('播放');
+    }
+    return;
+  }
+
+  const phonePlayButton = page.locator('#phone-nav-play-btn');
+  if (!(await phonePlayButton.isVisible().catch(() => false))) return;
+  const currentLabel = (await phonePlayButton.textContent())?.trim() ?? '';
+  if (currentLabel === '暂停') {
+    await phonePlayButton.click();
+    await expect(phonePlayButton).toHaveText('播放');
+  }
+}
+
 async function stabilizeForScreenshot(page: Page) {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
@@ -16,20 +37,14 @@ async function stabilizeForScreenshot(page: Page) {
     `
   });
 
-  const playLabel = page.locator('#play-label');
-  await expect(playLabel).toBeVisible();
-  const currentLabel = (await playLabel.textContent())?.trim() ?? '';
-  if (currentLabel === '暂停') {
-    await page.locator('#play-pause-btn').click();
-    await expect(playLabel).toHaveText('播放');
-  }
+  await ensurePlaybackPaused(page);
 
   const toolRailBackdrop = page.locator('.tool-rail-backdrop');
   if (await toolRailBackdrop.isVisible().catch(() => false)) {
     await toolRailBackdrop.click();
   }
 
-  const settingsBackdrop = page.locator('.phone-settings-backdrop');
+  const settingsBackdrop = page.locator('.phone-settings-backdrop, .phone-sheet-backdrop');
   if (await settingsBackdrop.isVisible().catch(() => false)) {
     await settingsBackdrop.click();
   }
