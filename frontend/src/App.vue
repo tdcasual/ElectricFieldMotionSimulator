@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
+import DesktopToolbarSidebar from './components/DesktopToolbarSidebar.vue';
 import HeaderActionButtons from './components/HeaderActionButtons.vue';
+import HeaderStatusAndSettings from './components/HeaderStatusAndSettings.vue';
 import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
 import PhoneAddSheet from './components/PhoneAddSheet.vue';
@@ -10,9 +12,7 @@ import PhoneMoreSheet from './components/PhoneMoreSheet.vue';
 import PhoneSceneSheet from './components/PhoneSceneSheet.vue';
 import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
-import SceneSettingsControls from './components/SceneSettingsControls.vue';
 import SelectionContextMenu from './components/SelectionContextMenu.vue';
-import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
 import { useAppActions } from './modes/useAppActions';
 import { useAppUiState } from './modes/useAppUiState';
@@ -170,46 +170,37 @@ onBeforeUnmount(() => {
           style="display: none"
           @change="handleImportChange"
         />
-        <div v-if="isPhoneLayout" class="phone-status-strip" data-testid="phone-status-strip">
-          <span class="phone-status-text">{{ simulatorStore.statusText }}</span>
-          <span class="phone-status-metrics">对象 {{ simulatorStore.objectCount }} · 粒子 {{ simulatorStore.particleCount }}</span>
-        </div>
-        <div
-          v-if="showAuthoringControls && !isPhoneLayout"
-          id="header-settings-panel"
-          class="header-settings"
-        >
-          <SceneSettingsControls
-            :show-energy-overlay="simulatorStore.showEnergyOverlay"
-            :pixels-per-meter="simulatorStore.pixelsPerMeter"
-            :gravity="simulatorStore.gravity"
-            :boundary-mode="simulatorStore.boundaryMode"
-            :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
-            :boundary-margin="simulatorStore.boundaryMargin"
-            :time-step="simulatorStore.timeStep"
-            :time-step-label="simulatorStore.timeStepLabel"
-            :demo-mode="simulatorStore.demoMode"
-            @set-show-energy="setShowEnergy"
-            @set-pixels-per-meter="setPixelsPerMeter"
-            @set-gravity="setGravity"
-            @set-boundary-mode="setBoundaryMode"
-            @set-boundary-margin="setBoundaryMargin"
-            @set-time-step="setTimeStep"
-          />
-        </div>
+        <HeaderStatusAndSettings
+          :is-phone-layout="isPhoneLayout"
+          :show-authoring-controls="showAuthoringControls"
+          :status-text="simulatorStore.statusText"
+          :object-count="simulatorStore.objectCount"
+          :particle-count="simulatorStore.particleCount"
+          :show-energy-overlay="simulatorStore.showEnergyOverlay"
+          :pixels-per-meter="simulatorStore.pixelsPerMeter"
+          :gravity="simulatorStore.gravity"
+          :boundary-mode="simulatorStore.boundaryMode"
+          :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
+          :boundary-margin="simulatorStore.boundaryMargin"
+          :time-step="simulatorStore.timeStep"
+          :time-step-label="simulatorStore.timeStepLabel"
+          :demo-mode="simulatorStore.demoMode"
+          @set-show-energy="setShowEnergy"
+          @set-pixels-per-meter="setPixelsPerMeter"
+          @set-gravity="setGravity"
+          @set-boundary-mode="setBoundaryMode"
+          @set-boundary-margin="setBoundaryMargin"
+          @set-time-step="setTimeStep"
+        />
       </div>
     </header>
 
-    <aside v-if="showAuthoringControls && !isPhoneLayout" id="toolbar">
-      <h2>组件库</h2>
-      <ToolbarPanel :groups="simulatorStore.toolbarGroups" @create="createObjectFromToolbar" />
-      <div class="tool-section preset-section">
-        <h3>预设场景</h3>
-        <button class="preset-btn" data-preset="uniform-acceleration" @click="loadPresetAndClose('uniform-acceleration')">匀加速运动</button>
-        <button class="preset-btn" data-preset="cyclotron" @click="loadPresetAndClose('cyclotron')">回旋运动</button>
-        <button class="preset-btn" data-preset="capacitor-deflection" @click="loadPresetAndClose('capacitor-deflection')">电容器偏转</button>
-      </div>
-    </aside>
+    <DesktopToolbarSidebar
+      v-if="showAuthoringControls && !isPhoneLayout"
+      :groups="simulatorStore.toolbarGroups"
+      @create="createObjectFromToolbar"
+      @load-preset="loadPresetAndClose"
+    />
     <PhoneAddSheet
       v-if="showAuthoringControls && isPhoneLayout && phoneAddSheetOpen"
       :groups="simulatorStore.toolbarGroups"
