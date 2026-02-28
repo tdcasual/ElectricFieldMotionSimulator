@@ -1004,6 +1004,39 @@ test('phone markdown sheet uses bottom space tightly when nav is hidden', async 
   expect(boardBottomGap).toBeLessThanOrEqual(34);
 });
 
+test('phone utility drawer backdrop closes and restores nav interactions', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only utility drawer backdrop interaction check');
+  }
+
+  const appBox = await page.locator('#app').boundingBox();
+  expect(appBox).not.toBeNull();
+  const backdropTapX = appBox!.x + appBox!.width / 2;
+  const backdropTapY = appBox!.y + 80;
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-markdown-btn').tap();
+  await expect(page.getByTestId('markdown-board')).toBeVisible();
+  await page.touchscreen.tap(backdropTapX, backdropTapY);
+  await expect(page.getByTestId('markdown-board')).toBeHidden();
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-variables-btn').tap();
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await page.touchscreen.tap(backdropTapX, backdropTapY);
+  await expect(page.getByTestId('variables-panel')).toBeHidden();
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+});
+
 test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
