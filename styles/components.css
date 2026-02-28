@@ -351,7 +351,7 @@ hr {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: var(--phone-bottom-bar-height, 72px);
+    bottom: var(--phone-safe-bottom-inset, 0px);
     top: auto;
     width: auto;
     height: min(66vh, 520px);

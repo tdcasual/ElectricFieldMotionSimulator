@@ -977,6 +977,33 @@ test('phone variables sheet footer stays above bottom safe-area inset', async ({
   expect(applyBottom).toBeLessThanOrEqual(bottomSafeBound);
 });
 
+test('phone markdown sheet uses bottom space tightly when nav is hidden', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only markdown bottom spacing check');
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#app').evaluate((element) => {
+    const app = element as HTMLElement;
+    app.style.setProperty('--phone-safe-bottom-inset', '34px');
+  });
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-markdown-btn').tap();
+  const markdownBoard = page.getByTestId('markdown-board');
+  await expect(markdownBoard).toBeVisible();
+
+  const boardBox = await markdownBoard.boundingBox();
+  expect(boardBox).not.toBeNull();
+
+  const boardBottomGap = 844 - (boardBox!.y + boardBox!.height);
+  expect(boardBottomGap).toBeLessThanOrEqual(34);
+});
+
 test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
