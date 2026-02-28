@@ -426,6 +426,38 @@ test('phone markdown and variables panels keep touch targets at least 44px', asy
   expect(variablesCloseHeight).toBeGreaterThanOrEqual(44);
 });
 
+test('phone markdown and variables inputs keep zoom-safe font size', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only input zoom ergonomics check');
+  }
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-markdown-btn').tap();
+  await expect(page.getByTestId('markdown-board')).toBeVisible();
+
+  const markdownFontInputSize = await page.locator('.markdown-font-input').evaluate((el) => {
+    return Number.parseFloat(window.getComputedStyle(el).fontSize || '0');
+  });
+  expect(markdownFontInputSize).toBeGreaterThanOrEqual(16);
+
+  await page.getByLabel('关闭题板').tap();
+  await expect(page.getByTestId('markdown-board')).toBeHidden();
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-variables-btn').tap();
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  const variablesInputSize = await page.locator('.variables-input').first().evaluate((el) => {
+    return Number.parseFloat(window.getComputedStyle(el).fontSize || '0');
+  });
+  expect(variablesInputSize).toBeGreaterThanOrEqual(16);
+});
+
 test('phone wide landscape remains phone layout', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();

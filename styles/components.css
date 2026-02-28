@@ -465,7 +465,7 @@ hr {
     width: 60px;
     min-height: var(--phone-sheet-field-input-height, 44px);
     height: var(--phone-sheet-field-input-height, 44px);
-    font-size: 14px;
+    font-size: 16px;
 }
 
 .markdown-board.sheet-mode .markdown-tab {
@@ -596,6 +596,7 @@ hr {
 
 .variables-modal.variables-sheet .variables-input {
     min-height: var(--phone-sheet-field-input-height, 44px);
+    font-size: 16px;
 }
 
 .variables-modal.variables-sheet .btn {
