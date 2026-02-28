@@ -920,7 +920,29 @@ body.light-theme .preset-btn:hover {
 @media (orientation: landscape) and (max-height: 540px) {
     #app.layout-phone {
         --header-height: calc(72px + var(--phone-safe-top-inset));
-        --phone-bottom-bar-height: 52px;
+        --phone-bottom-bar-height: 48px;
+        --phone-nav-btn-min-height: 32px;
+        --phone-nav-btn-font-size: 11px;
+        --phone-sheet-title-font-size: 12px;
+        --phone-sheet-body-padding: 6px 8px;
+        --phone-sheet-control-gap: 4px;
+        --phone-sheet-section-gap: 6px;
+        --phone-sheet-section-padding: 4px;
+        --phone-sheet-field-input-height: 36px;
+        --phone-sheet-action-btn-height: 36px;
+    }
+
+    #app.layout-phone.phone-density-comfortable {
+        --phone-bottom-bar-height: 56px;
+        --phone-nav-btn-min-height: 36px;
+        --phone-nav-btn-font-size: 12px;
+        --phone-sheet-title-font-size: 13px;
+        --phone-sheet-body-padding: 8px 10px;
+        --phone-sheet-control-gap: 6px;
+        --phone-sheet-section-gap: 8px;
+        --phone-sheet-section-padding: 6px;
+        --phone-sheet-field-input-height: 40px;
+        --phone-sheet-action-btn-height: 44px;
     }
 
     #app.layout-phone .phone-status-strip {
@@ -930,11 +952,6 @@ body.light-theme .preset-btn:hover {
     .phone-bottom-nav {
         gap: 3px;
         padding: 4px 4px calc(4px + var(--phone-safe-bottom-inset, 0px));
-    }
-
-    .phone-nav-btn {
-        min-height: 32px;
-        font-size: 11px;
     }
 
     .phone-sheet {

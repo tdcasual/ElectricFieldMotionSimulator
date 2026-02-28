@@ -201,3 +201,62 @@ test('phone density toggle changes property panel row density', async ({ page },
   expect(rowAfter).toBeGreaterThan(rowBefore);
   expect(moreSaveAfter).toBeGreaterThan(moreSaveBefore);
 });
+
+test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only landscape density check');
+  }
+
+  await page.setViewportSize({ width: 744, height: 390 });
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+
+  const navPlayBefore = await page.locator('#phone-nav-play-btn').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  const moreSaveBefore = await page.locator('#secondary-save-btn').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+
+  await page.touchscreen.tap(centerX, centerY);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+  await page.touchscreen.tap(centerX, centerY);
+  await expect(page.locator('#property-panel')).toBeVisible();
+
+  await page.locator('[data-testid="density-toggle"]').tap();
+  await page.locator('#close-panel-btn').tap();
+  await expect(page.locator('#property-panel')).toBeHidden();
+
+  const navPlayAfter = await page.locator('#phone-nav-play-btn').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  const moreSaveAfter = await page.locator('#secondary-save-btn').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+
+  expect(navPlayAfter).toBeGreaterThan(navPlayBefore);
+  expect(moreSaveAfter).toBeGreaterThan(moreSaveBefore);
+  expect(moreSaveAfter).toBeLessThanOrEqual(44);
+});

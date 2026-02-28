@@ -62,6 +62,15 @@ test.describe('responsive visual baseline', () => {
     });
   });
 
+  test('phone landscape 744x390', async ({ page }) => {
+    await page.setViewportSize({ width: 744, height: 390 });
+    await stabilizeForScreenshot(page);
+    await expect(page).toHaveScreenshot('responsive-phone-landscape-744x390.png', {
+      animations: 'disabled',
+      scale: 'css'
+    });
+  });
+
   test('tablet 768x1024', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await stabilizeForScreenshot(page);
