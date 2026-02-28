@@ -23,8 +23,8 @@ type ToolbarGroup = {
 };
 
 export type LayoutMode = 'desktop' | 'tablet' | 'phone';
-export type ActiveDrawer = 'property' | 'variables' | 'markdown' | null;
-export type PhoneDensityMode = 'compact' | 'comfortable';
+type ActiveDrawer = 'property' | 'variables' | 'markdown' | null;
+type PhoneDensityMode = 'compact' | 'comfortable';
 
 const CATEGORY_LABELS: Record<string, string> = {
   electric: '电场',

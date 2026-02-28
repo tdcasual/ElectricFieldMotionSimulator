@@ -1,8 +1,8 @@
 type AnyRecord = Record<string, unknown>;
 
-export type HostCommandName = 'play' | 'pause' | 'togglePlay' | 'reset' | 'loadScene';
+type HostCommandName = 'play' | 'pause' | 'togglePlay' | 'reset' | 'loadScene';
 
-export type HostCommandMessage = {
+type HostCommandMessage = {
   source: 'electric-field-host';
   type: 'command';
   id?: string;
@@ -10,11 +10,11 @@ export type HostCommandMessage = {
   payload?: unknown;
 };
 
-export type HostCommandResult =
+type HostCommandResult =
   | { ok: true }
   | { ok: false; code: 'invalid-command' | 'validation'; message: string };
 
-export type HostCommandStore = {
+type HostCommandStore = {
   startRunning: () => void;
   stopRunning: () => void;
   toggleRunning: () => void;

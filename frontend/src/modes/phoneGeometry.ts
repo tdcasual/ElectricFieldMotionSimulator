@@ -1,6 +1,6 @@
-export type GeometryRole = 'real' | 'display';
+type GeometryRole = 'real' | 'display';
 
-export type GeometryFieldLike = {
+type GeometryFieldLike = {
   key?: string;
   label?: string;
   sourceKey?: string;

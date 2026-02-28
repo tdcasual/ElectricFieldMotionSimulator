@@ -27,7 +27,7 @@ import {
 
 type AnyRecord = Record<string, unknown>;
 
-export type SchemaField = {
+type SchemaField = {
   key: string;
   label?: string;
   type?: string;
@@ -49,7 +49,7 @@ export type SchemaField = {
   geometryRole?: 'real' | 'display';
 };
 
-export type SchemaSection = {
+type SchemaSection = {
   title?: string;
   group?: 'basic' | 'advanced';
   defaultCollapsed?: boolean;

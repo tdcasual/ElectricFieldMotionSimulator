@@ -1,7 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import type { LayoutMode } from '../stores/simulatorStore';
 
-export type PhoneSheetKey = 'add' | 'selected' | 'scene' | 'more' | null;
+type PhoneSheetKey = 'add' | 'selected' | 'scene' | 'more' | null;
 
 type PhoneSheetStore = {
   viewMode: boolean;

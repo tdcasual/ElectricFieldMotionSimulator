@@ -1,6 +1,6 @@
 import { SceneSchema, type SceneData } from './sceneSchema';
 
-export type SceneValidationResult =
+type SceneValidationResult =
   | { ok: true; data: SceneData }
   | { ok: false; error: string; issues: string[] };
 

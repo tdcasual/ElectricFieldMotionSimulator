@@ -2,7 +2,7 @@ import type { LayoutMode } from '../stores/simulatorStore';
 
 export const PHONE_LAYOUT_MAX_WIDTH = 767;
 export const TABLET_LAYOUT_MAX_WIDTH = 1199;
-export const LANDSCAPE_PHONE_MAX_SHORT_SIDE = 430;
+const LANDSCAPE_PHONE_MAX_SHORT_SIDE = 430;
 
 type ResolveLayoutModeOptions = {
   viewportHeight?: number;
