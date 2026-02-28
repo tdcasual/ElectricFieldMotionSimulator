@@ -45,7 +45,11 @@ export function usePhoneSheets(store: PhoneSheetStore) {
       return;
     }
     if (next === 'selected') {
-      store.refreshSelectedPropertyPayload();
+      const refreshed = store.refreshSelectedPropertyPayload();
+      if (refreshed === false) {
+        phoneActiveSheet.value = null;
+        return;
+      }
     }
     phoneActiveSheet.value = next;
   }
@@ -77,7 +81,10 @@ export function usePhoneSheets(store: PhoneSheetStore) {
         return;
       }
       if (phoneSelectedSheetOpen.value) {
-        store.refreshSelectedPropertyPayload();
+        const refreshed = store.refreshSelectedPropertyPayload();
+        if (refreshed === false) {
+          phoneActiveSheet.value = null;
+        }
       }
     }
   );
@@ -87,7 +94,10 @@ export function usePhoneSheets(store: PhoneSheetStore) {
     (open) => {
       if (!open) return;
       if (!store.selectedObjectId) return;
-      store.refreshSelectedPropertyPayload();
+      const refreshed = store.refreshSelectedPropertyPayload();
+      if (refreshed === false) {
+        phoneActiveSheet.value = null;
+      }
     }
   );
 

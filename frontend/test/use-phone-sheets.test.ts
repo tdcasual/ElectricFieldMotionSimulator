@@ -49,4 +49,20 @@ describe('usePhoneSheets', () => {
     await nextTick();
     expect(sheets.phoneActiveSheet.value).toBeNull();
   });
+
+  it('does not open selected sheet when payload refresh fails', () => {
+    const store = reactive({
+      viewMode: false,
+      layoutMode: 'phone' as 'phone' | 'tablet' | 'desktop',
+      selectedObjectId: 'obj-1' as string | null,
+      refreshSelectedPropertyPayload: vi.fn().mockReturnValue(false)
+    });
+
+    const sheets = usePhoneSheets(store);
+    sheets.setPhoneActiveSheet('selected');
+
+    expect(store.refreshSelectedPropertyPayload).toHaveBeenCalledTimes(1);
+    expect(sheets.phoneActiveSheet.value).toBeNull();
+    expect(sheets.phoneSelectedSheetOpen.value).toBe(false);
+  });
 });

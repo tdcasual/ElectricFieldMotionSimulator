@@ -149,6 +149,32 @@ describe('simulatorStore demo mode', () => {
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'simulator-reset-tap-chain' }));
   });
 
+  it('closes property drawer when runtime snapshot clears selection', () => {
+    const store = useSimulatorStore();
+    vi.spyOn(SimulatorRuntime.prototype, 'mount').mockImplementation(() => {});
+    vi.spyOn(SimulatorRuntime.prototype, 'setHostMode').mockImplementation(() => {});
+    vi.spyOn(SimulatorRuntime.prototype, 'getSnapshot').mockReturnValue({
+      running: false,
+      mode: 'normal',
+      timeStep: 0.016,
+      fps: 0,
+      objectCount: 0,
+      particleCount: 0,
+      selectedObjectId: null,
+      statusText: '就绪',
+      geometryInteraction: null
+    });
+
+    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    expect(store.propertyDrawerOpen).toBe(true);
+
+    store.mountRuntime();
+
+    expect(store.propertyDrawerOpen).toBe(false);
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+  });
+
   it('reports save failure when storage write throws', () => {
     const store = useSimulatorStore();
     vi.spyOn(Serializer, 'saveSceneData').mockReturnValue(false);

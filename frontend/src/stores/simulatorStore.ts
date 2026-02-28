@@ -185,6 +185,9 @@ export const useSimulatorStore = defineStore('simulator', () => {
     selectedObjectId.value = snapshot.selectedObjectId;
     statusText.value = snapshot.statusText;
     geometryInteraction.value = snapshot.geometryInteraction ?? null;
+    if (!snapshot.selectedObjectId && propertyDrawerOpen.value) {
+      closePropertyPanel();
+    }
   }
 
   function syncHeaderControlsFromScene() {
@@ -351,7 +354,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   function refreshSelectedPropertyPayload() {
     const current = runtime.value;
-    if (!current) return false;
+    if (!current) return !!selectedObjectId.value;
     const payload = current.buildPropertyPayload();
     if (!payload) {
       closePropertyPanel();
