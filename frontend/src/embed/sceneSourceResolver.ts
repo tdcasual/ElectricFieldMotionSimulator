@@ -11,7 +11,7 @@ type FetchResponseLike = {
 
 type FetchLike = (input: string) => Promise<FetchResponseLike>;
 
-export type SceneSourceResult =
+type SceneSourceResult =
   | { ok: true; source: 'none'; data: null }
   | { ok: true; source: 'sceneData' | 'sceneUrl' | 'materialId'; data: SceneData }
   | {
