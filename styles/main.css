@@ -859,8 +859,8 @@ body.light-theme .preset-btn:hover {
 }
 
 #app.layout-phone #property-panel .panel-header .btn-icon {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;

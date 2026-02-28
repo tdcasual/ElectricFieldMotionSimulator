@@ -14,6 +14,7 @@ npm run quality:all
 该命令会串行执行：
 
 - `npm run lint:frontend`
+- `npm run typecheck:frontend`
 - `npm test`
 - `npm run test:frontend`
 - `npm run test:e2e`

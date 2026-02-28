@@ -424,6 +424,10 @@ test('phone density toggle changes property panel row density', async ({ page },
   const inputBefore = await page.locator('#property-panel .property-value input, #property-panel .property-value select').first().evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
+  const closeButtonBefore = await page.locator('#close-panel-btn').evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
 
   await page.locator('[data-testid="density-toggle"]').tap();
 
@@ -445,6 +449,8 @@ test('phone density toggle changes property panel row density', async ({ page },
 
   expect(rowBefore).toBeGreaterThanOrEqual(44);
   expect(inputBefore).toBeGreaterThanOrEqual(44);
+  expect(closeButtonBefore.width).toBeGreaterThanOrEqual(44);
+  expect(closeButtonBefore.height).toBeGreaterThanOrEqual(44);
   expect(rowAfter).toBeGreaterThan(rowBefore);
   expect(inputAfter).toBeGreaterThan(inputBefore);
   expect(moreSaveAfter).toBeGreaterThan(moreSaveBefore);
