@@ -356,6 +356,32 @@ test('phone header reset button keeps touch target at least 44px', async ({ page
   expect(resetHeight).toBeGreaterThanOrEqual(44);
 });
 
+test('phone header controls stay below top safe-area inset', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only top safe area check');
+  }
+
+  await page.locator('#app').evaluate((element) => {
+    (element as HTMLElement).style.setProperty('--phone-safe-top-inset', '44px');
+  });
+
+  const resetButton = page.locator('#reset-btn');
+  const statusStrip = page.getByTestId('phone-status-strip');
+  await expect(resetButton).toBeVisible();
+  await expect(statusStrip).toBeVisible();
+
+  const resetBox = await resetButton.boundingBox();
+  const statusBox = await statusStrip.boundingBox();
+  expect(resetBox).not.toBeNull();
+  expect(statusBox).not.toBeNull();
+
+  expect(resetBox!.y).toBeGreaterThanOrEqual(44);
+  expect(statusBox!.y).toBeGreaterThanOrEqual(44);
+});
+
 test('phone form inputs keep zoom-safe font size', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
@@ -1035,6 +1061,32 @@ test('phone utility drawer backdrop closes and restores nav interactions', async
 
   await page.locator('#phone-nav-scene-btn').tap();
   await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+});
+
+test('orientation switch with utility drawer open keeps state recoverable on phone', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only orientation recovery check for utility drawer');
+  }
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-variables-btn').tap();
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await page.getByLabel('关闭变量表').tap();
+  await expect(page.getByTestId('variables-panel')).toBeHidden();
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
 });
 
 test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
