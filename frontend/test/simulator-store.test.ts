@@ -175,6 +175,39 @@ describe('simulatorStore demo mode', () => {
     expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
   });
 
+  it('refreshes property payload when selection changes while property drawer is open', () => {
+    const store = useSimulatorStore();
+    vi.spyOn(SimulatorRuntime.prototype, 'mount').mockImplementation(() => {});
+    vi.spyOn(SimulatorRuntime.prototype, 'setHostMode').mockImplementation(() => {});
+    vi.spyOn(SimulatorRuntime.prototype, 'getSnapshot').mockReturnValue({
+      running: false,
+      mode: 'normal',
+      timeStep: 0.016,
+      fps: 0,
+      objectCount: 2,
+      particleCount: 0,
+      selectedObjectId: 'obj-2',
+      statusText: '就绪',
+      geometryInteraction: null
+    });
+    vi.spyOn(SimulatorRuntime.prototype, 'buildPropertyPayload').mockReturnValue({
+      title: '对象 2',
+      sections: [],
+      values: { charge: 2 }
+    });
+
+    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    (store as unknown as { propertyTitle: string }).propertyTitle = '对象 1';
+    (store as unknown as { propertyValues: Record<string, unknown> }).propertyValues = { charge: 1 };
+
+    store.mountRuntime();
+
+    expect(store.selectedObjectId).toBe('obj-2');
+    expect(store.propertyTitle).toBe('对象 2');
+    expect(store.propertyValues).toEqual({ charge: 2 });
+  });
+
   it('reports save failure when storage write throws', () => {
     const store = useSimulatorStore();
     vi.spyOn(Serializer, 'saveSceneData').mockReturnValue(false);

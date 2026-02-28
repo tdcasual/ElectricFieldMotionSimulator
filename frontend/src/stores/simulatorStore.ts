@@ -176,6 +176,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const demoButtonTitle = computed(() => (demoMode.value ? '退出演示模式' : '进入演示模式'));
 
   function applySnapshot(snapshot: RuntimeSnapshot) {
+    const previousSelectedId = selectedObjectId.value;
     running.value = snapshot.running;
     demoMode.value = snapshot.mode === 'demo';
     timeStep.value = snapshot.timeStep;
@@ -187,6 +188,10 @@ export const useSimulatorStore = defineStore('simulator', () => {
     geometryInteraction.value = snapshot.geometryInteraction ?? null;
     if (!snapshot.selectedObjectId && propertyDrawerOpen.value) {
       closePropertyPanel();
+      return;
+    }
+    if (propertyDrawerOpen.value && snapshot.selectedObjectId && snapshot.selectedObjectId !== previousSelectedId) {
+      refreshSelectedPropertyPayload();
     }
   }
 
