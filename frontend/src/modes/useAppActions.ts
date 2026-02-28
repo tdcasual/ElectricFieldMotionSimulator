@@ -68,8 +68,16 @@ export function useAppActions(options: UseAppActionsOptions) {
     simulatorStore.resetScene();
   }
 
+  function confirmClearScene() {
+    try {
+      return window.confirm('确定要清空整个场景吗？此操作不可撤销。');
+    } catch {
+      return true;
+    }
+  }
+
   function clearScene() {
-    if (!window.confirm('确定要清空整个场景吗？此操作不可撤销。')) return false;
+    if (!confirmClearScene()) return false;
     simulatorStore.clearScene();
     return true;
   }

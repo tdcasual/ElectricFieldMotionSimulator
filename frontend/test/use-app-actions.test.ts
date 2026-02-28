@@ -111,6 +111,23 @@ describe('useAppActions', () => {
     expect(closePhoneSheets).toHaveBeenCalledTimes(1);
   });
 
+  it('clearScene tolerates confirm dialog errors and still clears scene', () => {
+    const simulatorStore = createStore();
+    vi.spyOn(window, 'confirm').mockImplementation(() => {
+      throw new Error('dialog blocked');
+    });
+
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets: vi.fn(),
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    expect(() => actions.clearScene()).not.toThrow();
+    expect(simulatorStore.clearScene).toHaveBeenCalledTimes(1);
+  });
+
   it('imports selected file and clears input value', async () => {
     const simulatorStore = createStore();
 
