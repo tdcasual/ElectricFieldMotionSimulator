@@ -882,6 +882,72 @@ test('phone property panel controls stay inside landscape safe-area insets', asy
   expect(toggleRight).toBeLessThanOrEqual(rightSafeBound);
 });
 
+test('phone markdown and variables sheet controls stay inside landscape safe-area insets', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only landscape safe area check for utility sheets');
+  }
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.locator('#app').evaluate((element) => {
+    const app = element as HTMLElement;
+    app.style.setProperty('--phone-safe-left-inset', '44px');
+    app.style.setProperty('--phone-safe-right-inset', '44px');
+  });
+
+  const safeInset = 44;
+  const rightSafeBound = 844 - safeInset;
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-markdown-btn').tap();
+  await expect(page.getByTestId('markdown-board')).toBeVisible();
+
+  const markdownClose = page.getByLabel('关闭题板');
+  const markdownInput = page.locator('.markdown-font-input');
+  await expect(markdownClose).toBeVisible();
+  await expect(markdownInput).toBeVisible();
+
+  const markdownCloseBox = await markdownClose.boundingBox();
+  const markdownInputBox = await markdownInput.boundingBox();
+  expect(markdownCloseBox).not.toBeNull();
+  expect(markdownInputBox).not.toBeNull();
+  const markdownCloseRight = markdownCloseBox!.x + markdownCloseBox!.width;
+  const markdownInputRight = markdownInputBox!.x + markdownInputBox!.width;
+
+  expect(markdownCloseBox!.x).toBeGreaterThanOrEqual(safeInset);
+  expect(markdownCloseRight).toBeLessThanOrEqual(rightSafeBound);
+  expect(markdownInputBox!.x).toBeGreaterThanOrEqual(safeInset);
+  expect(markdownInputRight).toBeLessThanOrEqual(rightSafeBound);
+
+  await markdownClose.tap();
+  await expect(page.getByTestId('markdown-board')).toBeHidden();
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-variables-btn').tap();
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  const variablesClose = page.getByLabel('关闭变量表');
+  const variablesInput = page.locator('.variables-input').first();
+  await expect(variablesClose).toBeVisible();
+  await expect(variablesInput).toBeVisible();
+
+  const variablesCloseBox = await variablesClose.boundingBox();
+  const variablesInputBox = await variablesInput.boundingBox();
+  expect(variablesCloseBox).not.toBeNull();
+  expect(variablesInputBox).not.toBeNull();
+  const variablesCloseRight = variablesCloseBox!.x + variablesCloseBox!.width;
+  const variablesInputRight = variablesInputBox!.x + variablesInputBox!.width;
+
+  expect(variablesCloseBox!.x).toBeGreaterThanOrEqual(safeInset);
+  expect(variablesCloseRight).toBeLessThanOrEqual(rightSafeBound);
+  expect(variablesInputBox!.x).toBeGreaterThanOrEqual(safeInset);
+  expect(variablesInputRight).toBeLessThanOrEqual(rightSafeBound);
+});
+
 test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
