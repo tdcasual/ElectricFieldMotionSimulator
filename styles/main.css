@@ -810,7 +810,7 @@ body.light-theme .preset-btn:hover {
 
 #app.layout-phone #property-panel.panel-sheet {
     top: auto;
-    bottom: var(--phone-bottom-bar-height);
+    bottom: calc(var(--phone-bottom-bar-height) + var(--phone-safe-bottom-inset, 0px));
     left: 0;
     right: 0;
     width: auto;
@@ -895,7 +895,7 @@ body.light-theme .preset-btn:hover {
 }
 
 #app.layout-phone #canvas-area {
-    padding-bottom: var(--phone-bottom-bar-height);
+    padding-bottom: calc(var(--phone-bottom-bar-height) + var(--phone-safe-bottom-inset, 0px));
 }
 
 #app.classroom-mode:not(.layout-phone) {
@@ -1123,6 +1123,8 @@ body.light-theme .preset-btn:hover {
 .phone-sheet-body {
     padding: 8px 10px;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .phone-scene-body {
