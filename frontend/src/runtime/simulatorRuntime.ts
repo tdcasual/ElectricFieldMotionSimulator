@@ -1,29 +1,29 @@
-import { Scene } from '../../../js/core/Scene.js';
-import { Renderer } from '../../../js/core/Renderer.js';
-import { PhysicsEngine } from '../../../js/core/PhysicsEngine.js';
-import { DragDropManager } from '../../../js/interactions/DragDropManager.js';
-import { registry } from '../../../js/core/registerObjects.js';
-import { Serializer } from '../../../js/utils/Serializer.js';
-import { ThemeManager } from '../../../js/utils/ThemeManager.js';
-import { PerformanceMonitor } from '../../../js/utils/PerformanceMonitor.js';
-import { createResetBaselineController } from '../../../js/utils/ResetBaseline.js';
-import { isFieldEnabled, isFieldVisible, parseExpressionInput } from '../../../js/ui/SchemaForm.js';
 import {
   DEMO_BASE_PIXELS_PER_UNIT,
   DEMO_MAX_ZOOM,
   DEMO_MIN_ZOOM,
   DEMO_ZOOM_STEP,
+  DragDropManager,
+  PerformanceMonitor,
+  PhysicsEngine,
+  Renderer,
+  Scene,
+  Serializer,
+  ThemeManager,
   applyDemoZoomToScene,
-  getNextDemoZoom
-} from '../../../js/modes/DemoMode.js';
-import {
+  createResetBaselineController,
+  getNextDemoZoom,
   getObjectGeometryScale,
   getObjectRealDimension,
+  isFieldEnabled,
+  isFieldVisible,
   isGeometryDimensionKey,
+  parseExpressionInput,
+  registry,
   setObjectDisplayDimension,
   setObjectRealDimension,
   syncObjectDisplayGeometry
-} from '../../../js/modes/GeometryScaling.js';
+} from '../engine/legacyBridge';
 
 type AnyRecord = Record<string, unknown>;
 

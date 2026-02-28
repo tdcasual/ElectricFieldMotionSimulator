@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { registry } from '../../js/core/registerObjects.js';
+import { registry } from '../src/engine/legacyBridge';
 import { SimulatorRuntime } from '../src/runtime/simulatorRuntime';
 
 describe('SimulatorRuntime demo mode', () => {

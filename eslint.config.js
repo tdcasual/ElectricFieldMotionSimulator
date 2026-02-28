@@ -9,6 +9,7 @@ export default [
   },
   {
     files: ['frontend/src/**/*.ts', 'frontend/test/**/*.ts'],
+    ignores: ['frontend/src/engine/legacyBridge.ts'],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 'latest',
@@ -21,11 +22,13 @@ export default [
           patterns: [
             {
               group: [
+                '../../../js/*',
+                '../../js/*',
                 '../engine/internal/*',
                 '../../engine/internal/*',
                 '@/engine/internal/*'
               ],
-              message: 'Use engine public API only.'
+              message: 'Use frontend/src/engine/legacyBridge for legacy runtime imports.'
             }
           ]
         }

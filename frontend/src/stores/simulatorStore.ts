@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
-import { registry } from '../../../js/core/registerObjects.js';
-import { Presets } from '../../../js/presets/Presets.js';
+import { Presets, registry } from '../engine/legacyBridge';
 import {
   SimulatorRuntime,
   type PropertyPayload,

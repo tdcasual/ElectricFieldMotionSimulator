@@ -1,7 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { Serializer } from '../src/engine/legacyBridge';
 import { useSimulatorStore } from '../src/stores/simulatorStore';
-import { Serializer } from '../../js/utils/Serializer.js';
 
 beforeEach(() => setActivePinia(createPinia()));
 afterEach(() => vi.restoreAllMocks());
