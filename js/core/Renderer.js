@@ -372,8 +372,6 @@ export class Renderer {
             const arrowX = field.x;
             const arrowTop = field.y + dir * (halfHeight * 0.6);
             const arrowBottom = field.y - dir * (halfHeight * 0.1);
-            const dy = arrowBottom - arrowTop;
-
             this.fieldCtx.strokeStyle = '#00ccaa';
             this.fieldCtx.fillStyle = '#00ccaa';
             this.fieldCtx.lineWidth = 2;

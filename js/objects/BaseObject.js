@@ -21,7 +21,7 @@ export class BaseObject {
     /**
      * 判断点是否在对象内
      */
-    containsPoint(x, y) {
+    containsPoint() {
         // 子类实现
         return false;
     }
@@ -29,7 +29,7 @@ export class BaseObject {
     /**
      * 更新对象状态
      */
-    update(dt) {
+    update() {
         // 子类实现
     }
     

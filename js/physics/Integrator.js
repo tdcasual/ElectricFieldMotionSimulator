@@ -2,7 +2,6 @@
  * RK4数值积分器
  */
 
-import { Vector } from './VectorMath.js';
 import { ForceCalculator } from './ForceCalculator.js';
 
 export class Integrator {
@@ -14,8 +13,6 @@ export class Integrator {
      * 使用RK4方法更新粒子状态
      */
     updateParticle(particle, scene, dt, gravity) {
-        const mass = particle.mass;
-        
         // RK4 四阶积分
         const k1 = this.computeDerivatives(particle, scene, gravity);
         

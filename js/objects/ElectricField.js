@@ -15,7 +15,7 @@ export class ElectricField extends BaseObject {
      * 获取指定位置的电场强度
      * @returns {Object} {x: Ex, y: Ey}
      */
-    getFieldAt(x, y, time = 0) {
+    getFieldAt() {
         // 子类实现
         return { x: 0, y: 0 };
     }

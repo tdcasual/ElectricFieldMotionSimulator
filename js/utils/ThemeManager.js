@@ -15,7 +15,7 @@ export class ThemeManager {
         // 监听系统主题变化
         if (window.matchMedia) {
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            mediaQuery?.addEventListener?.('change', (e) => {
+            mediaQuery?.addEventListener?.('change', () => {
                 if (this.currentTheme === 'auto') {
                     this.applyTheme('auto');
                 }
