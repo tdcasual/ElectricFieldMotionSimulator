@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
@@ -11,7 +11,7 @@ import SceneSettingsControls from './components/SceneSettingsControls.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
 import { useAppActions } from './modes/useAppActions';
-import { buildPhoneGeometryRows, type GeometrySectionLike, type PhoneGeometryRow } from './modes/phoneGeometry';
+import { useAppUiState } from './modes/useAppUiState';
 import { usePhoneSheets } from './modes/usePhoneSheets';
 import { useViewportLayout } from './modes/useViewportLayout';
 import { useSimulatorStore } from './stores/simulatorStore';
@@ -34,69 +34,25 @@ const {
 const { isCoarsePointer, mountViewportLayout, unmountViewportLayout } = useViewportLayout({
   setLayoutMode: (mode) => simulatorStore.setLayoutMode(mode)
 });
-
-const phoneSelectedScale = computed(() => {
-  const raw = Number(simulatorStore.propertyValues.__geometryObjectScale);
-  if (!Number.isFinite(raw) || raw <= 0) return 1;
-  return raw;
-});
-
-const phoneSelectedGeometryRows = computed<PhoneGeometryRow[]>(() => {
-  const sections = simulatorStore.propertySections as GeometrySectionLike[];
-  const values = simulatorStore.propertyValues as Record<string, unknown>;
-  return buildPhoneGeometryRows(sections, values);
-});
-
-const propertyDrawerModel = computed({
-  get: () => simulatorStore.propertyDrawerOpen,
-  set: (next: boolean) => {
-    if (next) {
-      simulatorStore.openPropertyPanel();
-    } else {
-      simulatorStore.closePropertyPanel();
-    }
-  }
-});
-
-const markdownBoardModel = computed({
-  get: () => simulatorStore.markdownBoardOpen,
-  set: (next: boolean) => {
-    if (!next) simulatorStore.closeMarkdownBoard();
-    else if (!simulatorStore.markdownBoardOpen) simulatorStore.toggleMarkdownBoard();
-  }
-});
-
-const variablesPanelModel = computed({
-  get: () => simulatorStore.variablesPanelOpen,
-  set: (next: boolean) => {
-    if (next) {
-      simulatorStore.openVariablesPanel();
-    } else {
-      simulatorStore.closeVariablesPanel();
-    }
-  }
-});
-
-const showObjectActionBar = computed(() => {
-  if (!showAuthoringControls.value) return false;
-  if (!simulatorStore.selectedObjectId) return false;
-  if (simulatorStore.activeDrawer !== null) return false;
-  if (isPhoneLayout.value && phoneAnySheetOpen.value) return false;
-  return simulatorStore.layoutMode === 'phone' || isCoarsePointer.value;
-});
-
-const showPhoneBottomNav = computed(() => {
-  if (!showAuthoringControls.value) return false;
-  if (!isPhoneLayout.value) return false;
-  return simulatorStore.activeDrawer === null;
+const {
+  phoneSelectedScale,
+  phoneSelectedGeometryRows,
+  propertyDrawerModel,
+  markdownBoardModel,
+  variablesPanelModel,
+  showObjectActionBar,
+  showPhoneBottomNav,
+  phoneDensityClass
+} = useAppUiState({
+  simulatorStore,
+  showAuthoringControls,
+  isPhoneLayout,
+  phoneAnySheetOpen,
+  isCoarsePointer
 });
 const phoneSheetSwipeGesture = createSwipeCloseGesture(() => {
   closePhoneSheets();
 });
-
-const phoneDensityClass = computed(() =>
-  simulatorStore.phoneDensityMode === 'comfortable' ? 'phone-density-comfortable' : 'phone-density-compact'
-);
 const {
   togglePlayPause,
   togglePlayPauseFromPhoneNav,
