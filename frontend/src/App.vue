@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
+import HeaderActionButtons from './components/HeaderActionButtons.vue';
 import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
 import PhoneAddSheet from './components/PhoneAddSheet.vue';
@@ -137,84 +138,37 @@ onBeforeUnmount(() => {
     <header id="header">
       <h1>⚡ 电磁场粒子运动模拟器</h1>
       <div class="header-controls">
-        <div class="header-actions">
-          <button
-            v-if="!isPhoneLayout || !showAuthoringControls"
-            id="play-pause-btn"
-            class="btn btn-primary"
-            title="播放/暂停"
-            aria-label="播放/暂停"
-            @click="togglePlayPause"
-          >
-            <span id="play-icon">{{ simulatorStore.running ? '⏸' : '▶' }}</span>
-            <span id="play-label">{{ simulatorStore.running ? '暂停' : '播放' }}</span>
-          </button>
-          <button
-            v-if="showAuthoringControls && !isPhoneLayout"
-            id="classroom-mode-btn"
-            class="btn"
-            :class="{ 'btn-primary': simulatorStore.classroomMode }"
-            title="课堂演示模式"
-            aria-label="课堂演示模式"
-            :aria-pressed="simulatorStore.classroomMode ? 'true' : 'false'"
-            @click="simulatorStore.toggleClassroomMode"
-          >
-            {{ simulatorStore.classroomMode ? '退出课堂' : '课堂演示' }}
-          </button>
-          <button id="reset-btn" class="btn" title="回到起始态" aria-label="回到起始态" @click="resetScene">🔄 回到起始态</button>
-          <template v-if="showAuthoringControls">
-            <button v-if="!isPhoneLayout" id="clear-btn" class="btn" title="清空场景" aria-label="清空场景" @click="clearScene">🗑 清空</button>
-            <button v-if="!isPhoneLayout" id="save-btn" class="btn" title="保存场景" aria-label="保存场景" @click="saveScene">💾 保存</button>
-            <button v-if="!isPhoneLayout" id="load-btn" class="btn" title="加载场景" aria-label="加载场景" @click="loadScene">📂 读取</button>
-            <button v-if="!isPhoneLayout" id="export-btn" class="btn" title="导出场景" aria-label="导出场景" @click="exportScene">📤 导出</button>
-            <button v-if="!isPhoneLayout" id="import-btn" class="btn" title="导入场景" aria-label="导入场景" @click="openImportDialog">📥 导入</button>
-            <button v-if="!isPhoneLayout" id="theme-toggle-btn" class="btn" title="切换主题" aria-label="切换主题" @click="toggleTheme">🌙 主题</button>
-            <button
-              v-if="!isPhoneLayout"
-              id="variables-btn"
-              class="btn"
-              :class="{ 'btn-primary': simulatorStore.variablesPanelOpen }"
-              title="变量表"
-              aria-label="变量表"
-              :aria-pressed="simulatorStore.variablesPanelOpen ? 'true' : 'false'"
-              @click="openVariablesPanel"
-            >
-              ƒx 变量
-            </button>
-            <button
-              v-if="!isPhoneLayout"
-              id="markdown-toggle-btn"
-              class="btn"
-              :class="{ 'btn-primary': simulatorStore.markdownBoardOpen }"
-              title="题目板"
-              aria-label="题目板"
-              :aria-pressed="simulatorStore.markdownBoardOpen ? 'true' : 'false'"
-              @click="toggleMarkdownBoard"
-            >
-              📝 题板
-            </button>
-            <button
-              v-if="!isPhoneLayout"
-              id="demo-mode-btn"
-              class="btn"
-              :class="{ 'btn-primary': simulatorStore.demoMode }"
-              :title="simulatorStore.demoButtonTitle"
-              aria-label="演示模式"
-              :aria-pressed="simulatorStore.demoMode ? 'true' : 'false'"
-              @click="toggleDemoMode"
-            >
-              {{ simulatorStore.demoButtonLabel }}
-            </button>
-          </template>
-          <input
-            id="import-file-input"
-            ref="importFileInput"
-            type="file"
-            accept=".json"
-            style="display: none"
-            @change="handleImportChange"
-          />
-        </div>
+        <HeaderActionButtons
+          :is-phone-layout="isPhoneLayout"
+          :show-authoring-controls="showAuthoringControls"
+          :running="simulatorStore.running"
+          :classroom-mode="simulatorStore.classroomMode"
+          :variables-panel-open="simulatorStore.variablesPanelOpen"
+          :markdown-board-open="simulatorStore.markdownBoardOpen"
+          :demo-mode="simulatorStore.demoMode"
+          :demo-button-title="simulatorStore.demoButtonTitle"
+          :demo-button-label="simulatorStore.demoButtonLabel"
+          @toggle-play="togglePlayPause"
+          @toggle-classroom="simulatorStore.toggleClassroomMode"
+          @reset-scene="resetScene"
+          @clear-scene="clearScene"
+          @save-scene="saveScene"
+          @load-scene="loadScene"
+          @export-scene="exportScene"
+          @open-import="openImportDialog"
+          @toggle-theme="toggleTheme"
+          @open-variables="openVariablesPanel"
+          @toggle-markdown="toggleMarkdownBoard"
+          @toggle-demo="toggleDemoMode"
+        />
+        <input
+          id="import-file-input"
+          ref="importFileInput"
+          type="file"
+          accept=".json"
+          style="display: none"
+          @change="handleImportChange"
+        />
         <div v-if="isPhoneLayout" class="phone-status-strip" data-testid="phone-status-strip">
           <span class="phone-status-text">{{ simulatorStore.statusText }}</span>
           <span class="phone-status-metrics">对象 {{ simulatorStore.objectCount }} · 粒子 {{ simulatorStore.particleCount }}</span>
