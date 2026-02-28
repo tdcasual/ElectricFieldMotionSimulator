@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import AuthoringPanels from './components/AuthoringPanels.vue';
+import AppStatusFooter from './components/AppStatusFooter.vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import DesktopToolbarSidebar from './components/DesktopToolbarSidebar.vue';
 import HeaderActionButtons from './components/HeaderActionButtons.vue';
@@ -10,6 +11,7 @@ import PhoneAuthoringSheets from './components/PhoneAuthoringSheets.vue';
 import PhoneBottomNav from './components/PhoneBottomNav.vue';
 import SelectionContextMenu from './components/SelectionContextMenu.vue';
 import { useAppActions } from './modes/useAppActions';
+import { useAppShellClass } from './modes/useAppShellClass';
 import { useAppUiState } from './modes/useAppUiState';
 import { usePhoneSheets } from './modes/usePhoneSheets';
 import { useViewportLayout } from './modes/useViewportLayout';
@@ -35,6 +37,14 @@ const appActions = useAppActions({
   closePhoneSheets,
   importFileInput
 });
+const { appShellClass } = useAppShellClass({
+  simulatorStore,
+  phoneAddSheetOpen,
+  phoneSceneSheetOpen,
+  phoneMoreSheetOpen,
+  phoneSelectedSheetOpen,
+  phoneDensityClass
+});
 
 onMounted(async () => {
   mountViewportLayout();
@@ -53,23 +63,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    id="app"
-    data-testid="app-shell"
-    :class="{
-      'panel-open': simulatorStore.propertyDrawerOpen,
-      'view-mode': simulatorStore.viewMode,
-      'layout-desktop': simulatorStore.layoutMode === 'desktop',
-      'layout-tablet': simulatorStore.layoutMode === 'tablet',
-      'layout-phone': simulatorStore.layoutMode === 'phone',
-      'classroom-mode': simulatorStore.classroomMode,
-      'phone-toolbar-open': phoneAddSheetOpen,
-      'phone-settings-open': phoneSceneSheetOpen,
-      'phone-secondary-open': phoneMoreSheetOpen,
-      'phone-selected-open': phoneSelectedSheetOpen,
-      [phoneDensityClass]: true
-    }"
-  >
+  <div id="app" data-testid="app-shell" :class="appShellClass">
     <header id="header">
       <h1>⚡ 电磁场粒子运动模拟器</h1>
       <div class="header-controls">
@@ -222,11 +216,11 @@ onBeforeUnmount(() => {
       @update:modelValue="setPhoneActiveSheet"
     />
 
-    <footer id="footer">
-      <span id="status-text">{{ simulatorStore.statusText }}</span>
-      <span id="object-count">对象: {{ simulatorStore.objectCount }}</span>
-      <span id="particle-count">粒子: {{ simulatorStore.particleCount }}</span>
-    </footer>
+    <AppStatusFooter
+      :status-text="simulatorStore.statusText"
+      :object-count="simulatorStore.objectCount"
+      :particle-count="simulatorStore.particleCount"
+    />
 
     <SelectionContextMenu
       v-if="showAuthoringControls"
