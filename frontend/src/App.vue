@@ -11,21 +11,25 @@ import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
 import { resolveLayoutMode } from './modes/layoutMode';
 import { buildPhoneGeometryRows, type GeometrySectionLike, type PhoneGeometryRow } from './modes/phoneGeometry';
+import { usePhoneSheets } from './modes/usePhoneSheets';
 import { useSimulatorStore } from './stores/simulatorStore';
 import { createSwipeCloseGesture } from './utils/swipeCloseGesture';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
 const isCoarsePointer = ref(false);
-type PhoneSheetKey = 'add' | 'selected' | 'scene' | 'more' | null;
-const phoneActiveSheet = ref<PhoneSheetKey>(null);
-const showAuthoringControls = computed(() => !simulatorStore.viewMode);
-const isPhoneLayout = computed(() => simulatorStore.layoutMode === 'phone');
-const phoneAddSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'add');
-const phoneSelectedSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'selected');
-const phoneSceneSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'scene');
-const phoneMoreSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'more');
-const phoneAnySheetOpen = computed(() => phoneAddSheetOpen.value || phoneSelectedSheetOpen.value || phoneSceneSheetOpen.value || phoneMoreSheetOpen.value);
+const {
+  phoneActiveSheet,
+  showAuthoringControls,
+  isPhoneLayout,
+  phoneAddSheetOpen,
+  phoneSelectedSheetOpen,
+  phoneSceneSheetOpen,
+  phoneMoreSheetOpen,
+  phoneAnySheetOpen,
+  closePhoneSheets,
+  setPhoneActiveSheet
+} = usePhoneSheets(simulatorStore);
 
 const phoneSelectedScale = computed(() => {
   const raw = Number(simulatorStore.propertyValues.__geometryObjectScale);
@@ -88,47 +92,6 @@ const phoneSheetSwipeGesture = createSwipeCloseGesture(() => {
 
 const phoneDensityClass = computed(() =>
   simulatorStore.phoneDensityMode === 'comfortable' ? 'phone-density-comfortable' : 'phone-density-compact'
-);
-
-watch(
-  () => simulatorStore.layoutMode,
-  (next) => {
-    if (next !== 'phone') {
-      phoneActiveSheet.value = null;
-    }
-  }
-);
-
-watch(
-  () => showAuthoringControls.value,
-  (visible) => {
-    if (visible) return;
-    phoneActiveSheet.value = null;
-  }
-);
-
-watch(
-  () => simulatorStore.selectedObjectId,
-  (selectedId) => {
-    if (!selectedId) {
-      if (phoneActiveSheet.value === 'selected') {
-        phoneActiveSheet.value = null;
-      }
-      return;
-    }
-    if (phoneSelectedSheetOpen.value) {
-      simulatorStore.refreshSelectedPropertyPayload();
-    }
-  }
-);
-
-watch(
-  () => phoneSelectedSheetOpen.value,
-  (open) => {
-    if (!open) return;
-    if (!simulatorStore.selectedObjectId) return;
-    simulatorStore.refreshSelectedPropertyPayload();
-  }
 );
 
 function syncLayoutModeFromViewport() {
@@ -294,18 +257,6 @@ function applyVariables(values: Record<string, number>) {
   simulatorStore.applyVariables(values);
 }
 
-function setPhoneActiveSheet(next: PhoneSheetKey) {
-  if (!isPhoneLayout.value) return;
-  if (next === 'selected' && !simulatorStore.selectedObjectId) {
-    phoneActiveSheet.value = null;
-    return;
-  }
-  if (next === 'selected') {
-    simulatorStore.refreshSelectedPropertyPayload();
-  }
-  phoneActiveSheet.value = next;
-}
-
 function applyPhoneSelectedQuickValue(payload: { key: string; value: string }) {
   if (!payload?.key) return;
   const result = simulatorStore.applyPropertyValues({ [payload.key]: payload.value });
@@ -313,10 +264,6 @@ function applyPhoneSelectedQuickValue(payload: { key: string; value: string }) {
     window.alert(result.error);
   }
   simulatorStore.refreshSelectedPropertyPayload();
-}
-
-function closePhoneSheets() {
-  phoneActiveSheet.value = null;
 }
 
 function createObjectFromToolbar(type: string) {

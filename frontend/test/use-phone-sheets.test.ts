@@ -1,0 +1,52 @@
+import { nextTick, reactive } from 'vue';
+import { describe, expect, it, vi } from 'vitest';
+import { usePhoneSheets } from '../src/modes/usePhoneSheets';
+
+describe('usePhoneSheets', () => {
+  it('blocks selected sheet when nothing is selected', () => {
+    const store = reactive({
+      viewMode: false,
+      layoutMode: 'phone' as 'phone' | 'tablet' | 'desktop',
+      selectedObjectId: null as string | null,
+      refreshSelectedPropertyPayload: vi.fn()
+    });
+
+    const sheets = usePhoneSheets(store);
+    sheets.setPhoneActiveSheet('selected');
+    expect(sheets.phoneActiveSheet.value).toBeNull();
+  });
+
+  it('closes active sheet when layout leaves phone mode', async () => {
+    const store = reactive({
+      viewMode: false,
+      layoutMode: 'phone' as 'phone' | 'tablet' | 'desktop',
+      selectedObjectId: 'obj-1' as string | null,
+      refreshSelectedPropertyPayload: vi.fn()
+    });
+
+    const sheets = usePhoneSheets(store);
+    sheets.setPhoneActiveSheet('scene');
+    expect(sheets.phoneActiveSheet.value).toBe('scene');
+
+    store.layoutMode = 'desktop';
+    await nextTick();
+    expect(sheets.phoneActiveSheet.value).toBeNull();
+  });
+
+  it('closes selected sheet when selection is cleared', async () => {
+    const store = reactive({
+      viewMode: false,
+      layoutMode: 'phone' as 'phone' | 'tablet' | 'desktop',
+      selectedObjectId: 'obj-1' as string | null,
+      refreshSelectedPropertyPayload: vi.fn()
+    });
+
+    const sheets = usePhoneSheets(store);
+    sheets.setPhoneActiveSheet('selected');
+    expect(sheets.phoneSelectedSheetOpen.value).toBe(true);
+
+    store.selectedObjectId = null;
+    await nextTick();
+    expect(sheets.phoneActiveSheet.value).toBeNull();
+  });
+});
