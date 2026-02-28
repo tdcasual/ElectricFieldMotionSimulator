@@ -186,6 +186,11 @@ export class Scene {
      * 清空场景
      */
     clear() {
+        for (const object of this.objects) {
+            if (object?.scene === this) {
+                object.scene = null;
+            }
+        }
         this.objects = [];
         this.electricFields = [];
         this.magneticFields = [];
@@ -257,6 +262,12 @@ export class Scene {
         this.variables = {};
         this.selectedObject = null;
         this.setCamera(0, 0);
+
+        for (const object of this.objects) {
+            if (object?.scene === this) {
+                object.scene = null;
+            }
+        }
 
         // 清空对象
         this.objects = [];

@@ -162,6 +162,22 @@ test('Scene.removeObject detaches scene reference from removed object', () => {
   assert.equal(field.scene, null);
 });
 
+test('Scene.clear detaches scene references from existing objects', () => {
+  const scene = new Scene();
+  const field = new RectElectricField({
+    x: 10,
+    y: 20,
+    width: 30,
+    height: 40
+  });
+  scene.addObject(field);
+  assert.equal(field.scene, scene);
+
+  scene.clear();
+  assert.equal(field.scene, null);
+  assert.equal(scene.objects.length, 0);
+});
+
 test('Scene.loadFromData clears stale selection that is no longer in scene', () => {
   const scene = new Scene();
   const original = new RectElectricField({
@@ -190,6 +206,7 @@ test('Scene.loadFromData clears stale selection that is no longer in scene', () 
 
   assert.equal(scene.selectedObject, null);
   assert.equal(scene.objects.includes(original), false);
+  assert.equal(original.scene, null);
 });
 
 test('Serializer.validateSceneData fills missing objects array', () => {
