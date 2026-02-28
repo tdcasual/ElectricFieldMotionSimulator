@@ -113,7 +113,7 @@ export class ElectronGun extends BaseObject {
 
         // 显示配置（用于画布叠加信息）
         this.showVelocity = config.showVelocity ?? false;
-        const velocityMode = config.velocityDisplayMode || config.velocityDisplay || 'vector';
+        const velocityMode = config.velocityDisplayMode || 'vector';
         this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
         this.showEnergy = config.showEnergy ?? false;
 
@@ -222,7 +222,7 @@ export class ElectronGun extends BaseObject {
         this.emissionRate = data.emissionRate ?? 0;
         this.emissionSpeed = data.emissionSpeed ?? 0;
         this.showVelocity = data.showVelocity ?? this.showVelocity ?? false;
-        const velocityMode = data.velocityDisplayMode || data.velocityDisplay || this.velocityDisplayMode || 'vector';
+        const velocityMode = data.velocityDisplayMode || this.velocityDisplayMode || 'vector';
         this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
         this.showEnergy = data.showEnergy ?? this.showEnergy ?? false;
         this.particleType = data.particleType || 'electron';

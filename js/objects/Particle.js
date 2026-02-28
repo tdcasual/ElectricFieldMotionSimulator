@@ -149,7 +149,7 @@ export class Particle extends BaseObject {
         this.showTrajectory = config.showTrajectory !== undefined ? config.showTrajectory : true;
         this.showEnergy = config.showEnergy !== undefined ? config.showEnergy : true;
         this.showVelocity = config.showVelocity !== undefined ? config.showVelocity : true;
-        const velocityMode = config.velocityDisplayMode || config.velocityDisplay || 'vector';
+        const velocityMode = config.velocityDisplayMode || 'vector';
         this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
 
         // 受力分析显示
@@ -338,7 +338,7 @@ export class Particle extends BaseObject {
             : (this.trajectorySeconds ?? 8);
         this.showEnergy = data.showEnergy ?? this.showEnergy;
         this.showVelocity = data.showVelocity ?? this.showVelocity;
-        const velocityMode = data.velocityDisplayMode || data.velocityDisplay || this.velocityDisplayMode || 'vector';
+        const velocityMode = data.velocityDisplayMode || this.velocityDisplayMode || 'vector';
         this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';
         this.showForces = data.showForces ?? this.showForces ?? false;
         this.showForceElectric = data.showForceElectric ?? this.showForceElectric ?? false;

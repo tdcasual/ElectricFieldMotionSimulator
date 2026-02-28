@@ -141,7 +141,6 @@ export class VerticalParallelPlateCapacitor extends ElectricField {
         this.height = data.height;
         this.plateDistance = data.plateDistance;
         this.strength = data.strength;
-        this.direction = data.direction ?? 0; // unused for field direction, kept for compatibility
         this.polarity = data.polarity;
         this.color = data.color;
         this.sourceType = data.sourceType || 'dc';
