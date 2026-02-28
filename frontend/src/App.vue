@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import AuthoringPanels from './components/AuthoringPanels.vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import DesktopToolbarSidebar from './components/DesktopToolbarSidebar.vue';
 import HeaderActionButtons from './components/HeaderActionButtons.vue';
 import HeaderStatusAndSettings from './components/HeaderStatusAndSettings.vue';
-import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
 import PhoneAuthoringSheets from './components/PhoneAuthoringSheets.vue';
 import PhoneBottomNav from './components/PhoneBottomNav.vue';
-import PropertyDrawer from './components/PropertyDrawer.vue';
 import SelectionContextMenu from './components/SelectionContextMenu.vue';
-import VariablesPanel from './components/VariablesPanel.vue';
 import { useAppActions } from './modes/useAppActions';
 import { useAppUiState } from './modes/useAppUiState';
 import { usePhoneSheets } from './modes/usePhoneSheets';
@@ -251,34 +249,29 @@ onBeforeUnmount(() => {
       @delete="deleteSelectedFromActionBar"
     />
 
-    <PropertyDrawer
-      v-if="showAuthoringControls"
-      v-model="propertyDrawerModel"
-      :title="simulatorStore.propertyTitle"
+    <AuthoringPanels
+      :show-authoring-controls="showAuthoringControls"
+      :property-drawer-model="propertyDrawerModel"
+      :property-title="simulatorStore.propertyTitle"
       :layout-mode="simulatorStore.layoutMode"
-      :sections="simulatorStore.propertySections"
-      :values="simulatorStore.propertyValues"
+      :property-sections="simulatorStore.propertySections"
+      :property-values="simulatorStore.propertyValues"
       :density-mode="simulatorStore.phoneDensityMode"
+      :markdown-board-model="markdownBoardModel"
+      :markdown-content="simulatorStore.markdownContent"
+      :markdown-mode="simulatorStore.markdownMode"
+      :markdown-font-size="simulatorStore.markdownFontSize"
+      :variables-panel-model="variablesPanelModel"
+      :variable-draft="simulatorStore.variableDraft"
+      @update:property-drawer-model="propertyDrawerModel = $event"
       @toggle-density="simulatorStore.togglePhoneDensityMode"
-      @apply="applyProperties"
-    />
-    <MarkdownBoard
-      v-if="showAuthoringControls"
-      v-model="markdownBoardModel"
-      :layout-mode="simulatorStore.layoutMode"
-      :content="simulatorStore.markdownContent"
-      :mode="simulatorStore.markdownMode"
-      :font-size="simulatorStore.markdownFontSize"
-      @update:content="simulatorStore.setMarkdownContent"
-      @update:mode="simulatorStore.setMarkdownMode"
-      @update:fontSize="simulatorStore.setMarkdownFontSize"
-    />
-    <VariablesPanel
-      v-if="showAuthoringControls"
-      v-model="variablesPanelModel"
-      :layout-mode="simulatorStore.layoutMode"
-      :variables="simulatorStore.variableDraft"
-      @apply="applyVariables"
+      @apply-properties="applyProperties"
+      @update:markdown-board-model="markdownBoardModel = $event"
+      @update:markdown-content="simulatorStore.setMarkdownContent"
+      @update:markdown-mode="simulatorStore.setMarkdownMode"
+      @update:markdown-font-size="simulatorStore.setMarkdownFontSize"
+      @update:variables-panel-model="variablesPanelModel = $event"
+      @apply-variables="applyVariables"
     />
 
     <PhoneBottomNav
