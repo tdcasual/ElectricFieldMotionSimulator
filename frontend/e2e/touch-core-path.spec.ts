@@ -17,6 +17,24 @@ async function dispatchTouchEventViaCdp(
   });
 }
 
+async function addParticleFromPhoneSheet(page: Page) {
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+}
+
+async function selectCenterObject(page: Page, x: number, y: number) {
+  await page.touchscreen.tap(x, y);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+}
+
+async function openPropertyPanelFromActionBar(page: Page) {
+  await page.locator('[data-testid="action-open-properties"]').tap();
+  await expect(page.locator('#property-panel')).toBeVisible();
+}
+
 test('touch path place object and double-tap open property panel', async ({ page }) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
@@ -529,14 +547,9 @@ test('phone density toggle changes property panel row density', async ({ page },
   const centerX = box!.x + box!.width / 2;
   const centerY = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
-
-  await page.touchscreen.tap(centerX, centerY);
-  await page.touchscreen.tap(centerX, centerY);
-  await expect(page.locator('#property-panel')).toBeVisible();
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+  await openPropertyPanelFromActionBar(page);
 
   const rowBefore = await page.locator('#property-panel .section-toggle').first().evaluate((el) => {
     return el.getBoundingClientRect().height;
@@ -590,14 +603,9 @@ test('property panel keeps phone play control reachable and tappable', async ({ 
   const centerX = box!.x + box!.width / 2;
   const centerY = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
-
-  await page.touchscreen.tap(centerX, centerY);
-  await page.touchscreen.tap(centerX, centerY);
-  await expect(page.locator('#property-panel')).toBeVisible();
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+  await openPropertyPanelFromActionBar(page);
 
   const playButton = page.locator('#phone-nav-play-btn');
   const sceneButton = page.locator('#phone-nav-scene-btn');
@@ -819,14 +827,9 @@ test('phone landscape density toggle scales nav and sheet controls', async ({ pa
   const centerX = box!.x + box!.width / 2;
   const centerY = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
-
-  await page.touchscreen.tap(centerX, centerY);
-  await page.touchscreen.tap(centerX, centerY);
-  await expect(page.locator('#property-panel')).toBeVisible();
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+  await openPropertyPanelFromActionBar(page);
 
   await page.locator('[data-testid="density-toggle"]').tap();
   await page.locator('#close-panel-btn').tap();
