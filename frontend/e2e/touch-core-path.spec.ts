@@ -143,3 +143,43 @@ test('swipe down on phone scene sheet header closes sheet', async ({ page }, tes
 
   await expect(sceneSheet).toBeHidden();
 });
+
+test('phone density toggle changes property panel row density', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only density check');
+  }
+
+  const phoneNav = page.locator('#phone-bottom-nav');
+  await expect(phoneNav).toBeVisible();
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+
+  await page.touchscreen.tap(centerX, centerY);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+  await page.touchscreen.tap(centerX, centerY);
+  await expect(page.locator('#property-panel')).toBeVisible();
+
+  const rowBefore = await page.locator('#property-panel .section-toggle').first().evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+
+  await page.locator('[data-testid="density-toggle"]').tap();
+
+  const rowAfter = await page.locator('#property-panel .section-toggle').first().evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+
+  expect(rowAfter).toBeGreaterThan(rowBefore);
+});

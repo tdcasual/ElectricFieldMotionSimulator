@@ -537,6 +537,12 @@ body.light-theme .preset-btn:hover {
     font-weight: 600;
 }
 
+.panel-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .panel-content {
     flex: 1;
     overflow-y: auto;
@@ -548,6 +554,14 @@ body.light-theme .preset-btn:hover {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     background: var(--bg-primary);
+}
+
+.property-quick-title {
+    padding: 8px 10px 6px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 .property-rows {
@@ -729,12 +743,51 @@ body.light-theme .preset-btn:hover {
 #app.layout-phone {
     --header-height: 96px;
     --phone-bottom-bar-height: 60px;
+    --phone-panel-section-gap: 6px;
+    --phone-panel-toggle-height: 28px;
+    --phone-panel-toggle-font-size: 11px;
+    --phone-panel-toggle-padding-y: 2px;
+    --phone-panel-toggle-line-height: 1.2;
+    --phone-panel-section-padding: 4px 8px 6px;
+    --phone-panel-rows-gap: 4px 6px;
+    --phone-panel-rows-padding: 4px 6px;
+    --phone-panel-label-font-size: 12px;
+    --phone-panel-input-height: 32px;
+    --phone-panel-input-font-size: 12px;
+    --phone-panel-textarea-height: 48px;
+    --phone-panel-checkbox-size: 18px;
+    --phone-panel-checkbox-margin-top: 6px;
+    --phone-panel-action-btn-height: 36px;
+    --phone-panel-density-btn-height: 32px;
+    --phone-panel-density-btn-font-size: 11px;
+    --phone-panel-density-btn-padding: 4px 8px;
     grid-template-areas:
         "header"
         "canvas"
         "footer";
     grid-template-columns: 1fr;
     grid-template-rows: var(--header-height) 1fr 0;
+}
+
+#app.layout-phone.phone-density-comfortable {
+    --phone-panel-section-gap: 8px;
+    --phone-panel-toggle-height: 34px;
+    --phone-panel-toggle-font-size: 12px;
+    --phone-panel-toggle-padding-y: 5px;
+    --phone-panel-toggle-line-height: 1.3;
+    --phone-panel-section-padding: 6px 10px 8px;
+    --phone-panel-rows-gap: 6px 8px;
+    --phone-panel-rows-padding: 6px 8px;
+    --phone-panel-label-font-size: 13px;
+    --phone-panel-input-height: 36px;
+    --phone-panel-input-font-size: 13px;
+    --phone-panel-textarea-height: 56px;
+    --phone-panel-checkbox-size: 20px;
+    --phone-panel-checkbox-margin-top: 8px;
+    --phone-panel-action-btn-height: 40px;
+    --phone-panel-density-btn-height: 36px;
+    --phone-panel-density-btn-font-size: 12px;
+    --phone-panel-density-btn-padding: 6px 10px;
 }
 
 #app.layout-phone #header {
@@ -781,33 +834,33 @@ body.light-theme .preset-btn:hover {
 }
 
 #app.layout-phone #property-panel .property-section {
-    margin-bottom: 6px;
+    margin-bottom: var(--phone-panel-section-gap);
 }
 
 #app.layout-phone #property-panel .section-toggle {
-    min-height: 28px;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    font-size: 11px;
-    line-height: 1.2;
+    min-height: var(--phone-panel-toggle-height);
+    padding-top: var(--phone-panel-toggle-padding-y);
+    padding-bottom: var(--phone-panel-toggle-padding-y);
+    font-size: var(--phone-panel-toggle-font-size);
+    line-height: var(--phone-panel-toggle-line-height);
 }
 
 #app.layout-phone #property-panel .property-section > div {
-    padding: 4px 8px 6px;
+    padding: var(--phone-panel-section-padding);
 }
 
 #app.layout-phone #property-panel .panel-actions .btn {
-    min-height: 36px;
+    min-height: var(--phone-panel-action-btn-height);
 }
 
 #app.layout-phone #property-panel .property-rows {
     grid-template-columns: minmax(110px, 1fr) minmax(120px, 1fr);
-    gap: 4px 6px;
-    padding: 4px 6px;
+    gap: var(--phone-panel-rows-gap);
+    padding: var(--phone-panel-rows-padding);
 }
 
 #app.layout-phone #property-panel .property-key label {
-    font-size: 12px;
+    font-size: var(--phone-panel-label-font-size);
     padding-top: 4px;
 }
 
@@ -815,19 +868,25 @@ body.light-theme .preset-btn:hover {
 #app.layout-phone #property-panel .property-value input[type="number"],
 #app.layout-phone #property-panel .property-value select,
 #app.layout-phone #property-panel .property-value textarea {
-    min-height: 32px;
+    min-height: var(--phone-panel-input-height);
     padding: 4px 6px;
-    font-size: 12px;
+    font-size: var(--phone-panel-input-font-size);
 }
 
 #app.layout-phone #property-panel .property-value textarea {
-    min-height: 48px;
+    min-height: var(--phone-panel-textarea-height);
 }
 
 #app.layout-phone #property-panel .property-value input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    margin-top: 6px;
+    width: var(--phone-panel-checkbox-size);
+    height: var(--phone-panel-checkbox-size);
+    margin-top: var(--phone-panel-checkbox-margin-top);
+}
+
+#app.layout-phone #property-panel .panel-header-actions .btn {
+    min-height: var(--phone-panel-density-btn-height);
+    padding: var(--phone-panel-density-btn-padding);
+    font-size: var(--phone-panel-density-btn-font-size);
 }
 
 #app.layout-phone #footer {

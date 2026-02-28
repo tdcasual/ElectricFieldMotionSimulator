@@ -168,6 +168,35 @@ describe('App shell', () => {
     expect(wrapper.get('#app').classes()).toContain('phone-density-compact');
   });
 
+  it('toggles phone density class from property panel button', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    store.openPropertyPanel();
+    await nextTick();
+
+    const appShell = wrapper.get('#app');
+    expect(appShell.classes()).toContain('phone-density-compact');
+
+    await wrapper.get('[data-testid="density-toggle"]').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-density-comfortable');
+  });
+
   it('toggles classroom mode class from header action button', async () => {
     const pinia = createPinia();
     Object.defineProperty(window, 'innerWidth', {

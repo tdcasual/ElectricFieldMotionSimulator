@@ -110,6 +110,20 @@ describe('PropertyDrawer', () => {
     expect(wrapper.find('[data-testid="density-toggle"]').exists()).toBe(true);
   });
 
+  it('emits toggle-density from phone density button', async () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        layoutMode: 'phone',
+        sections: [],
+        values: {}
+      }
+    });
+
+    await wrapper.get('[data-testid="density-toggle"]').trigger('click');
+    expect(wrapper.emitted('toggle-density')?.length ?? 0).toBe(1);
+  });
+
   it('renders quick edit group with top fields on phone', () => {
     const wrapper = mount(PropertyDrawer, {
       props: {
