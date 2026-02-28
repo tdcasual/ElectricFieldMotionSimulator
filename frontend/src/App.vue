@@ -9,15 +9,14 @@ import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
-import { resolveLayoutMode } from './modes/layoutMode';
 import { buildPhoneGeometryRows, type GeometrySectionLike, type PhoneGeometryRow } from './modes/phoneGeometry';
 import { usePhoneSheets } from './modes/usePhoneSheets';
+import { useViewportLayout } from './modes/useViewportLayout';
 import { useSimulatorStore } from './stores/simulatorStore';
 import { createSwipeCloseGesture } from './utils/swipeCloseGesture';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
-const isCoarsePointer = ref(false);
 const {
   phoneActiveSheet,
   showAuthoringControls,
@@ -30,6 +29,9 @@ const {
   closePhoneSheets,
   setPhoneActiveSheet
 } = usePhoneSheets(simulatorStore);
+const { isCoarsePointer, mountViewportLayout, unmountViewportLayout } = useViewportLayout({
+  setLayoutMode: (mode) => simulatorStore.setLayoutMode(mode)
+});
 
 const phoneSelectedScale = computed(() => {
   const raw = Number(simulatorStore.propertyValues.__geometryObjectScale);
@@ -94,26 +96,8 @@ const phoneDensityClass = computed(() =>
   simulatorStore.phoneDensityMode === 'comfortable' ? 'phone-density-comfortable' : 'phone-density-compact'
 );
 
-function syncLayoutModeFromViewport() {
-  if (typeof window === 'undefined') return;
-  simulatorStore.setLayoutMode(resolveLayoutMode(window.innerWidth));
-}
-
-function handleWindowResize() {
-  syncLayoutModeFromViewport();
-}
-
-function syncCoarsePointer() {
-  if (typeof window === 'undefined') return;
-  const coarseByMedia = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
-  const coarseByTouchPoints = (navigator.maxTouchPoints ?? 0) > 0;
-  isCoarsePointer.value = coarseByMedia || coarseByTouchPoints;
-}
-
 onMounted(async () => {
-  syncLayoutModeFromViewport();
-  syncCoarsePointer();
-  window.addEventListener('resize', handleWindowResize);
+  mountViewportLayout();
   if (import.meta.env.MODE !== 'test') {
     await nextTick();
     simulatorStore.mountRuntime();
@@ -121,7 +105,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleWindowResize);
+  unmountViewportLayout();
   if (import.meta.env.MODE !== 'test') {
     simulatorStore.unmountRuntime();
   }
