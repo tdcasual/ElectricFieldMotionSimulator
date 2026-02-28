@@ -32,48 +32,10 @@ export class Vector {
     }
     
     /**
-     * 点积
-     */
-    dot(v) {
-        return this.x * v.x + this.y * v.y + this.z * v.z;
-    }
-    
-    /**
-     * 叉积（向量积）
-     */
-    cross(v) {
-        return new Vector(
-            this.y * v.z - this.z * v.y,
-            this.z * v.x - this.x * v.z,
-            this.x * v.y - this.y * v.x
-        );
-    }
-    
-    /**
      * 向量模长
      */
     magnitude() {
         return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
-    }
-    
-    /**
-     * 向量方向角（弧度）
-     */
-    heading() {
-        return Math.atan2(this.y, this.x);
-    }
-    
-    /**
-     * 向量旋转
-     */
-    rotate(angle) {
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        return new Vector(
-            this.x * cos - this.y * sin,
-            this.x * sin + this.y * cos,
-            this.z
-        );
     }
     
     /**
@@ -91,13 +53,6 @@ export class Vector {
     }
     
     /**
-     * 转换为字符串
-     */
-    toString() {
-        return `Vector(${this.x.toFixed(2)}, ${this.y.toFixed(2)}, ${this.z.toFixed(2)})`;
-    }
-    
-    /**
      * 静态方法：从数组创建
      */
     static fromArray(arr) {
@@ -105,25 +60,10 @@ export class Vector {
     }
     
     /**
-     * 静态方法：随机单位向量
-     */
-    static random2D() {
-        const angle = Math.random() * Math.PI * 2;
-        return new Vector(Math.cos(angle), Math.sin(angle), 0);
-    }
-    
-    /**
      * 静态方法：零向量
      */
     static zero() {
         return new Vector(0, 0, 0);
-    }
-    
-    /**
-     * 静态方法：从角度创建单位向量
-     */
-    static fromAngle(angle) {
-        return new Vector(Math.cos(angle), Math.sin(angle), 0);
     }
     
     /**

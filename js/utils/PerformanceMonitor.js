@@ -6,7 +6,6 @@ export class PerformanceMonitor {
     constructor() {
         this.frameTimes = [];
         this.maxSamples = 60;
-        this.lastFrameTime = performance.now();
     }
     
     startFrame() {
