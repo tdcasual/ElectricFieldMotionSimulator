@@ -916,7 +916,46 @@ export class Renderer {
         this.particleCtx.lineWidth = 2;
         this.particleCtx.stroke();
 
+        this.drawParticleCentroidHint(particle, radius);
         this.particleCtx.restore();
+    }
+
+    drawParticleCentroidHint(particle, renderRadius) {
+        const centerX = Number.isFinite(particle?.position?.x) ? particle.position.x : 0;
+        const centerY = Number.isFinite(particle?.position?.y) ? particle.position.y : 0;
+        const radius = Number.isFinite(renderRadius) ? renderRadius : 6;
+        const crossHalf = Math.max(2.5, Math.min(4.5, radius * 0.45));
+        const dotInner = Math.max(1.2, Math.min(2.2, radius * 0.22));
+        const dotOuter = dotInner + 1.1;
+
+        // 双层十字提高在深浅主题下的可见性
+        this.particleCtx.strokeStyle = 'rgba(12, 16, 28, 0.9)';
+        this.particleCtx.lineWidth = 2;
+        this.particleCtx.beginPath();
+        this.particleCtx.moveTo(centerX - crossHalf, centerY);
+        this.particleCtx.lineTo(centerX + crossHalf, centerY);
+        this.particleCtx.moveTo(centerX, centerY - crossHalf);
+        this.particleCtx.lineTo(centerX, centerY + crossHalf);
+        this.particleCtx.stroke();
+
+        this.particleCtx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+        this.particleCtx.lineWidth = 1;
+        this.particleCtx.beginPath();
+        this.particleCtx.moveTo(centerX - crossHalf, centerY);
+        this.particleCtx.lineTo(centerX + crossHalf, centerY);
+        this.particleCtx.moveTo(centerX, centerY - crossHalf);
+        this.particleCtx.lineTo(centerX, centerY + crossHalf);
+        this.particleCtx.stroke();
+
+        this.particleCtx.fillStyle = 'rgba(12, 16, 28, 0.95)';
+        this.particleCtx.beginPath();
+        this.particleCtx.arc(centerX, centerY, dotOuter, 0, Math.PI * 2);
+        this.particleCtx.fill();
+
+        this.particleCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        this.particleCtx.beginPath();
+        this.particleCtx.arc(centerX, centerY, dotInner, 0, Math.PI * 2);
+        this.particleCtx.fill();
     }
 
     drawParticleSelection(particle) {

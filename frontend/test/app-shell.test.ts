@@ -695,7 +695,7 @@ describe('App shell', () => {
     expect(applySpy).toHaveBeenCalledWith({ radius__display: '120' });
   });
 
-  it('hides phone bottom nav while property drawer is open', async () => {
+  it('keeps phone bottom nav visible while locking sheet buttons when property drawer is open', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);
     Object.defineProperty(window, 'innerWidth', {
@@ -712,7 +712,11 @@ describe('App shell', () => {
     });
 
     await nextTick();
-    expect(wrapper.find('#phone-bottom-nav').exists()).toBe(false);
+    expect(wrapper.find('#phone-bottom-nav').exists()).toBe(true);
+    expect(wrapper.get('#phone-nav-add-btn').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('#phone-nav-scene-btn').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('#phone-nav-more-btn').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('#phone-nav-play-btn').attributes('disabled')).toBeUndefined();
   });
 
   it('requires confirmation before deleting from phone action bar', async () => {

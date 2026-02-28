@@ -138,6 +138,16 @@ describe('simulatorStore demo mode', () => {
     expect(store.markdownBoardOpen).toBe(false);
   });
 
+  it('dispatches tap-chain reset event when closing property panel', () => {
+    const store = useSimulatorStore();
+    const dispatchSpy = vi.spyOn(document, 'dispatchEvent');
+    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
+
+    store.closePropertyPanel();
+
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'simulator-reset-tap-chain' }));
+  });
+
   it('reports save failure when storage write throws', () => {
     const store = useSimulatorStore();
     vi.spyOn(Serializer, 'saveSceneData').mockReturnValue(false);

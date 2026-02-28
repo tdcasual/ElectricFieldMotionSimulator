@@ -24,7 +24,7 @@ const { phoneActiveSheet, showAuthoringControls, isPhoneLayout, phoneAddSheetOpe
 const { isCoarsePointer, mountViewportLayout, unmountViewportLayout } = useViewportLayout({
   setLayoutMode: (mode) => simulatorStore.setLayoutMode(mode)
 });
-const { phoneSelectedScale, phoneSelectedGeometryRows, propertyDrawerModel, markdownBoardModel, variablesPanelModel, showObjectActionBar, showPhoneBottomNav, phoneDensityClass } = useAppUiState({
+const { phoneSelectedScale, phoneSelectedGeometryRows, propertyDrawerModel, markdownBoardModel, variablesPanelModel, showObjectActionBar, showPhoneBottomNav, phoneSheetNavigationLocked, phoneDensityClass } = useAppUiState({
   simulatorStore,
   showAuthoringControls,
   isPhoneLayout,
@@ -212,6 +212,7 @@ onBeforeUnmount(() => {
       :model-value="phoneActiveSheet"
       :running="simulatorStore.running"
       :has-selection="!!simulatorStore.selectedObjectId"
+      :sheet-navigation-locked="phoneSheetNavigationLocked"
       @toggle-play="appActions.togglePlayPauseFromPhoneNav"
       @update:modelValue="setPhoneActiveSheet"
     />

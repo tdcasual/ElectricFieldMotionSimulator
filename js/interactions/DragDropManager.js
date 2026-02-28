@@ -36,6 +36,8 @@ const CREATION_OVERRIDES = {
 
 const TANGENCY_TOLERANCE_PX = 2;
 const MIN_TANGENCY_RADIUS = 15;
+const POINTER_DRAG_THRESHOLD_SQ_MOUSE = 1;
+const POINTER_DRAG_THRESHOLD_SQ_TOUCH = 64; // 8px jitter tolerance for touch long-press
 const RESIZE_SCALE_DIMENSION_PREFERENCE = [
     'radius',
     'width',
@@ -49,6 +51,7 @@ const RESIZE_SCALE_DIMENSION_PREFERENCE = [
     'particleRadius',
     'barrelLength'
 ];
+const RESET_TAP_CHAIN_EVENT = 'simulator-reset-tap-chain';
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -427,6 +430,7 @@ export class DragDropManager {
 
         // 右键菜单
         this.bindEvent(this.canvas, 'contextmenu', (e) => this.onContextMenu(e));
+        this.bindEvent(document, RESET_TAP_CHAIN_EVENT, () => this.resetTapChain());
     }
 
     createObject(type, x, y) {
@@ -515,6 +519,10 @@ export class DragDropManager {
             clearTimeout(this.longPressTimer);
             this.longPressTimer = null;
         }
+    }
+
+    resetTapChain() {
+        this.lastTap = { time: 0, objectId: null };
     }
 
     openProperties(object) {
@@ -753,6 +761,7 @@ export class DragDropManager {
             startDistance,
             startZoom: this.getCurrentDemoZoom()
         };
+        this.resetTapChain();
         this.clearPointerInteractionState();
         return true;
     }
@@ -937,7 +946,9 @@ export class DragDropManager {
         }
         if (this.activePointerId !== e.pointerId) return;
         const screenPos = this.getScreenPos(e);
-        const thresholdSq = e.pointerType === 'mouse' ? 1 : 9;
+        const thresholdSq = e.pointerType === 'mouse'
+            ? POINTER_DRAG_THRESHOLD_SQ_MOUSE
+            : POINTER_DRAG_THRESHOLD_SQ_TOUCH;
 
         if (this.isPanning && this.panStartScreen) {
             const dx = screenPos.x - this.panStartScreen.x;
@@ -1030,12 +1041,12 @@ export class DragDropManager {
             const now = performance.now();
             if (this.lastTap.objectId === tappedObject.id && (now - this.lastTap.time) < 350) {
                 this.openProperties(tappedObject);
-                this.lastTap = { time: 0, objectId: null };
+                this.resetTapChain();
             } else {
                 this.lastTap = { time: now, objectId: tappedObject.id };
             }
         } else if (!tappedObject || wasDragging || this.longPressTriggered) {
-            this.lastTap = { time: 0, objectId: null };
+            this.resetTapChain();
         }
 
         this.isDragging = false;
@@ -1076,6 +1087,7 @@ export class DragDropManager {
         this.pointerDownPos = null;
         this.pointerDownObject = null;
         this.longPressTriggered = false;
+        this.resetTapChain();
         this.clearTangencyHint();
         this.dragMode = 'move';
         this.resizeHandle = null;

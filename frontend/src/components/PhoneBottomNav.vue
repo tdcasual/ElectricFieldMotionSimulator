@@ -6,11 +6,13 @@ const props = withDefaults(
     modelValue: PhoneSheetKey;
     running?: boolean;
     hasSelection?: boolean;
+    sheetNavigationLocked?: boolean;
   }>(),
   {
     modelValue: null,
     running: false,
-    hasSelection: false
+    hasSelection: false,
+    sheetNavigationLocked: false
   }
 );
 
@@ -20,6 +22,7 @@ const emit = defineEmits<{
 }>();
 
 function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
+  if (props.sheetNavigationLocked) return;
   if (target === 'selected' && !props.hasSelection) return;
   const next = props.modelValue === target ? null : target;
   emit('update:modelValue', next);
@@ -34,6 +37,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       class="phone-nav-btn"
       :class="{ active: props.modelValue === 'add' }"
       :aria-pressed="props.modelValue === 'add' ? 'true' : 'false'"
+      :disabled="props.sheetNavigationLocked"
       @click="toggleSheet('add')"
     >
       添加
@@ -44,7 +48,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       class="phone-nav-btn"
       :class="{ active: props.modelValue === 'selected' }"
       :aria-pressed="props.modelValue === 'selected' ? 'true' : 'false'"
-      :disabled="!props.hasSelection"
+      :disabled="!props.hasSelection || props.sheetNavigationLocked"
       @click="toggleSheet('selected')"
     >
       选中
@@ -64,6 +68,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       class="phone-nav-btn"
       :class="{ active: props.modelValue === 'scene' }"
       :aria-pressed="props.modelValue === 'scene' ? 'true' : 'false'"
+      :disabled="props.sheetNavigationLocked"
       @click="toggleSheet('scene')"
     >
       场景
@@ -74,6 +79,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       class="phone-nav-btn"
       :class="{ active: props.modelValue === 'more' }"
       :aria-pressed="props.modelValue === 'more' ? 'true' : 'false'"
+      :disabled="props.sheetNavigationLocked"
       @click="toggleSheet('more')"
     >
       更多

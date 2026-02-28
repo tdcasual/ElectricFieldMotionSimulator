@@ -157,6 +157,7 @@ export class SimulatorRuntime {
     this.callbacks = callbacks;
     this.scene = new Scene();
     this.renderer = new Renderer();
+    (this.scene as unknown as { renderer?: Renderer }).renderer = this.renderer;
     this.physicsEngine = new PhysicsEngine();
     this.performanceMonitor = new PerformanceMonitor();
     this.themeManager = new ThemeManager();

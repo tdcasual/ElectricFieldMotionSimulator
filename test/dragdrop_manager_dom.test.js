@@ -326,6 +326,371 @@ test('read-only interaction lock prevents object dragging', () => {
   }
 });
 
+test('touch micro-jitter should not cancel long-press property open', async () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-particle-1',
+      type: 'particle',
+      position: { x: 100, y: 100 },
+      containsPoint: () => true,
+      clearTrajectory() {}
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    let propertyRequestCount = 0;
+    const onShowProperties = () => {
+      propertyRequestCount += 1;
+    };
+    document.addEventListener('show-properties', onShowProperties);
+
+    manager.onPointerDown({
+      pointerId: 11,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+    manager.onPointerMove({
+      pointerId: 11,
+      pointerType: 'touch',
+      clientX: 104,
+      clientY: 101
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 620));
+
+    manager.onPointerUp({
+      pointerId: 11,
+      pointerType: 'touch',
+      clientX: 104,
+      clientY: 101
+    });
+
+    assert.equal(propertyRequestCount, 1);
+    document.removeEventListener('show-properties', onShowProperties);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('touch drag beyond jitter threshold should still cancel long-press', async () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-particle-2',
+      type: 'particle',
+      position: { x: 100, y: 100 },
+      containsPoint: () => true,
+      clearTrajectory() {}
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    let propertyRequestCount = 0;
+    const onShowProperties = () => {
+      propertyRequestCount += 1;
+    };
+    document.addEventListener('show-properties', onShowProperties);
+
+    manager.onPointerDown({
+      pointerId: 12,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+    manager.onPointerMove({
+      pointerId: 12,
+      pointerType: 'touch',
+      clientX: 112,
+      clientY: 100
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 620));
+
+    manager.onPointerUp({
+      pointerId: 12,
+      pointerType: 'touch',
+      clientX: 112,
+      clientY: 100
+    });
+
+    assert.equal(propertyRequestCount, 0);
+    document.removeEventListener('show-properties', onShowProperties);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('beginPinchGesture clears double-tap chain state', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const scene = {
+      settings: { mode: 'demo', interactionLocked: false, hostMode: 'edit', pixelsPerMeter: 50 },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return null;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.lastTap = { time: 1234, objectId: 'obj-1' };
+    manager.touchPoints.set(1, { x: 100, y: 100 });
+    manager.touchPoints.set(2, { x: 140, y: 100 });
+
+    const started = manager.beginPinchGesture();
+
+    assert.equal(started, true);
+    assert.deepEqual(manager.lastTap, { time: 0, objectId: null });
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('pointercancel clears double-tap chain to avoid stale second-tap detection', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-cancel-1',
+      type: 'particle',
+      position: { x: 100, y: 100 },
+      containsPoint: () => true,
+      clearTrajectory() {}
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.lastTap = { time: 2000, objectId: 'obj-cancel-1' };
+    manager.onPointerDown({
+      pointerId: 31,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+    manager.onPointerCancel({
+      pointerId: 31,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+
+    assert.deepEqual(manager.lastTap, { time: 0, objectId: null });
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('reset tap-chain event clears stale single-tap history before next tap', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-reset-event-1',
+      type: 'particle',
+      position: { x: 100, y: 100 },
+      containsPoint: () => true,
+      clearTrajectory() {}
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    let propertyRequestCount = 0;
+    const onShowProperties = () => {
+      propertyRequestCount += 1;
+    };
+    document.addEventListener('show-properties', onShowProperties);
+
+    manager.onPointerDown({
+      pointerId: 41,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+    manager.onPointerUp({
+      pointerId: 41,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+
+    assert.equal(propertyRequestCount, 0);
+    assert.equal(manager.lastTap.objectId, 'obj-reset-event-1');
+
+    document.dispatchEvent(new window.Event('simulator-reset-tap-chain'));
+    assert.deepEqual(manager.lastTap, { time: 0, objectId: null });
+
+    manager.onPointerDown({
+      pointerId: 42,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+    manager.onPointerUp({
+      pointerId: 42,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+
+    assert.equal(propertyRequestCount, 0);
+    document.removeEventListener('show-properties', onShowProperties);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
 test('resize handle drag updates display scale without mutating real geometry', () => {
   const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
   try {

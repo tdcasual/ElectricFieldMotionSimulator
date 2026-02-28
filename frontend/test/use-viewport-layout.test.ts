@@ -5,10 +5,16 @@ describe('useViewportLayout', () => {
   it('syncs layout mode from viewport width on mount and resize', () => {
     const setLayoutMode = vi.fn();
     const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       writable: true,
       value: 600
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 900
     });
 
     const composable = useViewportLayout({ setLayoutMode });
@@ -28,6 +34,62 @@ describe('useViewportLayout', () => {
       configurable: true,
       writable: true,
       value: originalWidth
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: originalHeight
+    });
+  });
+
+  it('treats coarse-pointer wide landscape viewport as phone layout', () => {
+    const setLayoutMode = vi.fn();
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    const originalMatchMedia = window.matchMedia;
+    const originalTouchPoints = navigator.maxTouchPoints;
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 844
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 390
+    });
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({ matches: true })
+    });
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: 5
+    });
+
+    const composable = useViewportLayout({ setLayoutMode });
+    composable.mountViewportLayout();
+    expect(setLayoutMode).toHaveBeenLastCalledWith('phone');
+
+    composable.unmountViewportLayout();
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: originalWidth
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: originalHeight
+    });
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: originalMatchMedia
+    });
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: originalTouchPoints
     });
   });
 

@@ -85,8 +85,11 @@ export function useAppUiState(options: UseAppUiStateOptions) {
   const showPhoneBottomNav = computed(() => {
     if (!showAuthoringControls.value) return false;
     if (!isPhoneLayout.value) return false;
-    return simulatorStore.activeDrawer === null;
+    if (simulatorStore.activeDrawer === null) return true;
+    return simulatorStore.activeDrawer === 'property';
   });
+
+  const phoneSheetNavigationLocked = computed(() => simulatorStore.activeDrawer !== null);
 
   const phoneDensityClass = computed(() =>
     simulatorStore.phoneDensityMode === 'comfortable' ? 'phone-density-comfortable' : 'phone-density-compact'
@@ -100,6 +103,7 @@ export function useAppUiState(options: UseAppUiStateOptions) {
     variablesPanelModel,
     showObjectActionBar,
     showPhoneBottomNav,
+    phoneSheetNavigationLocked,
     phoneDensityClass
   };
 }

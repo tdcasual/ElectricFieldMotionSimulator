@@ -90,6 +90,7 @@ function normalizeBoundaryMode(value: unknown) {
 
 const DEFAULT_MARKDOWN_FONT_SIZE = 16;
 const LEGACY_MARKDOWN_FONT_SIZE = 13;
+const TAP_CHAIN_RESET_EVENT = 'simulator-reset-tap-chain';
 
 export const useSimulatorStore = defineStore('simulator', () => {
   const runtime = shallowRef<SimulatorRuntime | null>(null);
@@ -239,6 +240,15 @@ export const useSimulatorStore = defineStore('simulator', () => {
     }
   }
 
+  function dispatchTapChainResetEvent() {
+    if (typeof document === 'undefined') return;
+    try {
+      document.dispatchEvent(new Event(TAP_CHAIN_RESET_EVENT));
+    } catch {
+      // ignore event dispatch errors
+    }
+  }
+
   function openDrawer(target: Exclude<ActiveDrawer, null>) {
     activeDrawer.value = target;
   }
@@ -253,7 +263,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   function closePropertyPanel() {
+    const wasOpen = propertyDrawerOpen.value;
     closeDrawer('property');
+    if (wasOpen) {
+      dispatchTapChainResetEvent();
+    }
   }
 
   function refreshSelectedPropertyPayload() {
@@ -272,6 +286,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     const ok = refreshSelectedPropertyPayload();
     if (!ok) return false;
     openDrawer('property');
+    dispatchTapChainResetEvent();
     return true;
   }
 

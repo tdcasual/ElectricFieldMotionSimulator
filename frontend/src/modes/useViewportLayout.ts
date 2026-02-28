@@ -11,7 +11,12 @@ export function useViewportLayout(options: ViewportLayoutOptions) {
 
   function syncLayoutModeFromViewport() {
     if (typeof window === 'undefined') return;
-    options.setLayoutMode(resolveLayoutMode(window.innerWidth));
+    options.setLayoutMode(
+      resolveLayoutMode(window.innerWidth, {
+        viewportHeight: window.innerHeight,
+        isCoarsePointer: isCoarsePointer.value
+      })
+    );
   }
 
   function syncCoarsePointer() {
@@ -22,13 +27,14 @@ export function useViewportLayout(options: ViewportLayoutOptions) {
   }
 
   function handleWindowResize() {
+    syncCoarsePointer();
     syncLayoutModeFromViewport();
   }
 
   function mountViewportLayout() {
     if (typeof window === 'undefined') return;
-    syncLayoutModeFromViewport();
     syncCoarsePointer();
+    syncLayoutModeFromViewport();
     window.addEventListener('resize', handleWindowResize);
   }
 

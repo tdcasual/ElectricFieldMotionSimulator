@@ -273,7 +273,10 @@ export class Particle extends BaseObject {
     containsPoint(x, y) {
         const dx = x - this.position.x;
         const dy = y - this.position.y;
-        return Math.sqrt(dx * dx + dy * dy) <= 10; // 质点渲染下使用固定点击容差
+        const renderRadius = Number(this.scene?.renderer?.particleRenderRadius);
+        const visualHitRadius = Number.isFinite(renderRadius) && renderRadius > 0 ? renderRadius + 1 : 0;
+        const hitRadius = Math.max(10, visualHitRadius);
+        return (dx * dx + dy * dy) <= (hitRadius * hitRadius);
     }
     
     /**

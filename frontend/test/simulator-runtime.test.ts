@@ -10,6 +10,18 @@ describe('SimulatorRuntime demo mode', () => {
     runtime.unmount();
   });
 
+  it('binds renderer onto scene for responsive particle hit-testing', () => {
+    const runtime = new SimulatorRuntime() as unknown as {
+      scene: { renderer?: unknown };
+      renderer: unknown;
+      mount: () => void;
+      unmount: () => void;
+    };
+    runtime.mount();
+    expect(runtime.scene.renderer).toBe(runtime.renderer);
+    runtime.unmount();
+  });
+
   it('enters demo mode then restores previous scene on exit', () => {
     const runtime = new SimulatorRuntime();
     runtime.mount();

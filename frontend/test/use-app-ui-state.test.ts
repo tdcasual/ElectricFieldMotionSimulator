@@ -110,6 +110,7 @@ describe('useAppUiState', () => {
 
     expect(uiState.showObjectActionBar.value).toBe(true);
     expect(uiState.showPhoneBottomNav.value).toBe(true);
+    expect(uiState.phoneSheetNavigationLocked.value).toBe(false);
 
     phoneAnySheetOpen.value = true;
     expect(uiState.showObjectActionBar.value).toBe(false);
@@ -117,7 +118,8 @@ describe('useAppUiState', () => {
     phoneAnySheetOpen.value = false;
     simulatorStore.activeDrawer = 'property';
     expect(uiState.showObjectActionBar.value).toBe(false);
-    expect(uiState.showPhoneBottomNav.value).toBe(false);
+    expect(uiState.showPhoneBottomNav.value).toBe(true);
+    expect(uiState.phoneSheetNavigationLocked.value).toBe(true);
 
     simulatorStore.activeDrawer = null;
     simulatorStore.layoutMode = 'desktop';
@@ -130,6 +132,7 @@ describe('useAppUiState', () => {
     showAuthoringControls.value = false;
     expect(uiState.showObjectActionBar.value).toBe(false);
     expect(uiState.showPhoneBottomNav.value).toBe(false);
+    expect(uiState.phoneSheetNavigationLocked.value).toBe(false);
   });
 
   it('maps density class from store mode', () => {

@@ -50,8 +50,21 @@ test('boundary remove mode no longer extends by radius', () => {
   assert.equal(removed, true);
 });
 
-test('Particle.containsPoint uses fixed picking tolerance in point mode', () => {
+test('Particle.containsPoint keeps fixed tolerance when renderer metric is unavailable', () => {
   const particle = new Particle({ x: 0, y: 0, radius: 1000 });
   assert.equal(particle.containsPoint(9, 0), true);
   assert.equal(particle.containsPoint(12, 0), false);
+});
+
+test('Particle.containsPoint expands with renderer particle radius on mobile', () => {
+  const particle = new Particle({ x: 0, y: 0, radius: 1000 });
+  particle.scene = {
+    renderer: {
+      particleRenderRadius: 13
+    }
+  };
+
+  assert.equal(particle.containsPoint(12, 0), true);
+  assert.equal(particle.containsPoint(14, 0), true);
+  assert.equal(particle.containsPoint(15, 0), false);
 });
