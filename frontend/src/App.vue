@@ -9,6 +9,7 @@ import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
+import { resolveLayoutMode } from './modes/layoutMode';
 import { buildPhoneGeometryRows, type GeometrySectionLike, type PhoneGeometryRow } from './modes/phoneGeometry';
 import { useSimulatorStore } from './stores/simulatorStore';
 import { createSwipeCloseGesture } from './utils/swipeCloseGesture';
@@ -25,8 +26,6 @@ const phoneSelectedSheetOpen = computed(() => showAuthoringControls.value && isP
 const phoneSceneSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'scene');
 const phoneMoreSheetOpen = computed(() => showAuthoringControls.value && isPhoneLayout.value && phoneActiveSheet.value === 'more');
 const phoneAnySheetOpen = computed(() => phoneAddSheetOpen.value || phoneSelectedSheetOpen.value || phoneSceneSheetOpen.value || phoneMoreSheetOpen.value);
-const PHONE_LAYOUT_MAX_WIDTH = 767;
-const TABLET_LAYOUT_MAX_WIDTH = 1199;
 
 const phoneSelectedScale = computed(() => {
   const raw = Number(simulatorStore.propertyValues.__geometryObjectScale);
@@ -131,12 +130,6 @@ watch(
     simulatorStore.refreshSelectedPropertyPayload();
   }
 );
-
-function resolveLayoutMode(width: number) {
-  if (width <= PHONE_LAYOUT_MAX_WIDTH) return 'phone';
-  if (width <= TABLET_LAYOUT_MAX_WIDTH) return 'tablet';
-  return 'desktop';
-}
 
 function syncLayoutModeFromViewport() {
   if (typeof window === 'undefined') return;
