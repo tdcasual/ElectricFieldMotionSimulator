@@ -66,13 +66,6 @@ export class Vector {
     }
     
     /**
-     * 设置向量模长
-     */
-    setMagnitude(newMag) {
-        return this.normalize().multiply(newMag);
-    }
-    
-    /**
      * 向量方向角（弧度）
      */
     heading() {

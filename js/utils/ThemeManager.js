@@ -104,32 +104,4 @@ export class ThemeManager {
         return this.currentTheme;
     }
     
-    /**
-     * 获取主题信息
-     */
-    getThemeInfo() {
-        return {
-            current: this.currentTheme,
-            isDark: this.currentTheme === 'dark',
-            options: ['light', 'dark', 'auto']
-        };
-    }
-    
-    /**
-     * 获取主题色值
-     */
-    getThemeColors() {
-        const computedStyle = getComputedStyle(document.documentElement);
-        
-        return {
-            bgPrimary: computedStyle.getPropertyValue('--bg-primary').trim(),
-            bgSecondary: computedStyle.getPropertyValue('--bg-secondary').trim(),
-            bgTertiary: computedStyle.getPropertyValue('--bg-tertiary').trim(),
-            textPrimary: computedStyle.getPropertyValue('--text-primary').trim(),
-            textSecondary: computedStyle.getPropertyValue('--text-secondary').trim(),
-            accentBlue: computedStyle.getPropertyValue('--accent-blue').trim(),
-            electricFieldColor: computedStyle.getPropertyValue('--electric-field-color').trim(),
-            magneticFieldColor: computedStyle.getPropertyValue('--magnetic-field-color').trim()
-        };
-    }
 }

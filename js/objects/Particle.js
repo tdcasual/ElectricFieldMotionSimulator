@@ -253,21 +253,6 @@ export class Particle extends BaseObject {
     }
     
     /**
-     * 计算电势能（在匀强电场中）
-     */
-    getPotentialEnergy(field) {
-        // U = qEh (简化计算)
-        if (field && field.type === 'electric-field-rect') {
-            const pixelsPerMeter = Number.isFinite(this.scene?.settings?.pixelsPerMeter) && this.scene.settings.pixelsPerMeter > 0
-                ? this.scene.settings.pixelsPerMeter
-                : 1;
-            const h = (this.position.y - field.y) / pixelsPerMeter;
-            return this.charge * field.strength * h;
-        }
-        return 0;
-    }
-    
-    /**
      * 判断点是否在粒子内
      */
     containsPoint(x, y) {
