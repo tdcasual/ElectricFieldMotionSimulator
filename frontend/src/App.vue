@@ -9,6 +9,7 @@ import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
+import { buildPhoneGeometryRows, type GeometrySectionLike, type PhoneGeometryRow } from './modes/phoneGeometry';
 import { useSimulatorStore } from './stores/simulatorStore';
 import { createSwipeCloseGesture } from './utils/swipeCloseGesture';
 
@@ -16,24 +17,6 @@ const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
 const isCoarsePointer = ref(false);
 type PhoneSheetKey = 'add' | 'selected' | 'scene' | 'more' | null;
-type GeometryRole = 'real' | 'display';
-type GeometryFieldLike = {
-  key?: string;
-  label?: string;
-  sourceKey?: string;
-  geometryRole?: GeometryRole;
-};
-type GeometrySectionLike = {
-  fields?: GeometryFieldLike[];
-};
-type PhoneGeometryRow = {
-  sourceKey: string;
-  label: string;
-  realKey: string;
-  displayKey: string;
-  realValue: unknown;
-  displayValue: unknown;
-};
 const phoneActiveSheet = ref<PhoneSheetKey>(null);
 const showAuthoringControls = computed(() => !simulatorStore.viewMode);
 const isPhoneLayout = computed(() => simulatorStore.layoutMode === 'phone');
@@ -44,7 +27,6 @@ const phoneMoreSheetOpen = computed(() => showAuthoringControls.value && isPhone
 const phoneAnySheetOpen = computed(() => phoneAddSheetOpen.value || phoneSelectedSheetOpen.value || phoneSceneSheetOpen.value || phoneMoreSheetOpen.value);
 const PHONE_LAYOUT_MAX_WIDTH = 767;
 const TABLET_LAYOUT_MAX_WIDTH = 1199;
-const DISPLAY_LABEL_SUFFIX_RE = /[（(](真实|显示)[）)]$/;
 
 const phoneSelectedScale = computed(() => {
   const raw = Number(simulatorStore.propertyValues.__geometryObjectScale);
@@ -55,53 +37,7 @@ const phoneSelectedScale = computed(() => {
 const phoneSelectedGeometryRows = computed<PhoneGeometryRow[]>(() => {
   const sections = simulatorStore.propertySections as GeometrySectionLike[];
   const values = simulatorStore.propertyValues as Record<string, unknown>;
-  const orderedSourceKeys: string[] = [];
-  const rowBySource = new Map<string, Partial<PhoneGeometryRow>>();
-
-  for (const section of sections) {
-    const fields = Array.isArray(section?.fields) ? section.fields : [];
-    for (const field of fields) {
-      const key = typeof field?.key === 'string' ? field.key : '';
-      const sourceKey = typeof field?.sourceKey === 'string' ? field.sourceKey : '';
-      const geometryRole = field?.geometryRole;
-      if (!key || !sourceKey || (geometryRole !== 'real' && geometryRole !== 'display')) continue;
-
-      let row = rowBySource.get(sourceKey);
-      if (!row) {
-        row = { sourceKey };
-        rowBySource.set(sourceKey, row);
-        orderedSourceKeys.push(sourceKey);
-      }
-
-      const label = String(field.label || sourceKey).replace(DISPLAY_LABEL_SUFFIX_RE, '').trim();
-      if (!row.label && label) {
-        row.label = label;
-      }
-
-      if (geometryRole === 'real') {
-        row.realKey = key;
-        row.realValue = values[key];
-      } else {
-        row.displayKey = key;
-        row.displayValue = values[key];
-      }
-    }
-  }
-
-  const rows: PhoneGeometryRow[] = [];
-  for (const sourceKey of orderedSourceKeys) {
-    const row = rowBySource.get(sourceKey);
-    if (!row?.sourceKey || !row.realKey || !row.displayKey) continue;
-    rows.push({
-      sourceKey: row.sourceKey,
-      label: row.label || row.sourceKey,
-      realKey: row.realKey,
-      displayKey: row.displayKey,
-      realValue: row.realValue,
-      displayValue: row.displayValue
-    });
-  }
-  return rows;
+  return buildPhoneGeometryRows(sections, values);
 });
 
 const propertyDrawerModel = computed({
