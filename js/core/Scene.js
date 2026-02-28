@@ -89,9 +89,11 @@ export class Scene {
      */
     addObject(object) {
         if (!object) return null;
-        if (!this.objects.includes(object)) {
-            this.objects.push(object);
+        if (this.objects.includes(object)) {
+            object.scene = this;
+            return object;
         }
+        this.objects.push(object);
         // 平行板和垂直平行板没有 electric 关键字，但在功能上属于电场对象
         const isElectric = object.type.includes('electric') ||
             object.type === 'parallel-plate-capacitor' ||

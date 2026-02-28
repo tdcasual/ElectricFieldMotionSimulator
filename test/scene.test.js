@@ -110,6 +110,23 @@ test('Scene.removeObject clears selected object when removing current selection'
   assert.equal(scene.electricFields.includes(field), false);
 });
 
+test('Scene.addObject keeps category lists unique for the same object instance', () => {
+  const scene = new Scene();
+  const field = new RectElectricField({
+    x: 10,
+    y: 20,
+    width: 30,
+    height: 40
+  });
+
+  scene.addObject(field);
+  scene.addObject(field);
+
+  assert.equal(scene.objects.length, 1);
+  assert.equal(scene.electricFields.length, 1);
+  assert.equal(scene.electricFields[0], field);
+});
+
 test('Scene.loadFromData clears stale selection that is no longer in scene', () => {
   const scene = new Scene();
   const original = new RectElectricField({
