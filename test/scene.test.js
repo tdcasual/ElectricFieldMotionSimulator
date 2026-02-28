@@ -127,6 +127,15 @@ test('Scene.addObject keeps category lists unique for the same object instance',
   assert.equal(scene.electricFields[0], field);
 });
 
+test('Scene.removeObject tolerates nullish input without throwing', () => {
+  const scene = new Scene();
+  assert.doesNotThrow(() => {
+    scene.removeObject(null);
+    scene.removeObject(undefined);
+  });
+  assert.equal(scene.objects.length, 0);
+});
+
 test('Scene.loadFromData clears stale selection that is no longer in scene', () => {
   const scene = new Scene();
   const original = new RectElectricField({

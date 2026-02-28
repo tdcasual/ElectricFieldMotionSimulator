@@ -119,23 +119,27 @@ export class Scene {
      * 从场景移除对象
      */
     removeObject(object) {
-        const isElectric = object.type.includes('electric') ||
-            object.type === 'parallel-plate-capacitor' ||
-            object.type === 'vertical-parallel-plate-capacitor';
+        if (!object || typeof object !== 'object') {
+            return this;
+        }
+        const type = typeof object.type === 'string' ? object.type : '';
+        const isElectric = type.includes('electric') ||
+            type === 'parallel-plate-capacitor' ||
+            type === 'vertical-parallel-plate-capacitor';
 
         if (isElectric) {
             const index = this.electricFields.indexOf(object);
             if (index > -1) this.electricFields.splice(index, 1);
-        } else if (object.type.includes('magnetic')) {
+        } else if (type.includes('magnetic')) {
             const index = this.magneticFields.indexOf(object);
             if (index > -1) this.magneticFields.splice(index, 1);
-        } else if (object.type === 'disappear-zone') {
+        } else if (type === 'disappear-zone') {
             const index = this.disappearZones.indexOf(object);
             if (index > -1) this.disappearZones.splice(index, 1);
-        } else if (object.type === 'electron-gun' || object.type === 'programmable-emitter') {
+        } else if (type === 'electron-gun' || type === 'programmable-emitter') {
             const index = this.emitters.indexOf(object);
             if (index > -1) this.emitters.splice(index, 1);
-        } else if (object.type === 'particle') {
+        } else if (type === 'particle') {
             const index = this.particles.indexOf(object);
             if (index > -1) this.particles.splice(index, 1);
         }
