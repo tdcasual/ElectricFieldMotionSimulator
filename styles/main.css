@@ -743,6 +743,7 @@ body.light-theme .preset-btn:hover {
 #app.layout-phone {
     --header-height: 96px;
     --phone-bottom-bar-height: 60px;
+    --phone-safe-bottom-inset: env(safe-area-inset-bottom, 0px);
     --phone-panel-section-gap: 6px;
     --phone-panel-toggle-height: 28px;
     --phone-panel-toggle-font-size: 11px;
@@ -994,11 +995,11 @@ body.light-theme .preset-btn:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    height: var(--phone-bottom-bar-height, 60px);
+    height: calc(var(--phone-bottom-bar-height, 60px) + var(--phone-safe-bottom-inset, 0px));
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
-    padding: 6px;
+    padding: 6px 6px calc(6px + var(--phone-safe-bottom-inset, 0px));
     background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
     border-top: 1px solid var(--border-color);
     box-shadow: var(--shadow-lg);
@@ -1014,6 +1015,13 @@ body.light-theme .preset-btn:hover {
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.phone-nav-btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
 }
 
 .phone-nav-btn.active {
@@ -1037,7 +1045,7 @@ body.light-theme .preset-btn:hover {
     left: 0;
     right: 0;
     top: var(--header-height);
-    bottom: var(--phone-bottom-bar-height, 72px);
+    bottom: calc(var(--phone-bottom-bar-height, 72px) + var(--phone-safe-bottom-inset, 0px));
     z-index: 151;
     border: none;
     padding: 0;
@@ -1049,7 +1057,7 @@ body.light-theme .preset-btn:hover {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: var(--phone-bottom-bar-height, 72px);
+    bottom: calc(var(--phone-bottom-bar-height, 72px) + var(--phone-safe-bottom-inset, 0px));
     max-height: min(70vh, 520px);
     display: flex;
     flex-direction: column;
