@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ToolbarPanel from './ToolbarPanel.vue';
+import { createSwipeCloseGesture } from '../utils/swipeCloseGesture';
 
 type ToolbarEntry = {
   type: string;
@@ -22,11 +23,20 @@ const emit = defineEmits<{
   (event: 'load-preset', presetName: string): void;
   (event: 'close'): void;
 }>();
+
+const sheetSwipeGesture = createSwipeCloseGesture(() => {
+  emit('close');
+});
 </script>
 
 <template>
   <section class="phone-sheet phone-add-sheet" data-testid="phone-add-sheet" aria-label="添加对象面板">
-    <div class="phone-sheet-header">
+    <div
+      class="phone-sheet-header"
+      @pointerdown="sheetSwipeGesture.onPointerDown"
+      @pointerup="sheetSwipeGesture.onPointerUp"
+      @pointercancel="sheetSwipeGesture.onPointerCancel"
+    >
       <h3>添加对象</h3>
       <button type="button" class="btn-icon" aria-label="关闭添加对象面板" @click="emit('close')">✖</button>
     </div>

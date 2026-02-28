@@ -5,6 +5,18 @@ import { createPinia } from 'pinia';
 import App from '../src/App.vue';
 import { useSimulatorStore } from '../src/stores/simulatorStore';
 
+function dispatchPointerEvent(
+  target: Element,
+  type: 'pointerdown' | 'pointerup' | 'pointercancel',
+  options: { x?: number; y?: number; pointerType?: string } = {}
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clientX', { value: options.x ?? 0 });
+  Object.defineProperty(event, 'clientY', { value: options.y ?? 0 });
+  Object.defineProperty(event, 'pointerType', { value: options.pointerType ?? 'touch' });
+  target.dispatchEvent(event);
+}
+
 describe('App shell', () => {
   it('renders vue-native simulator layout root', () => {
     const wrapper = mount(App, {
@@ -710,5 +722,61 @@ describe('App shell', () => {
     await nextTick();
     expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(true);
+  });
+
+  it('closes open phone sheet when play is toggled from phone bottom nav', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    const appShell = wrapper.get('#app');
+    expect(store.running).toBe(false);
+
+    await wrapper.get('#phone-nav-scene-btn').trigger('click');
+    await nextTick();
+    expect(appShell.classes()).toContain('phone-settings-open');
+
+    await wrapper.get('#phone-nav-play-btn').trigger('click');
+    await nextTick();
+    expect(store.running).toBe(true);
+    expect(appShell.classes()).not.toContain('phone-settings-open');
+  });
+
+  it('supports swipe-down close gesture on phone scene sheet header', async () => {
+    const pinia = createPinia();
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    await wrapper.get('#phone-nav-scene-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-scene-sheet"]').exists()).toBe(true);
+
+    const header = wrapper.get('[data-testid="phone-scene-sheet"] .phone-sheet-header').element;
+    dispatchPointerEvent(header, 'pointerdown', { x: 100, y: 120, pointerType: 'touch' });
+    dispatchPointerEvent(header, 'pointerup', { x: 102, y: 220, pointerType: 'touch' });
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="phone-scene-sheet"]').exists()).toBe(false);
   });
 });

@@ -10,6 +10,7 @@ import PropertyDrawer from './components/PropertyDrawer.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
 import { useSimulatorStore } from './stores/simulatorStore';
+import { createSwipeCloseGesture } from './utils/swipeCloseGesture';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
@@ -146,6 +147,9 @@ const showPhoneBottomNav = computed(() => {
   if (!isPhoneLayout.value) return false;
   return simulatorStore.activeDrawer === null;
 });
+const phoneSheetSwipeGesture = createSwipeCloseGesture(() => {
+  closePhoneSheets();
+});
 
 watch(
   () => simulatorStore.layoutMode,
@@ -229,6 +233,11 @@ onBeforeUnmount(() => {
 
 function togglePlayPause() {
   simulatorStore.toggleRunning();
+}
+
+function togglePlayPauseFromPhoneNav() {
+  togglePlayPause();
+  closePhoneSheets();
 }
 
 function toggleDemoMode() {
@@ -672,7 +681,12 @@ function deleteSelectedFromActionBar() {
       data-testid="phone-scene-sheet"
       aria-label="场景参数面板"
     >
-      <div class="phone-sheet-header">
+      <div
+        class="phone-sheet-header"
+        @pointerdown="phoneSheetSwipeGesture.onPointerDown"
+        @pointerup="phoneSheetSwipeGesture.onPointerUp"
+        @pointercancel="phoneSheetSwipeGesture.onPointerCancel"
+      >
         <h3>场景参数</h3>
         <button type="button" class="btn-icon" aria-label="关闭场景参数面板" @click="closePhoneSheets">✖</button>
       </div>
@@ -746,7 +760,12 @@ function deleteSelectedFromActionBar() {
       data-testid="phone-more-sheet"
       aria-label="更多操作面板"
     >
-      <div class="phone-sheet-header">
+      <div
+        class="phone-sheet-header"
+        @pointerdown="phoneSheetSwipeGesture.onPointerDown"
+        @pointerup="phoneSheetSwipeGesture.onPointerUp"
+        @pointercancel="phoneSheetSwipeGesture.onPointerCancel"
+      >
         <h3>更多操作</h3>
         <button type="button" class="btn-icon" aria-label="关闭更多操作面板" @click="closePhoneSheets">✖</button>
       </div>
@@ -810,7 +829,7 @@ function deleteSelectedFromActionBar() {
       :model-value="phoneActiveSheet"
       :running="simulatorStore.running"
       :has-selection="!!simulatorStore.selectedObjectId"
-      @toggle-play="togglePlayPause"
+      @toggle-play="togglePlayPauseFromPhoneNav"
       @update:modelValue="setPhoneActiveSheet"
     />
 
