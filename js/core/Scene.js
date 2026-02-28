@@ -244,6 +244,7 @@ export class Scene {
     loadFromData(data) {
         // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表
         this.variables = {};
+        this.selectedObject = null;
         this.setCamera(0, 0);
 
         // 清空对象

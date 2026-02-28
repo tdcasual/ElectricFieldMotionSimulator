@@ -110,6 +110,36 @@ test('Scene.removeObject clears selected object when removing current selection'
   assert.equal(scene.electricFields.includes(field), false);
 });
 
+test('Scene.loadFromData clears stale selection that is no longer in scene', () => {
+  const scene = new Scene();
+  const original = new RectElectricField({
+    x: 10,
+    y: 20,
+    width: 30,
+    height: 40
+  });
+  scene.addObject(original);
+  scene.selectedObject = original;
+
+  scene.loadFromData({
+    version: '1.0',
+    objects: [
+      {
+        type: 'electric-field-rect',
+        x: 100,
+        y: 200,
+        width: 50,
+        height: 60,
+        strength: 120,
+        direction: 0
+      }
+    ]
+  });
+
+  assert.equal(scene.selectedObject, null);
+  assert.equal(scene.objects.includes(original), false);
+});
+
 test('Serializer.validateSceneData fills missing objects array', () => {
   const data = { version: '1.0' };
   const result = Serializer.validateSceneData(data);
