@@ -70,36 +70,4 @@ export class FieldVisualizer {
         ctx.fill();
     }
     
-    drawMagneticField(ctx, x, y, B) {
-        // 根据主题选择颜色
-        const isDarkTheme = document.body.classList.contains('dark-theme') || 
-                           (!document.body.classList.contains('light-theme'));
-        
-        const radius = 4;
-        
-        if (B > 0) {
-            // 点表示磁场指向屏幕外
-            const color = isDarkTheme ? 'rgba(100, 150, 255, 0.6)' : 'rgba(100, 150, 255, 0.7)';
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-        } else {
-            // 叉表示磁场指向屏幕内
-            const color = isDarkTheme ? 'rgba(200, 100, 200, 0.6)' : 'rgba(200, 100, 200, 0.7)';
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            const offset = radius * 0.7;
-            
-            ctx.beginPath();
-            ctx.moveTo(x - offset, y - offset);
-            ctx.lineTo(x + offset, y + offset);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(x + offset, y - offset);
-            ctx.lineTo(x - offset, y + offset);
-            ctx.stroke();
-        }
-    }
 }
