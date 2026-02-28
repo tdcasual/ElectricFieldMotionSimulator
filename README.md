@@ -32,6 +32,8 @@
 
 ## 📚 想了解更多
 
+- 📚 文档中心（统一入口）：[`docs/README.md`](docs/README.md)
+- 🧭 文档系统规范：[`docs/documentation-system.md`](docs/documentation-system.md)
 - 🧭 快速开始：[`QUICKSTART.md`](QUICKSTART.md)
 - ✅ 测试与验证：[`TESTING-GUIDE.md`](TESTING-GUIDE.md)
 - 📝 更新记录：[`CHANGELOG.md`](CHANGELOG.md)

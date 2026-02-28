@@ -44,6 +44,27 @@ npm run test:e2e
 
 覆盖创建对象、属性编辑、播放、场景 IO、演示模式等用户关键流程。
 
+手机端专项回归（推荐在涉及触控改动时执行）：
+
+```bash
+npm run test:e2e -- --project=phone-chromium
+```
+
+## 手机端交互验收基线（2026-02-28）
+
+以下条目作为当前手机端交互门禁：
+
+- 底部导航按钮触控高度 `>= 44px`
+- 手机面板（如“更多”）核心按钮触控高度 `>= 44px`
+- 手机属性面板折叠按钮与输入控件高度 `>= 44px`
+- 面板下滑关闭手势在“手指滑出 header 再抬起”场景依然生效
+
+可用以下命令快速回归核心项：
+
+```bash
+npm run test:e2e -- --project=phone-chromium --grep "density|landscape|touch targets|swipe"
+```
+
 ## 手工冒烟（推荐）
 
 1. 启动：`npm run dev:frontend`

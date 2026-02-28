@@ -27,6 +27,8 @@
 
 ## 当前主线入口
 
+- `docs/README.md`
+- `docs/documentation-system.md`
 - `docs/migration/current-vue-architecture.md`
 - `docs/migration/parity-checklist.md`
 - `docs/plans/2026-02-25-vue-native-runtime-design.md`
