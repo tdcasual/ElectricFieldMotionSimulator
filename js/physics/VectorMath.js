@@ -57,15 +57,6 @@ export class Vector {
     }
     
     /**
-     * 归一化（单位向量）
-     */
-    normalize() {
-        const mag = this.magnitude();
-        if (mag === 0) return new Vector(0, 0, 0);
-        return this.divide(mag);
-    }
-    
-    /**
      * 向量方向角（弧度）
      */
     heading() {
