@@ -88,26 +88,28 @@ export class Scene {
      * 添加对象到场景
      */
     addObject(object) {
-        if (!object) return null;
+        if (!object || typeof object !== 'object') return null;
+        const type = typeof object.type === 'string' ? object.type : '';
+        if (!type) return null;
         if (this.objects.includes(object)) {
             object.scene = this;
             return object;
         }
         this.objects.push(object);
         // 平行板和垂直平行板没有 electric 关键字，但在功能上属于电场对象
-        const isElectric = object.type.includes('electric') ||
-            object.type === 'parallel-plate-capacitor' ||
-            object.type === 'vertical-parallel-plate-capacitor';
+        const isElectric = type.includes('electric') ||
+            type === 'parallel-plate-capacitor' ||
+            type === 'vertical-parallel-plate-capacitor';
 
         if (isElectric) {
             this.electricFields.push(object);
-        } else if (object.type.includes('magnetic')) {
+        } else if (type.includes('magnetic')) {
             this.magneticFields.push(object);
-        } else if (object.type === 'disappear-zone') {
+        } else if (type === 'disappear-zone') {
             this.disappearZones.push(object);
-        } else if (object.type === 'electron-gun' || object.type === 'programmable-emitter') {
+        } else if (type === 'electron-gun' || type === 'programmable-emitter') {
             this.emitters.push(object);
-        } else if (object.type === 'particle') {
+        } else if (type === 'particle') {
             this.particles.push(object);
         }
 

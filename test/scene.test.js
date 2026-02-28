@@ -127,6 +127,16 @@ test('Scene.addObject keeps category lists unique for the same object instance',
   assert.equal(scene.electricFields[0], field);
 });
 
+test('Scene.addObject ignores entries without a valid string type', () => {
+  const scene = new Scene();
+  const malformed = { x: 1, y: 2 };
+
+  assert.doesNotThrow(() => scene.addObject(malformed));
+  assert.equal(scene.objects.length, 0);
+  assert.equal(scene.electricFields.length, 0);
+  assert.equal(scene.magneticFields.length, 0);
+});
+
 test('Scene.removeObject tolerates nullish input without throwing', () => {
   const scene = new Scene();
   assert.doesNotThrow(() => {
