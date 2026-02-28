@@ -948,6 +948,35 @@ test('phone markdown and variables sheet controls stay inside landscape safe-are
   expect(variablesInputRight).toBeLessThanOrEqual(rightSafeBound);
 });
 
+test('phone variables sheet footer stays above bottom safe-area inset', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only bottom safe area check for variables sheet');
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#app').evaluate((element) => {
+    const app = element as HTMLElement;
+    app.style.setProperty('--phone-safe-bottom-inset', '34px');
+  });
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-variables-btn').tap();
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  const applyButton = page.locator('[data-testid="apply-variables"]');
+  await expect(applyButton).toBeVisible();
+  const applyBox = await applyButton.boundingBox();
+  expect(applyBox).not.toBeNull();
+
+  const bottomSafeBound = 844 - 34;
+  const applyBottom = applyBox!.y + applyBox!.height;
+  expect(applyBottom).toBeLessThanOrEqual(bottomSafeBound);
+});
+
 test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();

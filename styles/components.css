@@ -627,7 +627,7 @@ hr {
     padding:
         10px
         calc(12px + var(--phone-safe-right-inset, 0px))
-        10px
+        calc(10px + var(--phone-safe-bottom-inset, 0px))
         calc(12px + var(--phone-safe-left-inset, 0px));
 }
 
