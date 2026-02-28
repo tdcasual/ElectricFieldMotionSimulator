@@ -27,7 +27,6 @@ function createStore() {
     applyPropertyValues: vi.fn().mockReturnValue({ ok: true as const }),
     openVariablesPanel: vi.fn(),
     applyVariables: vi.fn(),
-    refreshSelectedPropertyPayload: vi.fn().mockReturnValue(true),
     rememberPhoneGeometryEdit: vi.fn(),
     createObjectAtCenter: vi.fn()
   };
@@ -177,7 +176,6 @@ describe('useAppActions', () => {
 
     expect(simulatorStore.applyPropertyValues).toHaveBeenCalledWith({ radius__display: '120' });
     expect(simulatorStore.rememberPhoneGeometryEdit).toHaveBeenCalledWith('radius__display');
-    expect(simulatorStore.refreshSelectedPropertyPayload).toHaveBeenCalledTimes(1);
   });
 
   it('does not record recent geometry key when quick edit apply fails', () => {
@@ -193,6 +191,5 @@ describe('useAppActions', () => {
     actions.applyPhoneSelectedQuickValue({ key: 'radius', value: 'x' });
 
     expect(simulatorStore.rememberPhoneGeometryEdit).not.toHaveBeenCalled();
-    expect(simulatorStore.refreshSelectedPropertyPayload).not.toHaveBeenCalled();
   });
 });

@@ -33,7 +33,6 @@ type AppActionStore = {
   applyPropertyValues: (values: Record<string, unknown>) => ApplyPropertyResult;
   openVariablesPanel: () => void;
   applyVariables: (values: Record<string, number>) => void;
-  refreshSelectedPropertyPayload: () => boolean;
   rememberPhoneGeometryEdit: (fieldKey: string) => void;
   createObjectAtCenter: (type: string) => void;
 };
@@ -188,7 +187,6 @@ export function useAppActions(options: UseAppActionsOptions) {
     const ok = applyPropertyValues({ [payload.key]: payload.value });
     if (!ok) return;
     simulatorStore.rememberPhoneGeometryEdit(payload.key);
-    simulatorStore.refreshSelectedPropertyPayload();
   }
 
   function createObjectFromToolbar(type: string) {

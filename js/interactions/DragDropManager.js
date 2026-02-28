@@ -430,7 +430,7 @@ export class DragDropManager {
         } else {
             this.bindEvent(this.canvas, 'mousedown', (e) => this.onMouseDown(e));
             this.bindEvent(this.canvas, 'mousemove', (e) => this.onMouseMove(e));
-            this.bindEvent(this.canvas, 'mouseup', (e) => this.onMouseUp(e));
+            this.bindEvent(this.canvas, 'mouseup', () => this.onMouseUp());
         }
 
         // 右键菜单
@@ -1333,7 +1333,7 @@ export class DragDropManager {
         }
     }
 
-    onMouseUp(e) {
+    onMouseUp() {
         this.isDragging = false;
         this.draggingObject = null;
         this.clearTangencyHint();
