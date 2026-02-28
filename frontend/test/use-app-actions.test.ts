@@ -28,6 +28,7 @@ function createStore() {
     openVariablesPanel: vi.fn(),
     applyVariables: vi.fn(),
     refreshSelectedPropertyPayload: vi.fn().mockReturnValue(true),
+    rememberPhoneGeometryEdit: vi.fn(),
     createObjectAtCenter: vi.fn()
   };
 }
@@ -161,5 +162,37 @@ describe('useAppActions', () => {
     actions.deleteSelected();
     expect(simulatorStore.deleteSelected).toHaveBeenCalledTimes(1);
     expect(menu.style.display).toBe('none');
+  });
+
+  it('records recent geometry key after successful phone quick edit', () => {
+    const simulatorStore = createStore();
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets: vi.fn(),
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    actions.applyPhoneSelectedQuickValue({ key: 'radius__display', value: '120' });
+
+    expect(simulatorStore.applyPropertyValues).toHaveBeenCalledWith({ radius__display: '120' });
+    expect(simulatorStore.rememberPhoneGeometryEdit).toHaveBeenCalledWith('radius__display');
+    expect(simulatorStore.refreshSelectedPropertyPayload).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not record recent geometry key when quick edit apply fails', () => {
+    const simulatorStore = createStore();
+    simulatorStore.applyPropertyValues.mockReturnValueOnce({ ok: false as const, error: 'bad value' });
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets: vi.fn(),
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    actions.applyPhoneSelectedQuickValue({ key: 'radius', value: 'x' });
+
+    expect(simulatorStore.rememberPhoneGeometryEdit).not.toHaveBeenCalled();
+    expect(simulatorStore.refreshSelectedPropertyPayload).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Serializer } from '../src/engine/legacyBridge';
+import { SimulatorRuntime } from '../src/runtime/simulatorRuntime';
 import { useSimulatorStore } from '../src/stores/simulatorStore';
 
 beforeEach(() => setActivePinia(createPinia()));
@@ -155,5 +156,86 @@ describe('simulatorStore demo mode', () => {
     const ok = store.saveScene('demo-fail');
     expect(ok).toBe(false);
     expect(store.statusText).toBe('场景 "demo-fail" 保存失败');
+  });
+
+  it('syncs and clears geometry interaction overlay from runtime snapshot payload', () => {
+    const store = useSimulatorStore();
+    const mountSpy = vi.spyOn(SimulatorRuntime.prototype, 'mount').mockImplementation(() => {});
+    const unmountSpy = vi.spyOn(SimulatorRuntime.prototype, 'unmount').mockImplementation(() => {});
+    vi.spyOn(SimulatorRuntime.prototype, 'setHostMode').mockImplementation(() => {});
+    vi.spyOn(SimulatorRuntime.prototype, 'getSnapshot')
+      .mockReturnValueOnce({
+        running: false,
+        mode: 'normal',
+        timeStep: 0.016,
+        fps: 0,
+        objectCount: 1,
+        particleCount: 0,
+        selectedObjectId: 'obj-geo-1',
+        statusText: '就绪',
+        geometryInteraction: {
+          objectId: 'obj-geo-1',
+          sourceKey: 'radius',
+          realValue: 1.2,
+          displayValue: 72,
+          objectScale: 1.5
+        }
+      })
+      .mockReturnValueOnce({
+        running: false,
+        mode: 'normal',
+        timeStep: 0.016,
+        fps: 0,
+        objectCount: 1,
+        particleCount: 0,
+        selectedObjectId: 'obj-geo-1',
+        statusText: '就绪',
+        geometryInteraction: null
+      });
+
+    store.mountRuntime();
+    expect(store.geometryInteraction).toEqual({
+      objectId: 'obj-geo-1',
+      sourceKey: 'radius',
+      realValue: 1.2,
+      displayValue: 72,
+      objectScale: 1.5
+    });
+
+    store.unmountRuntime();
+    store.mountRuntime();
+    expect(store.geometryInteraction).toBe(null);
+    expect(mountSpy).toHaveBeenCalledTimes(2);
+    expect(unmountSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps recent phone geometry edits by source key and drops incompatible history', () => {
+    const store = useSimulatorStore();
+    (store as unknown as { propertySections: unknown[] }).propertySections = [
+      {
+        fields: [
+          { key: 'radius', sourceKey: 'radius', geometryRole: 'real', type: 'number' },
+          { key: 'radius__display', sourceKey: 'radius', geometryRole: 'display', type: 'number' },
+          { key: 'width', sourceKey: 'width', geometryRole: 'real', type: 'number' },
+          { key: 'width__display', sourceKey: 'width', geometryRole: 'display', type: 'number' }
+        ]
+      }
+    ];
+
+    store.rememberPhoneGeometryEdit('radius__display');
+    store.rememberPhoneGeometryEdit('width');
+    expect(store.phoneRecentGeometrySourceKeys).toEqual(['width', 'radius']);
+
+    (store as unknown as { propertySections: unknown[] }).propertySections = [
+      {
+        fields: [
+          { key: 'length', sourceKey: 'length', geometryRole: 'real', type: 'number' },
+          { key: 'length__display', sourceKey: 'length', geometryRole: 'display', type: 'number' }
+        ]
+      }
+    ];
+
+    store.rememberPhoneGeometryEdit('length__display');
+    expect(store.phoneRecentGeometrySourceKeys).toEqual(['length']);
   });
 });

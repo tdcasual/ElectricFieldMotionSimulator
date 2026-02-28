@@ -72,6 +72,15 @@ export type RuntimeSnapshot = {
   particleCount: number;
   selectedObjectId: string | null;
   statusText: string;
+  geometryInteraction: GeometryInteractionSnapshot | null;
+};
+
+export type GeometryInteractionSnapshot = {
+  objectId: string | null;
+  sourceKey: string;
+  realValue: number;
+  displayValue: number;
+  objectScale: number;
 };
 
 export type PropertyPayload = {
@@ -231,7 +240,8 @@ export class SimulatorRuntime {
       selectedObjectId: (this.scene.selectedObject as { id?: unknown } | null)?.id
         ? String((this.scene.selectedObject as { id?: unknown }).id)
         : null,
-      statusText: this.statusText
+      statusText: this.statusText,
+      geometryInteraction: this.readGeometryInteractionSnapshot()
     };
   }
 
@@ -260,6 +270,7 @@ export class SimulatorRuntime {
       this.scene.selectedObject = null;
       if (this.scene.interaction && typeof this.scene.interaction === 'object') {
         this.scene.interaction.tangencyHint = null;
+        this.scene.interaction.geometryOverlay = null;
       }
       this.callbacks.onPropertyHide?.();
     }
@@ -622,6 +633,27 @@ export class SimulatorRuntime {
   private emitSnapshot() {
     this.callbacks.onSelectionChange?.(this.getSelectedObject());
     this.callbacks.onSnapshot?.(this.getSnapshot());
+  }
+
+  private readGeometryInteractionSnapshot(): GeometryInteractionSnapshot | null {
+    const interaction = this.scene.interaction as Record<string, unknown> | null | undefined;
+    const overlay = interaction?.geometryOverlay as Record<string, unknown> | null | undefined;
+    if (!overlay || typeof overlay !== 'object') return null;
+
+    const sourceKey = String(overlay.sourceKey ?? '').trim();
+    const realValue = asFiniteNumber(overlay.realValue);
+    const displayValue = asFiniteNumber(overlay.displayValue);
+    const objectScale = asFiniteNumber(overlay.objectScale);
+    if (!sourceKey) return null;
+    if (realValue == null || displayValue == null || objectScale == null) return null;
+
+    return {
+      objectId: overlay.objectId == null ? null : String(overlay.objectId),
+      sourceKey,
+      realValue,
+      displayValue,
+      objectScale
+    };
   }
 
   private syncViewportFromRenderer() {

@@ -11,7 +11,12 @@ import {
     DEMO_MIN_ZOOM,
     isDemoMode
 } from '../modes/DemoMode.js';
-import { ensureObjectGeometryState, setObjectDisplayDimension } from '../modes/GeometryScaling.js';
+import {
+    ensureObjectGeometryState,
+    getObjectGeometryScale,
+    getObjectRealDimension,
+    setObjectDisplayDimension
+} from '../modes/GeometryScaling.js';
 import { computePointTangencyMatch, computeTangencyMatch } from './TangencyEngine.js';
 
 const TOOL_ALIASES = {
@@ -595,6 +600,69 @@ export class DragDropManager {
         clearTangencyHintState(this.scene);
     }
 
+    clearGeometryOverlayHint(syncUI = true) {
+        const interaction = this.ensureSceneInteractionState();
+        if (!interaction) return false;
+        if (!interaction.geometryOverlay) return false;
+        interaction.geometryOverlay = null;
+        if (syncUI) {
+            this.getAppAdapter()?.updateUI?.();
+        }
+        return true;
+    }
+
+    resolveGeometryOverlaySourceKey(object, preferredKeys = []) {
+        if (!object || typeof object !== 'object') return null;
+        const keys = Array.isArray(preferredKeys) ? preferredKeys.filter((key) => typeof key === 'string') : [];
+        for (const key of RESIZE_SCALE_DIMENSION_PREFERENCE) {
+            if (!keys.includes(key)) {
+                keys.push(key);
+            }
+        }
+
+        for (const key of keys) {
+            const displayValue = Number(object[key]);
+            const realValue = getObjectRealDimension(object, key, this.scene);
+            if (!Number.isFinite(displayValue) || displayValue <= 0) continue;
+            if (!Number.isFinite(realValue) || realValue <= 0) continue;
+            return key;
+        }
+        return null;
+    }
+
+    updateGeometryOverlayHint(object, preferredKeys = []) {
+        const sourceKey = this.resolveGeometryOverlaySourceKey(object, preferredKeys);
+        if (!sourceKey) {
+            this.clearGeometryOverlayHint();
+            return false;
+        }
+
+        const displayValue = Number(object[sourceKey]);
+        const realValue = getObjectRealDimension(object, sourceKey, this.scene);
+        const objectScaleRaw = getObjectGeometryScale(object);
+        const objectScale = Number.isFinite(objectScaleRaw) && objectScaleRaw > 0 ? objectScaleRaw : 1;
+        if (!Number.isFinite(displayValue) || displayValue <= 0) {
+            this.clearGeometryOverlayHint();
+            return false;
+        }
+        if (!Number.isFinite(realValue) || realValue <= 0) {
+            this.clearGeometryOverlayHint();
+            return false;
+        }
+
+        const interaction = this.ensureSceneInteractionState();
+        if (!interaction) return false;
+        interaction.geometryOverlay = {
+            objectId: object?.id ?? null,
+            sourceKey,
+            realValue,
+            displayValue,
+            objectScale
+        };
+        this.getAppAdapter()?.updateUI?.();
+        return true;
+    }
+
     getTangencyMode() {
         if (this.dragMode !== 'resize') return 'move';
         return this.resizeHandle === 'radius' ? 'resize' : null;
@@ -705,8 +773,8 @@ export class DragDropManager {
         };
     }
 
-    isDemoTouchEvent(eventLike) {
-        return eventLike?.pointerType !== 'mouse' && isDemoMode(this.scene);
+    isTouchPointerEvent(eventLike) {
+        return eventLike?.pointerType !== 'mouse';
     }
 
     updateTouchPoint(pointerId, screenPos) {
@@ -737,6 +805,7 @@ export class DragDropManager {
         this.pointerDownObject = null;
         this.longPressTriggered = false;
         this.clearTangencyHint();
+        this.clearGeometryOverlayHint();
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
@@ -791,7 +860,9 @@ export class DragDropManager {
             anchorX: anchor.x,
             anchorY: anchor.y
         });
-        this.scene.settings.gravity = 0;
+        if (isDemoMode(this.scene)) {
+            this.scene.settings.gravity = 0;
+        }
         if (!changed) return true;
         this.requestSceneRender({ invalidateFields: true, updateUI: true });
         return true;
@@ -799,9 +870,9 @@ export class DragDropManager {
 
     onPointerDown(e) {
         if (!this.canvas) return;
-        if (this.isDemoTouchEvent(e)) {
+        if (this.isTouchPointerEvent(e)) {
             this.updateTouchPoint(e.pointerId, this.getScreenPos(e));
-            if (this.touchPoints.size >= 2) {
+            if (this.touchPoints.size >= 2 && !this.isInteractionLocked()) {
                 this.beginPinchGesture();
                 return;
             }
@@ -937,9 +1008,12 @@ export class DragDropManager {
     }
 
     onPointerMove(e) {
-        if (this.isDemoTouchEvent(e) && this.touchPoints.has(e.pointerId)) {
+        if (this.isTouchPointerEvent(e) && this.touchPoints.has(e.pointerId)) {
             this.updateTouchPoint(e.pointerId, this.getScreenPos(e));
             if (this.touchPoints.size >= 2) {
+                if (this.isInteractionLocked()) {
+                    return;
+                }
                 this.applyPinchGesture();
                 return;
             }
@@ -985,19 +1059,23 @@ export class DragDropManager {
                 this.resizeMagneticField(this.draggingObject, pos);
                 const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
                 this.syncDisplayResizeScale(this.draggingObject, preferred);
+                this.updateGeometryOverlayHint(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             } else if (this.isElectricResizable(this.draggingObject)) {
                 this.resizeElectricField(this.draggingObject, pos);
                 const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
                 this.syncDisplayResizeScale(this.draggingObject, preferred);
+                this.updateGeometryOverlayHint(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             }
         } else if (this.draggingObject.type === 'particle') {
+            this.clearGeometryOverlayHint();
             this.draggingObject.position.x = pos.x - this.dragOffset.x;
             this.draggingObject.position.y = pos.y - this.dragOffset.y;
             this.draggingObject.clearTrajectory();
             if (this.removeParticleIfInDisappearZone(this.draggingObject)) {
                 this.clearTangencyHint();
+                this.clearGeometryOverlayHint();
                 this.draggingObject = null;
                 this.isDragging = false;
                 this.pointerDownObject = null;
@@ -1007,6 +1085,7 @@ export class DragDropManager {
                 return;
             }
         } else {
+            this.clearGeometryOverlayHint();
             this.draggingObject.x = pos.x - this.dragOffset.x;
             this.draggingObject.y = pos.y - this.dragOffset.y;
             this.renderer.invalidateFields();
@@ -1020,7 +1099,7 @@ export class DragDropManager {
     }
 
     onPointerUp(e) {
-        if (this.isDemoTouchEvent(e)) {
+        if (this.isTouchPointerEvent(e)) {
             this.touchPoints.delete(e.pointerId);
             if (this.touchPoints.size < 2) {
                 this.pinchGesture = null;
@@ -1055,6 +1134,7 @@ export class DragDropManager {
         this.pointerDownObject = null;
         this.longPressTriggered = false;
         this.clearTangencyHint();
+        this.clearGeometryOverlayHint();
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
@@ -1071,7 +1151,7 @@ export class DragDropManager {
     }
 
     onPointerCancel(e) {
-        if (this.isDemoTouchEvent(e)) {
+        if (this.isTouchPointerEvent(e)) {
             this.touchPoints.delete(e.pointerId);
             if (this.touchPoints.size < 2) {
                 this.pinchGesture = null;
@@ -1089,6 +1169,7 @@ export class DragDropManager {
         this.longPressTriggered = false;
         this.resetTapChain();
         this.clearTangencyHint();
+        this.clearGeometryOverlayHint();
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
@@ -1214,26 +1295,31 @@ export class DragDropManager {
                 this.resizeMagneticField(this.draggingObject, pos);
                 const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
                 this.syncDisplayResizeScale(this.draggingObject, preferred);
+                this.updateGeometryOverlayHint(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             } else if (this.isElectricResizable(this.draggingObject)) {
                 this.resizeElectricField(this.draggingObject, pos);
                 const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
                 this.syncDisplayResizeScale(this.draggingObject, preferred);
+                this.updateGeometryOverlayHint(this.draggingObject, preferred);
                 this.renderer.invalidateFields();
             }
         } else if (this.draggingObject.type === 'particle') {
+            this.clearGeometryOverlayHint();
             this.draggingObject.position.x = pos.x - this.dragOffset.x;
             this.draggingObject.position.y = pos.y - this.dragOffset.y;
             // 清空轨迹
             this.draggingObject.clearTrajectory();
             if (this.removeParticleIfInDisappearZone(this.draggingObject)) {
                 this.clearTangencyHint();
+                this.clearGeometryOverlayHint();
                 this.draggingObject = null;
                 this.isDragging = false;
                 this.canvas.style.cursor = 'default';
                 return;
             }
         } else {
+            this.clearGeometryOverlayHint();
             this.draggingObject.x = pos.x - this.dragOffset.x;
             this.draggingObject.y = pos.y - this.dragOffset.y;
             this.renderer.invalidateFields();
@@ -1251,6 +1337,7 @@ export class DragDropManager {
         this.isDragging = false;
         this.draggingObject = null;
         this.clearTangencyHint();
+        this.clearGeometryOverlayHint();
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;

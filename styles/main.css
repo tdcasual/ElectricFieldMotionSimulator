@@ -506,6 +506,49 @@ body.light-theme .preset-btn:hover {
     z-index: 10;
 }
 
+.geometry-overlay-badge {
+    position: fixed;
+    right: calc(10px + var(--phone-safe-right-inset, 0px));
+    bottom: calc(var(--phone-bottom-bar-height, 60px) + var(--phone-safe-bottom-inset, 0px) + 10px);
+    min-width: 132px;
+    max-width: min(46vw, 220px);
+    padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--accent-blue) 40%, var(--border-color));
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-secondary) 92%, #fff 8%);
+    box-shadow: var(--shadow-lg);
+    z-index: 170;
+    pointer-events: none;
+}
+
+.geometry-overlay-title {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.geometry-overlay-row {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.geometry-overlay-row strong {
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.geometry-overlay-key {
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
 /* 属性面板 */
 .drawer-host--property {
     grid-area: panel;

@@ -1,7 +1,7 @@
 # 手机交互与 UI 设计 V2（含 real/display 全几何尺寸编辑）
 
 Date: 2026-02-27  
-Status: Confirmed for implementation
+Status: Implemented on mainline (gap closure completed on 2026-02-28; optional teaching shortcut deferred)
 
 ## 1. 目标
 
@@ -11,6 +11,39 @@ Status: Confirmed for implementation
 2. 保留并强化现有触控能力（拖拽、长按、双指）。
 3. 统一几何尺寸编辑模型：所有几何字段都支持 `real` + `display` 双轨。
 4. 支持直接编辑：手柄拖拽优先改 `display`，不强依赖表单。
+
+## 1.1 2026-02-28 主线实现审计
+
+本节用于判断该设计在当前主线代码中的有效性与缺口，避免继续执行已经完成或已被替代的条目。
+
+### 已完成（可直接视为主线能力）
+
+1. 手机壳层 IA 主框架已落地：底部导航 + `add/selected/scene/more` 四个 sheet。
+2. 手机主流程链路已可用并有自动化验证：添加、选中、快捷编辑、复制、删除、播放可达。
+3. `real/display` 双轨几何编辑已落地到快捷编辑面板与运行时语义。
+4. 几何手柄拖拽优先改 `display` 并保持 `real` 不变（通过对象比例尺反推）。
+5. 手机交互 E2E 已具备较高覆盖（手势、安全区、密度、触达基线、竞态）。
+
+### 2026-02-28 差距收敛后新增完成项
+
+1. 双指缩放已支持编辑模式（保留单指拖拽优先级与只读门禁行为）。
+2. 几何手柄拖拽期间已新增画布浮层，实时显示 `real/display/scale` 三元信息。
+3. 手机选中面板已支持“最近编辑几何字段”记忆并进行 recent-first 排序。
+4. phone E2E 已补充“编辑模式 pinch”专项回归用例。
+
+### 仍未实施（可选）
+
+1. `Phase 3` 的“教学态预设快捷入口”仍未落地（原设计即标注为可选项）。
+
+### 计划有效性结论
+
+1. V2 的产品目标与交互原则仍然有效，且主线已达到“差距收敛后可验收”状态。
+2. 原文档中“建议新增组件”已由主线实现吸收：
+   - `PhoneQuickInspector.vue` 已由 `PhoneSelectedSheet.vue` 承担核心职责。
+   - `GeometryOverlayBadge.vue` 已落地并接入手机布局。
+3. 后续如继续推进，建议聚焦可选项与教学态增强，不再重复已完成条目。
+
+> 差距收敛实施记录：`docs/plans/2026-02-28-mobile-ui-v2-gap-closure-implementation-plan.md`
 
 ## 2. 外部交互参考结论
 

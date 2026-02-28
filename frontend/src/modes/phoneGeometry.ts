@@ -24,7 +24,8 @@ const DISPLAY_LABEL_SUFFIX_RE = /[（(](真实|显示)[）)]$/;
 
 export function buildPhoneGeometryRows(
   sections: GeometrySectionLike[],
-  values: Record<string, unknown>
+  values: Record<string, unknown>,
+  recentSourceKeys: string[] = []
 ): PhoneGeometryRow[] {
   const orderedSourceKeys: string[] = [];
   const rowBySource = new Map<string, Partial<PhoneGeometryRow>>();
@@ -73,5 +74,26 @@ export function buildPhoneGeometryRows(
     });
   }
 
-  return rows;
+  if (!Array.isArray(recentSourceKeys) || recentSourceKeys.length === 0) {
+    return rows;
+  }
+
+  const rank = new Map<string, number>();
+  for (const sourceKey of recentSourceKeys) {
+    const key = String(sourceKey || '').trim();
+    if (!key || rank.has(key)) continue;
+    rank.set(key, rank.size);
+  }
+
+  const fallbackOrder = new Map<string, number>();
+  rows.forEach((row, index) => {
+    fallbackOrder.set(row.sourceKey, index);
+  });
+
+  return [...rows].sort((a, b) => {
+    const rankA = rank.has(a.sourceKey) ? rank.get(a.sourceKey)! : Number.POSITIVE_INFINITY;
+    const rankB = rank.has(b.sourceKey) ? rank.get(b.sourceKey)! : Number.POSITIVE_INFINITY;
+    if (rankA !== rankB) return rankA - rankB;
+    return (fallbackOrder.get(a.sourceKey) ?? 0) - (fallbackOrder.get(b.sourceKey) ?? 0);
+  });
 }

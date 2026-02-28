@@ -4,6 +4,7 @@ import AuthoringPanels from './components/AuthoringPanels.vue';
 import AppStatusFooter from './components/AppStatusFooter.vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import DesktopToolbarSidebar from './components/DesktopToolbarSidebar.vue';
+import GeometryOverlayBadge from './components/GeometryOverlayBadge.vue';
 import HeaderActionButtons from './components/HeaderActionButtons.vue';
 import HeaderStatusAndSettings from './components/HeaderStatusAndSettings.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
@@ -175,6 +176,13 @@ onBeforeUnmount(() => {
     />
 
     <CanvasViewport :fps="simulatorStore.fps" />
+    <GeometryOverlayBadge
+      v-if="isPhoneLayout && simulatorStore.geometryInteraction"
+      :source-key="simulatorStore.geometryInteraction.sourceKey"
+      :real-value="simulatorStore.geometryInteraction.realValue"
+      :display-value="simulatorStore.geometryInteraction.displayValue"
+      :object-scale="simulatorStore.geometryInteraction.objectScale"
+    />
     <ObjectActionBar
       v-if="showObjectActionBar"
       @open-properties="appActions.openSelectedPropertiesFromActionBar"

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 import { Presets, registry } from '../engine/legacyBridge';
 import {
+  type GeometryInteractionSnapshot,
   SimulatorRuntime,
   type PropertyPayload,
   type RuntimeSnapshot
@@ -91,6 +92,42 @@ function normalizeBoundaryMode(value: unknown) {
 const DEFAULT_MARKDOWN_FONT_SIZE = 16;
 const LEGACY_MARKDOWN_FONT_SIZE = 13;
 const TAP_CHAIN_RESET_EVENT = 'simulator-reset-tap-chain';
+const GEOMETRY_DISPLAY_FIELD_SUFFIX = '__display';
+const PHONE_RECENT_GEOMETRY_LIMIT = 6;
+
+function collectGeometrySourceKeys(sections: PropertyPayload['sections']) {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  for (const section of sections) {
+    const fields = Array.isArray(section?.fields) ? section.fields : [];
+    for (const field of fields) {
+      if (!field?.key) continue;
+      if (field.geometryRole !== 'real' && field.geometryRole !== 'display') continue;
+      const key = String(field.key || '').trim();
+      if (!key) continue;
+      const source = String(field.sourceKey || (key.endsWith(GEOMETRY_DISPLAY_FIELD_SUFFIX) ? key.slice(0, -GEOMETRY_DISPLAY_FIELD_SUFFIX.length) : key)).trim();
+      if (!source || seen.has(source)) continue;
+      seen.add(source);
+      ordered.push(source);
+    }
+  }
+  return ordered;
+}
+
+function resolveGeometrySourceFromFieldKey(sections: PropertyPayload['sections'], fieldKey: string) {
+  const target = String(fieldKey || '').trim();
+  if (!target) return null;
+  for (const section of sections) {
+    const fields = Array.isArray(section?.fields) ? section.fields : [];
+    for (const field of fields) {
+      const key = String(field?.key || '').trim();
+      if (!key || key !== target) continue;
+      const source = String(field.sourceKey || (key.endsWith(GEOMETRY_DISPLAY_FIELD_SUFFIX) ? key.slice(0, -GEOMETRY_DISPLAY_FIELD_SUFFIX.length) : key)).trim();
+      return source || null;
+    }
+  }
+  return null;
+}
 
 export const useSimulatorStore = defineStore('simulator', () => {
   const runtime = shallowRef<SimulatorRuntime | null>(null);
@@ -109,6 +146,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const particleCount = ref(0);
   const selectedObjectId = ref<string | null>(null);
   const statusText = ref('就绪');
+  const geometryInteraction = ref<GeometryInteractionSnapshot | null>(null);
 
   const showEnergyOverlay = ref(true);
   const pixelsPerMeter = ref(1);
@@ -122,6 +160,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const propertyTitle = ref('属性面板');
   const propertySections = ref<PropertyPayload['sections']>([]);
   const propertyValues = ref<Record<string, unknown>>({});
+  const phoneRecentGeometrySourceKeys = ref<string[]>([]);
+  const phoneGeometryScopeSignature = ref('');
   const variablesPanelOpen = computed(() => activeDrawer.value === 'variables');
   const variableDraft = ref<Record<string, number>>({});
   const markdownBoardOpen = computed(() => activeDrawer.value === 'markdown');
@@ -144,6 +184,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     particleCount.value = snapshot.particleCount;
     selectedObjectId.value = snapshot.selectedObjectId;
     statusText.value = snapshot.statusText;
+    geometryInteraction.value = snapshot.geometryInteraction ?? null;
   }
 
   function syncHeaderControlsFromScene() {
@@ -161,6 +202,44 @@ export const useSimulatorStore = defineStore('simulator', () => {
     propertyTitle.value = payload.title;
     propertySections.value = payload.sections;
     propertyValues.value = { ...(payload.values ?? {}) };
+    reconcilePhoneRecentGeometryMemory();
+  }
+
+  function reconcilePhoneRecentGeometryMemory() {
+    const available = collectGeometrySourceKeys(propertySections.value);
+    const availableSet = new Set(available);
+    const scopeSignature = available.slice().sort().join('|');
+    if (phoneGeometryScopeSignature.value !== scopeSignature) {
+      phoneGeometryScopeSignature.value = scopeSignature;
+      phoneRecentGeometrySourceKeys.value = phoneRecentGeometrySourceKeys.value.filter((key) => availableSet.has(key));
+    }
+
+    const deduped: string[] = [];
+    const seen = new Set<string>();
+    for (const key of phoneRecentGeometrySourceKeys.value) {
+      if (!availableSet.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(key);
+      if (deduped.length >= PHONE_RECENT_GEOMETRY_LIMIT) break;
+    }
+    phoneRecentGeometrySourceKeys.value = deduped;
+  }
+
+  function rememberPhoneGeometryEdit(fieldKey: string) {
+    const sourceKey = resolveGeometrySourceFromFieldKey(propertySections.value, fieldKey);
+    if (!sourceKey) return;
+    const available = collectGeometrySourceKeys(propertySections.value);
+    const availableSet = new Set(available);
+    if (!availableSet.has(sourceKey)) return;
+
+    const next = [sourceKey];
+    for (const key of phoneRecentGeometrySourceKeys.value) {
+      if (key === sourceKey) continue;
+      if (!availableSet.has(key)) continue;
+      next.push(key);
+      if (next.length >= PHONE_RECENT_GEOMETRY_LIMIT) break;
+    }
+    phoneRecentGeometrySourceKeys.value = next;
   }
 
   function loadMarkdownPreferences() {
@@ -652,6 +731,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     particleCount,
     selectedObjectId,
     statusText,
+    geometryInteraction,
     showEnergyOverlay,
     pixelsPerMeter,
     gravity,
@@ -661,6 +741,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     propertyTitle,
     propertySections,
     propertyValues,
+    phoneRecentGeometrySourceKeys,
     variablesPanelOpen,
     variableDraft,
     markdownBoardOpen,
@@ -704,6 +785,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     toggleTheme,
     setStatusText,
     refreshSelectedPropertyPayload,
+    rememberPhoneGeometryEdit,
     openPropertyPanel,
     closePropertyPanel,
     applyPropertyValues,

@@ -127,7 +127,73 @@ test('pinch gesture should reset double-tap chain before next single tap', async
   await page.waitForTimeout(80);
   await page.touchscreen.tap(x, y);
   await expect(page.locator('#property-panel')).toBeHidden();
+});
+
+test('edit mode pinch should change zoom and keep tap-chain behavior stable on phone', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only touch sequence check');
+  }
+
+  const phoneViewport = page.viewportSize() ?? { width: 390, height: 844 };
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await expect(page.locator('#demo-mode-btn')).toBeVisible();
+  const demoPressed = await page.locator('#demo-mode-btn').getAttribute('aria-pressed');
+  if (demoPressed === 'true') {
+    await page.locator('#demo-mode-btn').click();
+    await expect(page.locator('#demo-mode-btn')).toHaveAttribute('aria-pressed', 'false');
+  }
+
+  await page.setViewportSize(phoneViewport);
+  await expect(page.getByTestId('phone-bottom-nav')).toBeVisible();
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const x = box!.x + box!.width / 2;
+  const y = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+
+  await page.touchscreen.tap(x, y);
   await expect(page.getByTestId('object-action-bar')).toBeVisible();
+
+  await page.locator('#phone-nav-scene-btn').tap();
+  const sceneSheet = page.getByTestId('phone-scene-sheet');
+  await expect(sceneSheet).toBeVisible();
+  const scaleInput = sceneSheet.locator('#scale-px-per-meter');
+  await expect(scaleInput).toBeEnabled();
+  const beforeZoom = Number(await scaleInput.inputValue());
+  await sceneSheet.locator('.btn-icon').tap();
+  await expect(sceneSheet).toBeHidden();
+
+  const cdpSession = await page.context().newCDPSession(page);
+  await dispatchTouchEventViaCdp(cdpSession, 'touchStart', [
+    { x: x - 30, y, radiusX: 3, radiusY: 3, id: 1, force: 1 },
+    { x: x + 30, y, radiusX: 3, radiusY: 3, id: 2, force: 1 }
+  ]);
+  await dispatchTouchEventViaCdp(cdpSession, 'touchMove', [
+    { x: x - 45, y, radiusX: 3, radiusY: 3, id: 1, force: 1 },
+    { x: x + 45, y, radiusX: 3, radiusY: 3, id: 2, force: 1 }
+  ]);
+  await dispatchTouchEventViaCdp(cdpSession, 'touchEnd', []);
+
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(sceneSheet).toBeVisible();
+  const afterZoom = Number(await sceneSheet.locator('#scale-px-per-meter').inputValue());
+  await sceneSheet.locator('.btn-icon').tap();
+  await expect(sceneSheet).toBeHidden();
+
+  expect(afterZoom).toBeGreaterThan(beforeZoom);
+
+  await page.waitForTimeout(80);
+  await page.touchscreen.tap(x, y);
+  await expect(page.locator('#property-panel')).toBeHidden();
 });
 
 test('tap blank area resets tap chain before reopening properties', async ({ page }) => {

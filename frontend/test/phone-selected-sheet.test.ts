@@ -77,4 +77,33 @@ describe('PhoneSelectedSheet', () => {
       [{ key: 'radius__display', value: '120' }]
     ]);
   });
+
+  it('renders geometry cards in input order for recent-first rows', () => {
+    const wrapper = mount(PhoneSelectedSheet, {
+      props: {
+        selectedObjectId: 'obj-1',
+        geometryRows: [
+          {
+            sourceKey: 'width',
+            label: '宽度',
+            realKey: 'width',
+            displayKey: 'width__display',
+            realValue: 2,
+            displayValue: 100
+          },
+          {
+            sourceKey: 'radius',
+            label: '半径',
+            realKey: 'radius',
+            displayKey: 'radius__display',
+            realValue: 1,
+            displayValue: 50
+          }
+        ]
+      }
+    });
+
+    const titles = wrapper.findAll('.phone-selected-geometry-title').map((node) => node.text());
+    expect(titles).toEqual(['宽度', '半径']);
+  });
 });

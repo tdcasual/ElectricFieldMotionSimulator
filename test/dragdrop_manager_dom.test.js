@@ -536,6 +536,155 @@ test('beginPinchGesture clears double-tap chain state', () => {
   }
 });
 
+test('edit mode pinch updates zoom and clears tap-chain state', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit', pixelsPerMeter: 50, gravity: 9.8 },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      objects: [],
+      findObjectAt() {
+        return null;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [];
+      }
+    };
+
+    let requestRenderCount = 0;
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {
+          requestRenderCount += 1;
+        },
+        updateUI() {}
+      }
+    });
+
+    manager.lastTap = { time: 1500, objectId: 'obj-edit-pinch' };
+
+    manager.onPointerDown({
+      pointerId: 11,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+    manager.onPointerDown({
+      pointerId: 12,
+      pointerType: 'touch',
+      clientX: 160,
+      clientY: 100
+    });
+    manager.onPointerMove({
+      pointerId: 11,
+      pointerType: 'touch',
+      clientX: 80,
+      clientY: 100
+    });
+    manager.onPointerMove({
+      pointerId: 12,
+      pointerType: 'touch',
+      clientX: 180,
+      clientY: 100
+    });
+
+    assert.ok(scene.settings.pixelsPerMeter > 50);
+    assert.equal(scene.settings.gravity, 9.8);
+    assert.deepEqual(manager.lastTap, { time: 0, objectId: null });
+    assert.ok(requestRenderCount >= 1);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('edit mode single-touch drag keeps object manipulation priority over pinch logic', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const particle = {
+      id: 'obj-edit-drag',
+      type: 'particle',
+      position: { x: 100, y: 100 },
+      clearTrajectory() {}
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit', pixelsPerMeter: 50, gravity: 9.8 },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return particle;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [particle];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onPointerDown({
+      pointerId: 21,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100
+    });
+    manager.onPointerMove({
+      pointerId: 21,
+      pointerType: 'touch',
+      clientX: 132,
+      clientY: 132
+    });
+
+    assert.equal(particle.position.x, 132);
+    assert.equal(particle.position.y, 132);
+    assert.equal(scene.settings.pixelsPerMeter, 50);
+
+    manager.onPointerUp({
+      pointerId: 21,
+      pointerType: 'touch',
+      clientX: 132,
+      clientY: 132
+    });
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
 test('pointercancel clears double-tap chain to avoid stale second-tap detection', () => {
   const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
   try {
@@ -751,6 +900,87 @@ test('resize handle drag updates display scale without mutating real geometry', 
 
     assert.equal(field.radius, 100);
     assert.equal(getObjectRealDimension(field, 'radius', scene), 1);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('geometry overlay payload appears during resize drag and clears on pointer up', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const field = {
+      id: 'obj-overlay-circle',
+      type: 'magnetic-field',
+      shape: 'circle',
+      x: 100,
+      y: 100,
+      radius: 50,
+      width: 100,
+      height: 100
+    };
+
+    const scene = {
+      settings: { mode: 'normal', pixelsPerMeter: 50, interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      interaction: { tangencyHint: null, geometryOverlay: null },
+      findObjectAt() {
+        return field;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [field];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onPointerDown({
+      pointerId: 51,
+      pointerType: 'touch',
+      clientX: 150,
+      clientY: 100
+    });
+    manager.onPointerMove({
+      pointerId: 51,
+      pointerType: 'touch',
+      clientX: 200,
+      clientY: 100
+    });
+
+    assert.equal(scene.interaction.geometryOverlay?.sourceKey, 'radius');
+    assert.equal(scene.interaction.geometryOverlay?.objectId, 'obj-overlay-circle');
+    assert.equal(scene.interaction.geometryOverlay?.displayValue, 100);
+    assert.equal(scene.interaction.geometryOverlay?.realValue, 1);
+    assert.equal(scene.interaction.geometryOverlay?.objectScale, 2);
+
+    manager.onPointerUp({
+      pointerId: 51,
+      pointerType: 'touch',
+      clientX: 200,
+      clientY: 100
+    });
+
+    assert.equal(scene.interaction.geometryOverlay, null);
     manager.dispose();
   } finally {
     cleanup();

@@ -276,6 +276,82 @@ describe('App shell', () => {
     expect(wrapper.find('[data-testid="object-action-bar"]').exists()).toBe(true);
   });
 
+  it('shows geometry overlay badge only while geometry interaction payload is active on phone', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { setLayoutMode?: (mode: string) => void }).setLayoutMode?.('phone');
+    (store as unknown as {
+      geometryInteraction: {
+        objectId: string | null;
+        sourceKey: string;
+        realValue: number;
+        displayValue: number;
+        objectScale: number;
+      } | null;
+    }).geometryInteraction = {
+      objectId: 'obj-geo-1',
+      sourceKey: 'radius',
+      realValue: 1.25,
+      displayValue: 82,
+      objectScale: 1.64
+    };
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('[data-testid="geometry-overlay-badge"]').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="geometry-overlay-real"]').text()).toBe('1.25');
+    expect(wrapper.get('[data-testid="geometry-overlay-display"]').text()).toBe('82');
+    expect(wrapper.get('[data-testid="geometry-overlay-scale"]').text()).toBe('1.64');
+
+    (store as unknown as { geometryInteraction: null }).geometryInteraction = null;
+    await nextTick();
+    expect(wrapper.find('[data-testid="geometry-overlay-badge"]').exists()).toBe(false);
+  });
+
+  it('does not render geometry overlay badge on desktop layout', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 1366,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as {
+      geometryInteraction: {
+        objectId: string | null;
+        sourceKey: string;
+        realValue: number;
+        displayValue: number;
+        objectScale: number;
+      } | null;
+    }).geometryInteraction = {
+      objectId: 'obj-geo-2',
+      sourceKey: 'width',
+      realValue: 2,
+      displayValue: 120,
+      objectScale: 1.2
+    };
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('[data-testid="geometry-overlay-badge"]').exists()).toBe(false);
+  });
+
   it('toggles phone scene sheet from bottom nav and closes via backdrop', async () => {
     const pinia = createPinia();
     Object.defineProperty(window, 'innerWidth', {

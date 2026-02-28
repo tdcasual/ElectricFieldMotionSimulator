@@ -7,7 +7,9 @@ function createStore() {
     propertyValues: {
       __geometryObjectScale: 2,
       radius: 1,
-      radius__display: 60
+      radius__display: 60,
+      width: 2,
+      width__display: 120
     } as Record<string, unknown>,
     propertySections: [
       {
@@ -23,10 +25,23 @@ function createStore() {
             label: '半径（显示）',
             sourceKey: 'radius',
             geometryRole: 'display'
+          },
+          {
+            key: 'width',
+            label: '宽度（真实）',
+            sourceKey: 'width',
+            geometryRole: 'real'
+          },
+          {
+            key: 'width__display',
+            label: '宽度（显示）',
+            sourceKey: 'width',
+            geometryRole: 'display'
           }
         ]
       }
     ],
+    phoneRecentGeometrySourceKeys: [] as string[],
     propertyDrawerOpen: false,
     markdownBoardOpen: false,
     variablesPanelOpen: false,
@@ -55,11 +70,30 @@ describe('useAppUiState', () => {
     });
 
     expect(uiState.phoneSelectedScale.value).toBe(2);
-    expect(uiState.phoneSelectedGeometryRows.value).toHaveLength(1);
+    expect(uiState.phoneSelectedGeometryRows.value).toHaveLength(2);
     expect(uiState.phoneSelectedGeometryRows.value[0].sourceKey).toBe('radius');
 
     simulatorStore.propertyValues.__geometryObjectScale = 0;
     expect(uiState.phoneSelectedScale.value).toBe(1);
+  });
+
+  it('pins recently edited geometry source keys and falls back when recent keys are incompatible', () => {
+    const simulatorStore = createStore();
+    simulatorStore.phoneRecentGeometrySourceKeys = ['width'];
+    const uiState = useAppUiState({
+      simulatorStore,
+      showAuthoringControls: ref(true),
+      isPhoneLayout: ref(true),
+      phoneAnySheetOpen: ref(false),
+      isCoarsePointer: ref(false)
+    });
+
+    expect(uiState.phoneSelectedGeometryRows.value[0].sourceKey).toBe('width');
+    expect(uiState.phoneSelectedGeometryRows.value[1].sourceKey).toBe('radius');
+
+    simulatorStore.phoneRecentGeometrySourceKeys = ['depth'];
+    expect(uiState.phoneSelectedGeometryRows.value[0].sourceKey).toBe('radius');
+    expect(uiState.phoneSelectedGeometryRows.value[1].sourceKey).toBe('width');
   });
 
   it('routes drawer/board model setters to store actions', () => {

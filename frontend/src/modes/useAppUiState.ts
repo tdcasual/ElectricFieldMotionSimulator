@@ -13,6 +13,7 @@ type AppUiStateStore = {
   activeDrawer: string | null;
   layoutMode: LayoutMode;
   phoneDensityMode: 'compact' | 'comfortable';
+  phoneRecentGeometrySourceKeys: string[];
   openPropertyPanel: () => void;
   closePropertyPanel: () => void;
   closeMarkdownBoard: () => void;
@@ -41,7 +42,7 @@ export function useAppUiState(options: UseAppUiStateOptions) {
   const phoneSelectedGeometryRows = computed<PhoneGeometryRow[]>(() => {
     const sections = simulatorStore.propertySections as GeometrySectionLike[];
     const values = simulatorStore.propertyValues as Record<string, unknown>;
-    return buildPhoneGeometryRows(sections, values);
+    return buildPhoneGeometryRows(sections, values, simulatorStore.phoneRecentGeometrySourceKeys);
   });
 
   const propertyDrawerModel = computed({
