@@ -235,6 +235,60 @@ test('tap blank area resets tap chain before reopening properties', async ({ pag
   await expect(page.locator('#property-panel')).toBeHidden();
 });
 
+test('phone selected sheet pins recently edited geometry field to top', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only selected-sheet ordering check');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="magnetic-field"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+
+  await page.touchscreen.tap(centerX, centerY);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+
+  await page.locator('#phone-nav-selected-btn').tap();
+  const selectedSheet = page.getByTestId('phone-selected-sheet');
+  await expect(selectedSheet).toBeVisible();
+
+  const getDisplaySourceKeyOrder = async () => {
+    const ids = await selectedSheet.locator('.phone-selected-geometry-field input[id$="-display"]').evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('id') || '')
+    );
+    return ids
+      .map((id) => {
+        const match = id.match(/^phone-selected-(.+)-display$/);
+        return match ? match[1] : '';
+      })
+      .filter((key) => key.length > 0);
+  };
+
+  const beforeOrder = await getDisplaySourceKeyOrder();
+  expect(beforeOrder.length).toBeGreaterThan(1);
+  const targetSourceKey = beforeOrder[1];
+  const targetDisplayInput = selectedSheet.locator(`#phone-selected-${targetSourceKey}-display`);
+
+  await targetDisplayInput.evaluate((node) => {
+    const input = node as HTMLInputElement;
+    const current = Number(input.value);
+    const next = Number.isFinite(current) ? current + 12 : 120;
+    input.value = String(next);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  await expect.poll(async () => (await getDisplaySourceKeyOrder())[0]).toBe(targetSourceKey);
+});
+
 test('phone sheet controls keep touch targets at least 44px', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
