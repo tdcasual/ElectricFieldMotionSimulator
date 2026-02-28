@@ -1024,6 +1024,11 @@ body.light-theme .preset-btn:hover {
     transform: translateY(1px) scale(0.985);
 }
 
+.phone-nav-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-blue) 72%, #fff);
+    outline-offset: 1px;
+}
+
 .phone-nav-btn.active {
     border-color: var(--accent-blue);
     background: color-mix(in srgb, var(--accent-blue) 22%, var(--bg-hover));
@@ -1098,6 +1103,16 @@ body.light-theme .preset-btn:hover {
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-sm);
+    transition: transform 120ms ease, background 120ms ease;
+}
+
+.phone-sheet-header .btn-icon:active {
+    transform: scale(0.96);
+}
+
+.phone-sheet-header .btn-icon:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-blue) 72%, #fff);
+    outline-offset: 1px;
 }
 
 .phone-sheet-header h3 {
@@ -1148,6 +1163,18 @@ body.light-theme .preset-btn:hover {
 .phone-more-body .btn {
     min-height: 44px;
     justify-content: center;
+}
+
+.phone-more-body .btn:active {
+    transform: translateY(1px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .phone-nav-btn,
+    .phone-sheet-header .btn-icon,
+    .phone-more-body .btn {
+        transition: none;
+    }
 }
 
 .phone-selected-meta {
