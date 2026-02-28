@@ -155,6 +155,14 @@ test('phone density toggle changes property panel row density', async ({ page },
   const phoneNav = page.locator('#phone-bottom-nav');
   await expect(phoneNav).toBeVisible();
 
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  const moreSaveBefore = await page.locator('#secondary-save-btn').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+
   const canvas = page.locator('#particle-canvas');
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
@@ -181,5 +189,15 @@ test('phone density toggle changes property panel row density', async ({ page },
     return el.getBoundingClientRect().height;
   });
 
+  await page.locator('#close-panel-btn').tap();
+  await expect(page.locator('#property-panel')).toBeHidden();
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  const moreSaveAfter = await page.locator('#secondary-save-btn').evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+
   expect(rowAfter).toBeGreaterThan(rowBefore);
+  expect(moreSaveAfter).toBeGreaterThan(moreSaveBefore);
 });

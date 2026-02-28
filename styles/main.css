@@ -745,6 +745,15 @@ body.light-theme .preset-btn:hover {
     --header-height: calc(96px + var(--phone-safe-top-inset));
     --phone-bottom-bar-height: 60px;
     --phone-safe-bottom-inset: env(safe-area-inset-bottom, 0px);
+    --phone-nav-btn-min-height: 36px;
+    --phone-nav-btn-font-size: 12px;
+    --phone-sheet-title-font-size: 13px;
+    --phone-sheet-body-padding: 8px 10px;
+    --phone-sheet-control-gap: 6px;
+    --phone-sheet-section-gap: 8px;
+    --phone-sheet-section-padding: 6px;
+    --phone-sheet-field-input-height: 44px;
+    --phone-sheet-action-btn-height: 44px;
     --phone-panel-section-gap: 6px;
     --phone-panel-toggle-height: 28px;
     --phone-panel-toggle-font-size: 11px;
@@ -772,6 +781,15 @@ body.light-theme .preset-btn:hover {
 }
 
 #app.layout-phone.phone-density-comfortable {
+    --phone-nav-btn-min-height: 40px;
+    --phone-nav-btn-font-size: 13px;
+    --phone-sheet-title-font-size: 14px;
+    --phone-sheet-body-padding: 10px 12px;
+    --phone-sheet-control-gap: 8px;
+    --phone-sheet-section-gap: 10px;
+    --phone-sheet-section-padding: 8px;
+    --phone-sheet-field-input-height: 48px;
+    --phone-sheet-action-btn-height: 48px;
     --phone-panel-section-gap: 8px;
     --phone-panel-toggle-height: 34px;
     --phone-panel-toggle-font-size: 12px;
@@ -1033,12 +1051,12 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-nav-btn {
-    min-height: 36px;
+    min-height: var(--phone-nav-btn-min-height);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     background: var(--bg-hover);
     color: var(--text-primary);
-    font-size: 12px;
+    font-size: var(--phone-nav-btn-font-size);
     font-weight: 600;
     cursor: pointer;
     touch-action: manipulation;
@@ -1123,8 +1141,8 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-sheet-header .btn-icon {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: var(--phone-sheet-action-btn-height);
+    min-height: var(--phone-sheet-action-btn-height);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1143,11 +1161,11 @@ body.light-theme .preset-btn:hover {
 
 .phone-sheet-header h3 {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--phone-sheet-title-font-size);
 }
 
 .phone-sheet-body {
-    padding: 8px 10px;
+    padding: var(--phone-sheet-body-padding);
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
@@ -1156,11 +1174,11 @@ body.light-theme .preset-btn:hover {
 .phone-scene-body {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--phone-sheet-control-gap);
 }
 
 .phone-scene-body .control-label {
-    min-height: 44px;
+    min-height: var(--phone-sheet-field-input-height);
     padding: 4px 6px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
@@ -1169,7 +1187,7 @@ body.light-theme .preset-btn:hover {
 
 .phone-scene-body .control-label input[type="number"],
 .phone-scene-body .control-label select {
-    min-height: 44px;
+    min-height: var(--phone-sheet-field-input-height);
     padding: 4px 6px;
 }
 
@@ -1179,24 +1197,24 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-scene-body .control-label input[type="range"] {
-    min-height: 44px;
+    min-height: var(--phone-sheet-field-input-height);
 }
 
 .phone-more-body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--phone-sheet-section-gap);
 }
 
 .phone-more-section {
-    padding: 6px;
+    padding: var(--phone-sheet-section-padding);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     background: var(--bg-tertiary);
 }
 
 .phone-more-section-title {
-    margin: 0 0 6px;
+    margin: 0 0 var(--phone-sheet-control-gap);
     font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
@@ -1205,11 +1223,11 @@ body.light-theme .preset-btn:hover {
 .phone-more-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--phone-sheet-control-gap);
 }
 
 .phone-more-grid .btn {
-    min-height: 44px;
+    min-height: var(--phone-sheet-action-btn-height);
     justify-content: center;
 }
 
@@ -1250,12 +1268,12 @@ body.light-theme .preset-btn:hover {
 .phone-selected-geometry-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 6px;
+    gap: var(--phone-sheet-control-gap);
+    margin-bottom: var(--phone-sheet-control-gap);
 }
 
 .phone-selected-geometry-item {
-    padding: 6px;
+    padding: var(--phone-sheet-section-padding);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     background: var(--bg-tertiary);
@@ -1270,7 +1288,7 @@ body.light-theme .preset-btn:hover {
 .phone-selected-geometry-inputs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--phone-sheet-control-gap);
 }
 
 .phone-selected-geometry-field {
@@ -1283,7 +1301,7 @@ body.light-theme .preset-btn:hover {
 
 .phone-selected-geometry-field input {
     width: 100%;
-    min-height: 44px;
+    min-height: var(--phone-sheet-field-input-height);
     padding: 4px 6px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
@@ -1300,11 +1318,11 @@ body.light-theme .preset-btn:hover {
 .phone-selected-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--phone-sheet-control-gap);
 }
 
 .phone-selected-actions .btn {
-    min-height: 44px;
+    min-height: var(--phone-sheet-action-btn-height);
     justify-content: center;
 }
 
@@ -1317,18 +1335,18 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-add-sheet .toolbar-content {
-    gap: 8px;
+    gap: var(--phone-sheet-section-gap);
 }
 
 .phone-add-sheet .tool-item {
-    min-height: 44px;
+    min-height: var(--phone-sheet-action-btn-height);
 }
 
 .phone-add-sheet .toolbar-group-toggle,
 .phone-add-sheet .preset-btn {
-    min-height: 44px;
+    min-height: var(--phone-sheet-action-btn-height);
 }
 
 .phone-add-sheet .preset-section {
-    margin-top: 8px;
+    margin-top: var(--phone-sheet-section-gap);
 }
