@@ -146,6 +146,22 @@ test('Scene.removeObject tolerates nullish input without throwing', () => {
   assert.equal(scene.objects.length, 0);
 });
 
+test('Scene.removeObject detaches scene reference from removed object', () => {
+  const scene = new Scene();
+  const field = new RectElectricField({
+    x: 10,
+    y: 20,
+    width: 30,
+    height: 40
+  });
+
+  scene.addObject(field);
+  assert.equal(field.scene, scene);
+
+  scene.removeObject(field);
+  assert.equal(field.scene, null);
+});
+
 test('Scene.loadFromData clears stale selection that is no longer in scene', () => {
   const scene = new Scene();
   const original = new RectElectricField({

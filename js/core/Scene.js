@@ -151,6 +151,9 @@ export class Scene {
         if (this.selectedObject === object) {
             this.selectedObject = null;
         }
+        if (object.scene === this) {
+            object.scene = null;
+        }
 
         return this;
     }
