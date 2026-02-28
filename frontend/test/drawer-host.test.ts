@@ -16,8 +16,8 @@ describe('DrawerHost', () => {
       }
     });
 
-    const host = wrapper.get('[data-testid="drawer-host"]');
-    expect(host.exists()).toBe(true);
+    const host = wrapper.find('[data-testid="drawer-host"]');
+    expect(host.isVisible()).toBe(false);
     expect(host.attributes('style')).toContain('display: none');
   });
 

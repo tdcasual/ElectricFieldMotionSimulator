@@ -88,6 +88,9 @@ describe('scene source resolver', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.source).toBe('materialId');
+    if (result.source === 'none' || result.data == null) {
+      throw new Error('expected material scene payload');
+    }
     expect(result.data.objects).toHaveLength(1);
   });
 

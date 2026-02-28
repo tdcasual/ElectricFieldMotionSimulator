@@ -82,9 +82,11 @@ function asNonNegativeNumber(value: unknown, fallback: number) {
 }
 
 function normalizeBoundaryMode(value: unknown) {
-  const allowed = new Set(['margin', 'remove', 'bounce', 'wrap']);
+  const allowed = new Set(['margin', 'remove', 'bounce', 'wrap'] as const);
   const next = String(value ?? '');
-  return allowed.has(next) ? next : 'margin';
+  return allowed.has(next as 'margin' | 'remove' | 'bounce' | 'wrap')
+    ? (next as 'margin' | 'remove' | 'bounce' | 'wrap')
+    : 'margin';
 }
 
 const DEFAULT_MARKDOWN_FONT_SIZE = 16;
