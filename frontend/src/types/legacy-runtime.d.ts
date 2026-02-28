@@ -1,29 +1,51 @@
-type LegacyRecord = any;
+type LegacyUnknownRecord = Record<string, unknown>;
+
+type LegacySceneObject = {
+  id?: string | null;
+  type?: string;
+  [key: string]: unknown;
+};
+
+type LegacySceneSettings = {
+  mode: string;
+  hostMode?: string;
+  interactionLocked?: boolean;
+  pixelsPerMeter: number;
+  gravity: number;
+  boundaryMode: string;
+  boundaryMargin: number;
+  [key: string]: unknown;
+};
+
+type LegacySceneLike = {
+  objects?: LegacySceneObject[];
+  settings?: Partial<LegacySceneSettings>;
+};
 
 declare module '*js/core/Scene.js' {
   export class Scene {
-    objects: LegacyRecord[];
-    electricFields: LegacyRecord[];
-    magneticFields: LegacyRecord[];
-    disappearZones: LegacyRecord[];
-    emitters: LegacyRecord[];
-    particles: LegacyRecord[];
-    selectedObject: LegacyRecord | null;
+    objects: LegacySceneObject[];
+    electricFields: LegacySceneObject[];
+    magneticFields: LegacySceneObject[];
+    disappearZones: LegacySceneObject[];
+    emitters: LegacySceneObject[];
+    particles: LegacySceneObject[];
+    selectedObject: LegacySceneObject | null;
     isPaused: boolean;
     time: number;
     viewport: { width: number; height: number };
     camera: { offsetX: number; offsetY: number };
-    interaction: LegacyRecord;
-    settings: LegacyRecord;
-    variables: LegacyRecord;
-    addObject(object: LegacyRecord): LegacyRecord | null;
-    removeObject(object: LegacyRecord): this;
-    getAllObjects(): LegacyRecord[];
-    findObjectAt(x: number, y: number): LegacyRecord | null;
+    interaction: { tangencyHint?: unknown; [key: string]: unknown };
+    settings: LegacySceneSettings;
+    variables: LegacyUnknownRecord;
+    addObject(object: LegacySceneObject): LegacySceneObject | null;
+    removeObject(object: LegacySceneObject): this;
+    getAllObjects(): LegacySceneObject[];
+    findObjectAt(x: number, y: number): LegacySceneObject | null;
     clear(): void;
-    duplicateObject(object: LegacyRecord): LegacyRecord;
-    serialize(): LegacyRecord;
-    loadFromData(data: LegacyRecord): void;
+    duplicateObject(object: LegacySceneObject): LegacySceneObject;
+    serialize(): LegacyUnknownRecord;
+    loadFromData(data: LegacyUnknownRecord): void;
     setViewport(width: number, height: number): void;
     setCamera(offsetX?: number, offsetY?: number): void;
     toWorldPoint(screenX: number, screenY: number): { x: number; y: number };
@@ -34,6 +56,8 @@ declare module '*js/core/Scene.js' {
 }
 
 declare module '*js/core/Renderer.js' {
+  import type { Scene } from '*js/core/Scene.js';
+
   export class Renderer {
     bgCanvas: HTMLCanvasElement | null;
     fieldCanvas: HTMLCanvasElement | null;
@@ -43,20 +67,25 @@ declare module '*js/core/Renderer.js' {
     dpr: number;
     init(): void;
     resize(): void;
-    render(scene: any): void;
+    render(scene: Scene): void;
     invalidateFields(): void;
   }
 }
 
 declare module '*js/core/PhysicsEngine.js' {
+  import type { Scene } from '*js/core/Scene.js';
+
   export class PhysicsEngine {
-    update(scene: any, dt: number): void;
+    update(scene: Scene, dt: number): void;
   }
 }
 
 declare module '*js/interactions/DragDropManager.js' {
+  import type { Renderer } from '*js/core/Renderer.js';
+  import type { Scene } from '*js/core/Scene.js';
+
   export class DragDropManager {
-    constructor(scene: any, renderer: any, options?: LegacyRecord);
+    constructor(scene: Scene, renderer: Renderer, options?: LegacyUnknownRecord);
     createObject(type: string, x: number, y: number): void;
     dispose(): void;
   }
@@ -64,28 +93,29 @@ declare module '*js/interactions/DragDropManager.js' {
 
 declare module '*js/core/registerObjects.js' {
   export type LegacyRegistryEntry = {
+    label?: string;
     rendererKey?: string;
     schema?: (() => unknown[]) | unknown[];
-    interaction?: LegacyRecord;
-    defaults?: (() => LegacyRecord) | LegacyRecord;
-    physicsHooks?: LegacyRecord;
+    interaction?: LegacyUnknownRecord;
+    defaults?: (() => LegacyUnknownRecord) | LegacyUnknownRecord;
+    physicsHooks?: LegacyUnknownRecord;
     [key: string]: unknown;
   };
 
   export const registry: {
     get(type: string): LegacyRegistryEntry | null;
-    create(type: string, data?: LegacyRecord): LegacyRecord;
-    listByCategory(): Record<string, LegacyRecord[]>;
+    create(type: string, data?: LegacyUnknownRecord): LegacySceneObject;
+    listByCategory(): Record<string, LegacySceneObject[]>;
     register(type: string, entry: LegacyRegistryEntry): void;
   };
 }
 
 declare module '*js/utils/Serializer.js' {
   export class Serializer {
-    static saveSceneData(data: LegacyRecord, name: string): boolean;
-    static loadScene(name: string): LegacyRecord | null;
+    static saveSceneData(data: LegacyUnknownRecord, name: string): boolean;
+    static loadScene(name: string): LegacyUnknownRecord | null;
     static validateSceneData(data: unknown): { valid: boolean; error?: string };
-    static exportToFile(scene: { serialize: () => LegacyRecord }, filename?: string): void;
+    static exportToFile(scene: { serialize: () => LegacyUnknownRecord }, filename?: string): void;
     static importFromFile(file: File, callback: (error: Error | null, data: unknown) => void): void;
   }
 }
@@ -107,19 +137,19 @@ declare module '*js/utils/PerformanceMonitor.js' {
 
 declare module '*js/utils/ResetBaseline.js' {
   export function createResetBaselineController(): {
-    setBaseline(snapshot: LegacyRecord): boolean;
-    getBaseline(): LegacyRecord | null;
+    setBaseline(snapshot: LegacyUnknownRecord): boolean;
+    getBaseline(): LegacyUnknownRecord | null;
     hasBaseline(): boolean;
-    restoreBaseline(): LegacyRecord | null;
+    restoreBaseline(): LegacyUnknownRecord | null;
   };
 }
 
 declare module '*js/ui/SchemaForm.js' {
-  export function isFieldEnabled(field: LegacyRecord, values: LegacyRecord): boolean;
-  export function isFieldVisible(field: LegacyRecord, values: LegacyRecord): boolean;
+  export function isFieldEnabled(field: LegacyUnknownRecord, values: LegacyUnknownRecord): boolean;
+  export function isFieldVisible(field: LegacyUnknownRecord, values: LegacyUnknownRecord): boolean;
   export function parseExpressionInput(
     text: unknown,
-    scene: any
+    scene: LegacySceneLike
   ): { ok: boolean; error?: string; value?: number | null; expr?: string | null; empty?: boolean };
 }
 
@@ -129,7 +159,7 @@ declare module '*js/modes/DemoMode.js' {
   export const DEMO_MIN_ZOOM: number;
   export const DEMO_ZOOM_STEP: number;
   export function applyDemoZoomToScene(
-    scene: LegacyRecord,
+    scene: LegacySceneLike,
     options?: { newPixelsPerMeter: number; anchorX?: number; anchorY?: number }
   ): boolean;
   export function getNextDemoZoom(
@@ -140,26 +170,26 @@ declare module '*js/modes/DemoMode.js' {
 }
 
 declare module '*js/modes/GeometryScaling.js' {
-  export function getObjectGeometryScale(object: LegacyRecord): number;
-  export function getObjectRealDimension(object: LegacyRecord, key: string, scene: LegacyRecord): number | null;
+  export function getObjectGeometryScale(object: LegacySceneObject): number;
+  export function getObjectRealDimension(object: LegacySceneObject, key: string, scene: LegacySceneLike): number | null;
   export function isGeometryDimensionKey(key: unknown): boolean;
   export function setObjectDisplayDimension(
-    object: LegacyRecord,
+    object: LegacySceneObject,
     key: string,
     displayValue: number,
-    scene: LegacyRecord
+    scene: LegacySceneLike
   ): boolean;
   export function setObjectRealDimension(
-    object: LegacyRecord,
+    object: LegacySceneObject,
     key: string,
     realValue: number,
-    scene: LegacyRecord
+    scene: LegacySceneLike
   ): boolean;
-  export function syncObjectDisplayGeometry(object: LegacyRecord, scene: LegacyRecord): boolean;
+  export function syncObjectDisplayGeometry(object: LegacySceneObject, scene: LegacySceneLike): boolean;
 }
 
 declare module '*js/presets/Presets.js' {
   export class Presets {
-    static get(name: string): { name: string; data: LegacyRecord } | null | undefined;
+    static get(name: string): { name: string; data: LegacyUnknownRecord } | null | undefined;
   }
 }
