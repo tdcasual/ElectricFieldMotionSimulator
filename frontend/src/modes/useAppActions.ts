@@ -82,14 +82,22 @@ export function useAppActions(options: UseAppActionsOptions) {
     return true;
   }
 
+  function promptSceneName(message: string, fallback: string) {
+    try {
+      return window.prompt(message, fallback);
+    } catch {
+      return null;
+    }
+  }
+
   function saveScene() {
-    const sceneName = window.prompt('请输入场景名称:', 'my-scene');
+    const sceneName = promptSceneName('请输入场景名称:', 'my-scene');
     if (!sceneName) return false;
     return simulatorStore.saveScene(sceneName);
   }
 
   function loadScene() {
-    const sceneName = window.prompt('请输入要加载的场景名称:', 'my-scene');
+    const sceneName = promptSceneName('请输入要加载的场景名称:', 'my-scene');
     if (!sceneName) return false;
     return simulatorStore.loadScene(sceneName);
   }

@@ -128,6 +128,42 @@ describe('useAppActions', () => {
     expect(simulatorStore.clearScene).toHaveBeenCalledTimes(1);
   });
 
+  it('saveScene tolerates prompt errors and returns false', () => {
+    const simulatorStore = createStore();
+    vi.spyOn(window, 'prompt').mockImplementation(() => {
+      throw new Error('prompt blocked');
+    });
+
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets: vi.fn(),
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    expect(() => actions.saveScene()).not.toThrow();
+    expect(actions.saveScene()).toBe(false);
+    expect(simulatorStore.saveScene).not.toHaveBeenCalled();
+  });
+
+  it('loadScene tolerates prompt errors and returns false', () => {
+    const simulatorStore = createStore();
+    vi.spyOn(window, 'prompt').mockImplementation(() => {
+      throw new Error('prompt blocked');
+    });
+
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets: vi.fn(),
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    expect(() => actions.loadScene()).not.toThrow();
+    expect(actions.loadScene()).toBe(false);
+    expect(simulatorStore.loadScene).not.toHaveBeenCalled();
+  });
+
   it('imports selected file and clears input value', async () => {
     const simulatorStore = createStore();
 
