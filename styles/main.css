@@ -909,6 +909,16 @@ body.light-theme .preset-btn:hover {
     justify-content: center;
 }
 
+#app.layout-phone #property-panel .panel-header {
+    padding-left: calc(var(--spacing-md) + var(--phone-safe-left-inset, 0px));
+    padding-right: calc(var(--spacing-md) + var(--phone-safe-right-inset, 0px));
+}
+
+#app.layout-phone #property-panel .panel-content {
+    padding-left: calc(var(--spacing-md) + var(--phone-safe-left-inset, 0px));
+    padding-right: calc(var(--spacing-md) + var(--phone-safe-right-inset, 0px));
+}
+
 #app.layout-phone #property-panel .property-section {
     margin-bottom: var(--phone-panel-section-gap);
 }

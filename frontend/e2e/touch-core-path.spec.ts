@@ -797,6 +797,59 @@ test('phone sheet body controls stay inside landscape safe-area insets', async (
   expect(controlRight).toBeLessThanOrEqual(rightSafeBound);
 });
 
+test('phone property panel controls stay inside landscape safe-area insets', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only property panel safe area check');
+  }
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.locator('#app').evaluate((element) => {
+    const app = element as HTMLElement;
+    app.style.setProperty('--phone-safe-left-inset', '44px');
+    app.style.setProperty('--phone-safe-right-inset', '44px');
+  });
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+  await openPropertyPanelFromActionBar(page);
+
+  const closeButton = page.locator('#close-panel-btn');
+  const densityButton = page.locator('[data-testid="density-toggle"]');
+  const firstToggle = page.locator('#property-panel .section-toggle').first();
+  await expect(closeButton).toBeVisible();
+  await expect(densityButton).toBeVisible();
+  await expect(firstToggle).toBeVisible();
+
+  const closeBox = await closeButton.boundingBox();
+  const densityBox = await densityButton.boundingBox();
+  const toggleBox = await firstToggle.boundingBox();
+  expect(closeBox).not.toBeNull();
+  expect(densityBox).not.toBeNull();
+  expect(toggleBox).not.toBeNull();
+
+  const safeInset = 44;
+  const rightSafeBound = 844 - safeInset;
+  const closeRight = closeBox!.x + closeBox!.width;
+  const densityRight = densityBox!.x + densityBox!.width;
+  const toggleRight = toggleBox!.x + toggleBox!.width;
+
+  expect(closeBox!.x).toBeGreaterThanOrEqual(safeInset);
+  expect(closeRight).toBeLessThanOrEqual(rightSafeBound);
+  expect(densityBox!.x).toBeGreaterThanOrEqual(safeInset);
+  expect(densityRight).toBeLessThanOrEqual(rightSafeBound);
+  expect(toggleBox!.x).toBeGreaterThanOrEqual(safeInset);
+  expect(toggleRight).toBeLessThanOrEqual(rightSafeBound);
+});
+
 test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
