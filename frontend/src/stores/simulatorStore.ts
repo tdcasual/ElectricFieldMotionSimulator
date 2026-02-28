@@ -24,6 +24,7 @@ type ToolbarGroup = {
 
 export type LayoutMode = 'desktop' | 'tablet' | 'phone';
 export type ActiveDrawer = 'property' | 'variables' | 'markdown' | null;
+export type PhoneDensityMode = 'compact' | 'comfortable';
 
 const CATEGORY_LABELS: Record<string, string> = {
   electric: '电场',
@@ -94,6 +95,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const runtimeMounted = ref(false);
   const hostMode = ref<EmbedMode>('edit');
   const layoutMode = ref<LayoutMode>('desktop');
+  const phoneDensityMode = ref<PhoneDensityMode>('compact');
 
   const toolbarGroups = ref<ToolbarGroup[]>(buildToolbarGroups());
 
@@ -210,6 +212,27 @@ export const useSimulatorStore = defineStore('simulator', () => {
       window.localStorage.setItem('sim.markdown.content', markdownContent.value);
       window.localStorage.setItem('sim.markdown.mode', markdownMode.value);
       window.localStorage.setItem('sim.markdown.fontSize', String(markdownFontSize.value));
+    } catch {
+      // ignore persistence errors
+    }
+  }
+
+  function loadPhoneDensityPreference() {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('sim.ui.phoneDensity');
+      if (raw === 'compact' || raw === 'comfortable') {
+        phoneDensityMode.value = raw;
+      }
+    } catch {
+      phoneDensityMode.value = 'compact';
+    }
+  }
+
+  function persistPhoneDensityPreference() {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('sim.ui.phoneDensity', phoneDensityMode.value);
     } catch {
       // ignore persistence errors
     }
@@ -337,6 +360,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   loadMarkdownPreferences();
   loadClassroomPreference();
+  loadPhoneDensityPreference();
 
   function setClassroomMode(next: boolean) {
     classroomMode.value = !!next;
@@ -345,6 +369,15 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   function toggleClassroomMode() {
     setClassroomMode(!classroomMode.value);
+  }
+
+  function setPhoneDensityMode(next: PhoneDensityMode) {
+    phoneDensityMode.value = next === 'comfortable' ? 'comfortable' : 'compact';
+    persistPhoneDensityPreference();
+  }
+
+  function togglePhoneDensityMode() {
+    setPhoneDensityMode(phoneDensityMode.value === 'compact' ? 'comfortable' : 'compact');
   }
 
   function getRuntime() {
@@ -591,6 +624,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     toolbarGroups,
     hostMode,
     layoutMode,
+    phoneDensityMode,
     classroomMode,
     activeDrawer,
     viewMode,
@@ -625,6 +659,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
     unmountRuntime,
     setHostMode,
     setLayoutMode,
+    setPhoneDensityMode,
+    togglePhoneDensityMode,
     setClassroomMode,
     toggleClassroomMode,
     loadSceneData,
