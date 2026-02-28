@@ -11,6 +11,7 @@ import PhoneSceneSheet from './components/PhoneSceneSheet.vue';
 import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import SceneSettingsControls from './components/SceneSettingsControls.vue';
+import SelectionContextMenu from './components/SelectionContextMenu.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
 import { useAppActions } from './modes/useAppActions';
@@ -320,11 +321,11 @@ onBeforeUnmount(() => {
       <span id="particle-count">粒子: {{ simulatorStore.particleCount }}</span>
     </footer>
 
-    <div v-if="showAuthoringControls" id="context-menu" class="context-menu" style="display: none">
-      <div id="menu-properties" class="menu-item" @click="openSelectedProperties">⚙️ 属性</div>
-      <div id="menu-duplicate" class="menu-item" @click="duplicateSelected">📋 复制</div>
-      <div class="menu-separator"></div>
-      <div id="menu-delete" class="menu-item" @click="deleteSelected">🗑️ 删除</div>
-    </div>
+    <SelectionContextMenu
+      v-if="showAuthoringControls"
+      @open-properties="openSelectedProperties"
+      @duplicate="duplicateSelected"
+      @delete="deleteSelected"
+    />
   </div>
 </template>
