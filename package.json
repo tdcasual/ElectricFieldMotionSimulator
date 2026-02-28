@@ -12,8 +12,9 @@
     "package:embed": "npm run build:frontend && node scripts/embed-packager.mjs",
     "test:frontend": "vitest --config frontend/vite.config.ts run",
     "lint:frontend": "eslint \"frontend/src/**/*.ts\" \"frontend/test/**/*.ts\"",
+    "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "test:e2e": "playwright test -c frontend/playwright.config.ts",
-    "quality:all": "npm run lint:frontend && npm test && npm run test:frontend && npm run test:e2e"
+    "quality:all": "npm run lint:frontend && npm run typecheck:frontend && npm test && npm run test:frontend && npm run test:e2e"
   },
   "dependencies": {
     "katex": "^0.16.33",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@playwright/test": "^1.55.1",
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/node": "^25.3.2",
     "@typescript-eslint/parser": "^8.42.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/test-utils": "^2.4.6",
