@@ -20,7 +20,6 @@ const DEMO_PX_DEFAULT_KEYS = new Set([
   'spotSize',
   'lineWidth',
   'particleRadius',
-  'barrelLength',
   'emissionSpeed',
   'speedMin',
   'speedMax'

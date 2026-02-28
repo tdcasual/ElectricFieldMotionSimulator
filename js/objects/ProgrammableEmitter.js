@@ -13,7 +13,6 @@ export class ProgrammableEmitter extends BaseObject {
             y: 0,
             direction: 0,
             emissionSpeed: 200,
-            barrelLength: 25,
             startTime: 0,
             emissionMode: 'burst',
             emissionCount: 6,
@@ -220,7 +219,6 @@ export class ProgrammableEmitter extends BaseObject {
         // 发射位置与几何
         this.direction = config.direction ?? 0; // 度，0=向右，90=向下
         this.emissionSpeed = config.emissionSpeed ?? 200; // px/s
-        this.barrelLength = config.barrelLength ?? 25; // 兼容字段：点发射模式下不再影响发射位置
 
         // 时间计划
         this.startTime = config.startTime ?? 0; // s
@@ -497,7 +495,6 @@ export class ProgrammableEmitter extends BaseObject {
             ...super.serialize(),
             direction: this.direction,
             emissionSpeed: this.emissionSpeed,
-            barrelLength: this.barrelLength,
             startTime: this.startTime,
             emissionMode: this.emissionMode,
             emissionCount: this.emissionCount,
@@ -528,7 +525,6 @@ export class ProgrammableEmitter extends BaseObject {
         super.deserialize(data);
         this.direction = data.direction ?? this.direction ?? 0;
         this.emissionSpeed = data.emissionSpeed ?? this.emissionSpeed ?? 0;
-        this.barrelLength = data.barrelLength ?? this.barrelLength ?? 25;
         this.startTime = data.startTime ?? this.startTime ?? 0;
         this.emissionMode = data.emissionMode || this.emissionMode || 'burst';
         this.emissionCount = data.emissionCount ?? this.emissionCount ?? 0;

@@ -8,7 +8,6 @@ const DEMO_UNIT_FIELD_KEYS = new Set([
   'radius',
   'length',
   'plateDistance',
-  'barrelLength',
   'depth',
   'viewGap',
   'spotSize',

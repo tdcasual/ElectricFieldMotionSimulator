@@ -8,8 +8,7 @@ export const GEOMETRY_DIMENSION_KEYS = [
   'viewGap',
   'spotSize',
   'lineWidth',
-  'particleRadius',
-  'barrelLength'
+  'particleRadius'
 ];
 
 const GEOMETRY_DIMENSION_KEY_SET = new Set(GEOMETRY_DIMENSION_KEYS);

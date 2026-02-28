@@ -16,8 +16,7 @@ const FIELD_LABELS: Record<string, string> = {
   viewGap: '视窗间距',
   spotSize: '光斑尺寸',
   lineWidth: '线宽',
-  particleRadius: '粒子半径',
-  barrelLength: '枪管长度'
+  particleRadius: '粒子半径'
 };
 
 function formatNumber(value: number, digits: number) {

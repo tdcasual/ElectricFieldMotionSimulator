@@ -11,7 +11,6 @@ test('ElectronGun emits particle from emitter center point', () => {
     x: 120,
     y: 80,
     direction: 45,
-    barrelLength: 999,
     emissionSpeed: 200
   });
 
@@ -21,6 +20,8 @@ test('ElectronGun emits particle from emitter center point', () => {
   const particle = scene.particles[0];
   assert.equal(particle.position.x, 120);
   assert.equal(particle.position.y, 80);
+  assert.equal(Object.prototype.hasOwnProperty.call(gun, 'barrelLength'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(gun.serialize(), 'barrelLength'), false);
 });
 
 test('ProgrammableEmitter emits particle from emitter center point', () => {
@@ -29,7 +30,6 @@ test('ProgrammableEmitter emits particle from emitter center point', () => {
     x: 33,
     y: 44,
     direction: 270,
-    barrelLength: 777,
     emissionSpeed: 300
   });
 
@@ -39,4 +39,6 @@ test('ProgrammableEmitter emits particle from emitter center point', () => {
   const particle = scene.particles[0];
   assert.equal(particle.position.x, 33);
   assert.equal(particle.position.y, 44);
+  assert.equal(Object.prototype.hasOwnProperty.call(emitter, 'barrelLength'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(emitter.serialize(), 'barrelLength'), false);
 });

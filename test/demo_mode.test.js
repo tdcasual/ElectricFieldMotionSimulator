@@ -89,13 +89,13 @@ test('demo overrides keep electron-gun and programmable-emitter launch angle at 
   assert.ok(emitter.emissionCount > 0);
 });
 
-test('demo overrides normalize emitter barrelLength to unit baseline', async () => {
+test('demo overrides no longer expose legacy barrelLength for emitters', async () => {
   const { registry } = await import('../js/core/registerObjects.js');
   const gun = buildDemoCreationOverrides(registry.get('electron-gun'), 50);
   const emitter = buildDemoCreationOverrides(registry.get('programmable-emitter'), 50);
 
-  assert.equal(gun.barrelLength, 50);
-  assert.equal(emitter.barrelLength, 50);
+  assert.equal(Object.prototype.hasOwnProperty.call(gun, 'barrelLength'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(emitter, 'barrelLength'), false);
 });
 
 test('getNextDemoZoom applies wheel direction and clamps to bounds', () => {
@@ -148,7 +148,7 @@ test('applyDemoZoomToScene rescales objects around anchor and updates scene scal
   closeTo(field.height, 20);
 });
 
-test('applyDemoZoomToScene rescales emitter barrelLength with display scale', () => {
+test('applyDemoZoomToScene does not synthesize legacy barrelLength on emitters', () => {
   const scene = new Scene();
   scene.settings.pixelsPerMeter = 50;
 
@@ -164,6 +164,6 @@ test('applyDemoZoomToScene rescales emitter barrelLength with display scale', ()
   });
 
   assert.equal(changed, true);
-  assert.equal(gun.barrelLength, 50);
-  assert.equal(emitter.barrelLength, 50);
+  assert.equal(Object.prototype.hasOwnProperty.call(gun, 'barrelLength'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(emitter, 'barrelLength'), false);
 });

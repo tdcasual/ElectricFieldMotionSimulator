@@ -14,7 +14,6 @@ export class ElectronGun extends BaseObject {
             direction: 0,
             emissionRate: 1,
             emissionSpeed: 200,
-            barrelLength: 25,
             showVelocity: false,
             velocityDisplayMode: 'vector',
             showEnergy: false,
@@ -111,7 +110,6 @@ export class ElectronGun extends BaseObject {
         this.direction = config.direction ?? 0; // 发射方向（度），0=向右，90=向下
         this.emissionRate = config.emissionRate ?? 1; // 粒子/秒
         this.emissionSpeed = config.emissionSpeed ?? 200; // 初速度大小（px/s）
-        this.barrelLength = config.barrelLength ?? 25; // 兼容字段：点发射模式下不再影响发射位置
 
         // 显示配置（用于画布叠加信息）
         this.showVelocity = config.showVelocity ?? false;
@@ -207,7 +205,6 @@ export class ElectronGun extends BaseObject {
             direction: this.direction,
             emissionRate: this.emissionRate,
             emissionSpeed: this.emissionSpeed,
-            barrelLength: this.barrelLength,
             showVelocity: this.showVelocity,
             velocityDisplayMode: this.velocityDisplayMode,
             showEnergy: this.showEnergy,
@@ -224,7 +221,6 @@ export class ElectronGun extends BaseObject {
         this.direction = data.direction ?? 0;
         this.emissionRate = data.emissionRate ?? 0;
         this.emissionSpeed = data.emissionSpeed ?? 0;
-        this.barrelLength = data.barrelLength ?? 25;
         this.showVelocity = data.showVelocity ?? this.showVelocity ?? false;
         const velocityMode = data.velocityDisplayMode || data.velocityDisplay || this.velocityDisplayMode || 'vector';
         this.velocityDisplayMode = velocityMode === 'speed' ? 'speed' : 'vector';

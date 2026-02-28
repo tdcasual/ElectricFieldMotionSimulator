@@ -53,8 +53,7 @@ const RESIZE_SCALE_DIMENSION_PREFERENCE = [
     'viewGap',
     'spotSize',
     'lineWidth',
-    'particleRadius',
-    'barrelLength'
+    'particleRadius'
 ];
 const RESET_TAP_CHAIN_EVENT = 'simulator-reset-tap-chain';
 
