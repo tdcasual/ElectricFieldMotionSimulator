@@ -7,6 +7,7 @@ import PhoneAddSheet from './components/PhoneAddSheet.vue';
 import PhoneBottomNav from './components/PhoneBottomNav.vue';
 import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
+import SceneSettingsControls from './components/SceneSettingsControls.vue';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
 import { useAppActions } from './modes/useAppActions';
@@ -269,67 +270,23 @@ onBeforeUnmount(() => {
           id="header-settings-panel"
           class="header-settings"
         >
-          <label class="control-label">
-            <span>显示能量:</span>
-            <input id="toggle-energy-overlay" type="checkbox" :checked="simulatorStore.showEnergyOverlay" @change="setShowEnergy" />
-          </label>
-          <label class="control-label">
-            <span>比例尺: 1m =</span>
-            <input
-              id="scale-px-per-meter"
-              type="number"
-              min="0.0001"
-              step="1"
-              :value="simulatorStore.pixelsPerMeter"
-              :disabled="simulatorStore.demoMode"
-              @change="setPixelsPerMeter"
-            />
-            <span>px</span>
-          </label>
-          <label class="control-label">
-            <span>重力 g:</span>
-            <input
-              id="gravity-input"
-              type="number"
-              min="0"
-              step="0.1"
-              :value="simulatorStore.gravity"
-              :disabled="simulatorStore.demoMode"
-              @change="setGravity"
-            />
-            <span>m/s²</span>
-          </label>
-          <label class="control-label">
-            <span>边界:</span>
-            <select id="boundary-mode-select" aria-label="边界处理方式" :value="simulatorStore.boundaryMode" @change="setBoundaryMode">
-              <option value="margin">缓冲消失</option>
-              <option value="remove">出界消失</option>
-              <option value="bounce">反弹</option>
-              <option value="wrap">穿越</option>
-            </select>
-          </label>
-          <label
-            id="boundary-margin-control"
-            class="control-label"
-            :style="{ display: simulatorStore.showBoundaryMarginControl ? '' : 'none' }"
-          >
-            <span>缓冲:</span>
-            <input id="boundary-margin-input" type="number" min="0" step="10" :value="simulatorStore.boundaryMargin" @change="setBoundaryMargin" />
-            <span>px</span>
-          </label>
-          <label class="control-label">
-            <span>时间步长:</span>
-            <input
-              id="timestep-slider"
-              type="range"
-              min="0.001"
-              max="0.05"
-              step="0.001"
-              :value="simulatorStore.timeStep"
-              @input="setTimeStep"
-            />
-            <span id="timestep-value">{{ simulatorStore.timeStepLabel }}</span>
-          </label>
+          <SceneSettingsControls
+            :show-energy-overlay="simulatorStore.showEnergyOverlay"
+            :pixels-per-meter="simulatorStore.pixelsPerMeter"
+            :gravity="simulatorStore.gravity"
+            :boundary-mode="simulatorStore.boundaryMode"
+            :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
+            :boundary-margin="simulatorStore.boundaryMargin"
+            :time-step="simulatorStore.timeStep"
+            :time-step-label="simulatorStore.timeStepLabel"
+            :demo-mode="simulatorStore.demoMode"
+            @set-show-energy="setShowEnergy"
+            @set-pixels-per-meter="setPixelsPerMeter"
+            @set-gravity="setGravity"
+            @set-boundary-mode="setBoundaryMode"
+            @set-boundary-margin="setBoundaryMargin"
+            @set-time-step="setTimeStep"
+          />
         </div>
       </div>
     </header>
@@ -379,67 +336,23 @@ onBeforeUnmount(() => {
         <button type="button" class="btn-icon" aria-label="关闭场景参数面板" @click="closePhoneSheets">✖</button>
       </div>
       <div class="phone-sheet-body phone-scene-body">
-        <label class="control-label">
-          <span>显示能量:</span>
-          <input id="toggle-energy-overlay" type="checkbox" :checked="simulatorStore.showEnergyOverlay" @change="setShowEnergy" />
-        </label>
-        <label class="control-label">
-          <span>比例尺: 1m =</span>
-          <input
-            id="scale-px-per-meter"
-            type="number"
-            min="0.0001"
-            step="1"
-            :value="simulatorStore.pixelsPerMeter"
-            :disabled="simulatorStore.demoMode"
-            @change="setPixelsPerMeter"
-          />
-          <span>px</span>
-        </label>
-        <label class="control-label">
-          <span>重力 g:</span>
-          <input
-            id="gravity-input"
-            type="number"
-            min="0"
-            step="0.1"
-            :value="simulatorStore.gravity"
-            :disabled="simulatorStore.demoMode"
-            @change="setGravity"
-          />
-          <span>m/s²</span>
-        </label>
-        <label class="control-label">
-          <span>边界:</span>
-          <select id="boundary-mode-select" aria-label="边界处理方式" :value="simulatorStore.boundaryMode" @change="setBoundaryMode">
-            <option value="margin">缓冲消失</option>
-            <option value="remove">出界消失</option>
-            <option value="bounce">反弹</option>
-            <option value="wrap">穿越</option>
-          </select>
-        </label>
-        <label
-          id="boundary-margin-control"
-          class="control-label"
-          :style="{ display: simulatorStore.showBoundaryMarginControl ? '' : 'none' }"
-        >
-          <span>缓冲:</span>
-          <input id="boundary-margin-input" type="number" min="0" step="10" :value="simulatorStore.boundaryMargin" @change="setBoundaryMargin" />
-          <span>px</span>
-        </label>
-        <label class="control-label">
-          <span>时间步长:</span>
-          <input
-            id="timestep-slider"
-            type="range"
-            min="0.001"
-            max="0.05"
-            step="0.001"
-            :value="simulatorStore.timeStep"
-            @input="setTimeStep"
-          />
-          <span id="timestep-value">{{ simulatorStore.timeStepLabel }}</span>
-        </label>
+        <SceneSettingsControls
+          :show-energy-overlay="simulatorStore.showEnergyOverlay"
+          :pixels-per-meter="simulatorStore.pixelsPerMeter"
+          :gravity="simulatorStore.gravity"
+          :boundary-mode="simulatorStore.boundaryMode"
+          :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
+          :boundary-margin="simulatorStore.boundaryMargin"
+          :time-step="simulatorStore.timeStep"
+          :time-step-label="simulatorStore.timeStepLabel"
+          :demo-mode="simulatorStore.demoMode"
+          @set-show-energy="setShowEnergy"
+          @set-pixels-per-meter="setPixelsPerMeter"
+          @set-gravity="setGravity"
+          @set-boundary-mode="setBoundaryMode"
+          @set-boundary-margin="setBoundaryMargin"
+          @set-time-step="setTimeStep"
+        />
       </div>
     </section>
     <section
