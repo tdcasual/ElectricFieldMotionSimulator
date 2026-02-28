@@ -741,7 +741,8 @@ body.light-theme .preset-btn:hover {
 }
 
 #app.layout-phone {
-    --header-height: 96px;
+    --phone-safe-top-inset: env(safe-area-inset-top, 0px);
+    --header-height: calc(96px + var(--phone-safe-top-inset));
     --phone-bottom-bar-height: 60px;
     --phone-safe-bottom-inset: env(safe-area-inset-bottom, 0px);
     --phone-panel-section-gap: 6px;
@@ -792,7 +793,7 @@ body.light-theme .preset-btn:hover {
 }
 
 #app.layout-phone #header {
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: calc(var(--spacing-xs) + var(--phone-safe-top-inset)) var(--spacing-sm) var(--spacing-xs);
 }
 
 #app.layout-phone #header h1 {
@@ -896,6 +897,31 @@ body.light-theme .preset-btn:hover {
 
 #app.layout-phone #canvas-area {
     padding-bottom: calc(var(--phone-bottom-bar-height) + var(--phone-safe-bottom-inset, 0px));
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+    #app.layout-phone {
+        --header-height: calc(72px + var(--phone-safe-top-inset));
+        --phone-bottom-bar-height: 52px;
+    }
+
+    #app.layout-phone .phone-status-strip {
+        font-size: 10px;
+    }
+
+    .phone-bottom-nav {
+        gap: 3px;
+        padding: 4px 4px calc(4px + var(--phone-safe-bottom-inset, 0px));
+    }
+
+    .phone-nav-btn {
+        min-height: 32px;
+        font-size: 11px;
+    }
+
+    .phone-sheet {
+        max-height: min(82vh, 420px);
+    }
 }
 
 #app.classroom-mode:not(.layout-phone) {
