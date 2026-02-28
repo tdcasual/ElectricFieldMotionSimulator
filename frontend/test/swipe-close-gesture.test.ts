@@ -119,4 +119,29 @@ describe('swipeCloseGesture', () => {
 
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('dispose detaches document listeners and resets pending swipe state', () => {
+    const closeSpy = vi.fn();
+    const gesture = createSwipeCloseGesture(closeSpy);
+    const header = document.createElement('div');
+
+    gesture.onPointerDown({
+      pointerType: 'touch',
+      pointerId: 9,
+      clientX: 40,
+      clientY: 40,
+      currentTarget: header
+    });
+
+    gesture.dispose();
+
+    const pointerUp = new Event('pointerup', { bubbles: true, cancelable: true });
+    Object.defineProperty(pointerUp, 'pointerType', { value: 'touch' });
+    Object.defineProperty(pointerUp, 'pointerId', { value: 9 });
+    Object.defineProperty(pointerUp, 'clientX', { value: 42 });
+    Object.defineProperty(pointerUp, 'clientY', { value: 200 });
+    document.dispatchEvent(pointerUp);
+
+    expect(closeSpy).toHaveBeenCalledTimes(0);
+  });
 });

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeUnmount } from 'vue';
 import { createSwipeCloseGesture } from '../utils/swipeCloseGesture';
 
 const emit = defineEmits<{
@@ -15,6 +16,10 @@ const emit = defineEmits<{
 
 const swipeGesture = createSwipeCloseGesture(() => {
   emit('close');
+});
+
+onBeforeUnmount(() => {
+  swipeGesture.dispose();
 });
 </script>
 

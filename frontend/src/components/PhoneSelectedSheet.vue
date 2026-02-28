@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import { createSwipeCloseGesture } from '../utils/swipeCloseGesture';
 
 type PhoneGeometryRow = {
@@ -35,6 +35,10 @@ const emit = defineEmits<{
 }>();
 const sheetSwipeGesture = createSwipeCloseGesture(() => {
   emit('close');
+});
+
+onBeforeUnmount(() => {
+  sheetSwipeGesture.dispose();
 });
 
 const scaleLabel = computed(() => {

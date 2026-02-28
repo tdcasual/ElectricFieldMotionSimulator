@@ -115,6 +115,7 @@ export function createSwipeCloseGesture(onClose: () => void, options: SwipeClose
   return {
     onPointerDown,
     onPointerUp,
-    onPointerCancel
+    onPointerCancel,
+    dispose: resetGestureState
   };
 }

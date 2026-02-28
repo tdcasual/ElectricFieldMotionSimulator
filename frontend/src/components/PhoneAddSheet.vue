@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeUnmount } from 'vue';
 import ToolbarPanel from './ToolbarPanel.vue';
 import { createSwipeCloseGesture } from '../utils/swipeCloseGesture';
 
@@ -26,6 +27,10 @@ const emit = defineEmits<{
 
 const sheetSwipeGesture = createSwipeCloseGesture(() => {
   emit('close');
+});
+
+onBeforeUnmount(() => {
+  sheetSwipeGesture.dispose();
 });
 </script>
 
