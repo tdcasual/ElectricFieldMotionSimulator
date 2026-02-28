@@ -5,6 +5,8 @@ import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
 import PhoneAddSheet from './components/PhoneAddSheet.vue';
 import PhoneBottomNav from './components/PhoneBottomNav.vue';
+import PhoneMoreSheet from './components/PhoneMoreSheet.vue';
+import PhoneSceneSheet from './components/PhoneSceneSheet.vue';
 import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import SceneSettingsControls from './components/SceneSettingsControls.vue';
@@ -15,7 +17,6 @@ import { useAppUiState } from './modes/useAppUiState';
 import { usePhoneSheets } from './modes/usePhoneSheets';
 import { useViewportLayout } from './modes/useViewportLayout';
 import { useSimulatorStore } from './stores/simulatorStore';
-import { createSwipeCloseGesture } from './utils/swipeCloseGesture';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
@@ -49,9 +50,6 @@ const {
   isPhoneLayout,
   phoneAnySheetOpen,
   isCoarsePointer
-});
-const phoneSheetSwipeGesture = createSwipeCloseGesture(() => {
-  closePhoneSheets();
 });
 const {
   togglePlayPause,
@@ -276,67 +274,37 @@ onBeforeUnmount(() => {
       @delete="deleteSelectedFromPhoneSheet"
       @update-value="applyPhoneSelectedQuickValue"
     />
-    <section
+    <PhoneSceneSheet
       v-if="showAuthoringControls && isPhoneLayout && phoneSceneSheetOpen"
-      class="phone-sheet phone-scene-sheet"
-      data-testid="phone-scene-sheet"
-      aria-label="场景参数面板"
-    >
-      <div
-        class="phone-sheet-header"
-        @pointerdown="phoneSheetSwipeGesture.onPointerDown"
-        @pointerup="phoneSheetSwipeGesture.onPointerUp"
-        @pointercancel="phoneSheetSwipeGesture.onPointerCancel"
-      >
-        <h3>场景参数</h3>
-        <button type="button" class="btn-icon" aria-label="关闭场景参数面板" @click="closePhoneSheets">✖</button>
-      </div>
-      <div class="phone-sheet-body phone-scene-body">
-        <SceneSettingsControls
-          :show-energy-overlay="simulatorStore.showEnergyOverlay"
-          :pixels-per-meter="simulatorStore.pixelsPerMeter"
-          :gravity="simulatorStore.gravity"
-          :boundary-mode="simulatorStore.boundaryMode"
-          :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
-          :boundary-margin="simulatorStore.boundaryMargin"
-          :time-step="simulatorStore.timeStep"
-          :time-step-label="simulatorStore.timeStepLabel"
-          :demo-mode="simulatorStore.demoMode"
-          @set-show-energy="setShowEnergy"
-          @set-pixels-per-meter="setPixelsPerMeter"
-          @set-gravity="setGravity"
-          @set-boundary-mode="setBoundaryMode"
-          @set-boundary-margin="setBoundaryMargin"
-          @set-time-step="setTimeStep"
-        />
-      </div>
-    </section>
-    <section
+      :show-energy-overlay="simulatorStore.showEnergyOverlay"
+      :pixels-per-meter="simulatorStore.pixelsPerMeter"
+      :gravity="simulatorStore.gravity"
+      :boundary-mode="simulatorStore.boundaryMode"
+      :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
+      :boundary-margin="simulatorStore.boundaryMargin"
+      :time-step="simulatorStore.timeStep"
+      :time-step-label="simulatorStore.timeStepLabel"
+      :demo-mode="simulatorStore.demoMode"
+      @close="closePhoneSheets"
+      @set-show-energy="setShowEnergy"
+      @set-pixels-per-meter="setPixelsPerMeter"
+      @set-gravity="setGravity"
+      @set-boundary-mode="setBoundaryMode"
+      @set-boundary-margin="setBoundaryMargin"
+      @set-time-step="setTimeStep"
+    />
+    <PhoneMoreSheet
       v-if="showAuthoringControls && isPhoneLayout && phoneMoreSheetOpen"
-      class="phone-sheet phone-more-sheet"
-      data-testid="phone-more-sheet"
-      aria-label="更多操作面板"
-    >
-      <div
-        class="phone-sheet-header"
-        @pointerdown="phoneSheetSwipeGesture.onPointerDown"
-        @pointerup="phoneSheetSwipeGesture.onPointerUp"
-        @pointercancel="phoneSheetSwipeGesture.onPointerCancel"
-      >
-        <h3>更多操作</h3>
-        <button type="button" class="btn-icon" aria-label="关闭更多操作面板" @click="closePhoneSheets">✖</button>
-      </div>
-      <div class="phone-sheet-body phone-more-body">
-        <button id="secondary-export-btn" class="btn" type="button" @click="exportSceneFromPhoneMore">📤 导出场景</button>
-        <button id="secondary-import-btn" class="btn" type="button" @click="openImportDialogFromPhoneMore">📥 导入场景</button>
-        <button id="secondary-theme-btn" class="btn" type="button" @click="toggleThemeFromPhoneMore">🌙 切换主题</button>
-        <button id="secondary-save-btn" class="btn" type="button" @click="saveSceneFromPhoneMore">💾 保存场景</button>
-        <button id="secondary-load-btn" class="btn" type="button" @click="loadSceneFromPhoneMore">📂 读取场景</button>
-        <button id="secondary-clear-btn" class="btn" type="button" @click="clearSceneFromPhoneMore">🗑 清空场景</button>
-        <button id="secondary-variables-btn" class="btn" type="button" @click="openVariablesPanelFromPhoneMore">ƒx 变量表</button>
-        <button id="secondary-markdown-btn" class="btn" type="button" @click="toggleMarkdownBoardFromPhoneMore">📝 题板</button>
-      </div>
-    </section>
+      @close="closePhoneSheets"
+      @export-scene="exportSceneFromPhoneMore"
+      @open-import="openImportDialogFromPhoneMore"
+      @toggle-theme="toggleThemeFromPhoneMore"
+      @save-scene="saveSceneFromPhoneMore"
+      @load-scene="loadSceneFromPhoneMore"
+      @clear-scene="clearSceneFromPhoneMore"
+      @open-variables="openVariablesPanelFromPhoneMore"
+      @toggle-markdown="toggleMarkdownBoardFromPhoneMore"
+    />
     <button
       v-if="showAuthoringControls && isPhoneLayout && phoneAnySheetOpen"
       type="button"
