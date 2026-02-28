@@ -17,80 +17,19 @@ import { useSimulatorStore } from './stores/simulatorStore';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
-const {
-  phoneActiveSheet,
-  showAuthoringControls,
-  isPhoneLayout,
-  phoneAddSheetOpen,
-  phoneSelectedSheetOpen,
-  phoneSceneSheetOpen,
-  phoneMoreSheetOpen,
-  phoneAnySheetOpen,
-  closePhoneSheets,
-  setPhoneActiveSheet
-} = usePhoneSheets(simulatorStore);
+const { phoneActiveSheet, showAuthoringControls, isPhoneLayout, phoneAddSheetOpen, phoneSelectedSheetOpen, phoneSceneSheetOpen, phoneMoreSheetOpen, phoneAnySheetOpen, closePhoneSheets, setPhoneActiveSheet } =
+  usePhoneSheets(simulatorStore);
 const { isCoarsePointer, mountViewportLayout, unmountViewportLayout } = useViewportLayout({
   setLayoutMode: (mode) => simulatorStore.setLayoutMode(mode)
 });
-const {
-  phoneSelectedScale,
-  phoneSelectedGeometryRows,
-  propertyDrawerModel,
-  markdownBoardModel,
-  variablesPanelModel,
-  showObjectActionBar,
-  showPhoneBottomNav,
-  phoneDensityClass
-} = useAppUiState({
+const { phoneSelectedScale, phoneSelectedGeometryRows, propertyDrawerModel, markdownBoardModel, variablesPanelModel, showObjectActionBar, showPhoneBottomNav, phoneDensityClass } = useAppUiState({
   simulatorStore,
   showAuthoringControls,
   isPhoneLayout,
   phoneAnySheetOpen,
   isCoarsePointer
 });
-const {
-  togglePlayPause,
-  togglePlayPauseFromPhoneNav,
-  toggleDemoMode,
-  toggleMarkdownBoard,
-  resetScene,
-  clearScene,
-  saveScene,
-  loadScene,
-  exportScene,
-  openImportDialog,
-  handleImportChange,
-  toggleTheme,
-  setShowEnergy,
-  setPixelsPerMeter,
-  setGravity,
-  setBoundaryMode,
-  setBoundaryMargin,
-  setTimeStep,
-  openSelectedProperties,
-  duplicateSelected,
-  deleteSelected,
-  applyProperties,
-  openVariablesPanel,
-  applyVariables,
-  applyPhoneSelectedQuickValue,
-  createObjectFromToolbar,
-  loadPresetAndClose,
-  exportSceneFromPhoneMore,
-  openImportDialogFromPhoneMore,
-  toggleThemeFromPhoneMore,
-  saveSceneFromPhoneMore,
-  loadSceneFromPhoneMore,
-  clearSceneFromPhoneMore,
-  openVariablesPanelFromPhoneMore,
-  toggleMarkdownBoardFromPhoneMore,
-  openSelectedPropertiesFromPhoneSheet,
-  duplicateSelectedFromPhoneSheet,
-  deleteSelectedFromPhoneSheet,
-  openSelectedPropertiesFromActionBar,
-  duplicateSelectedFromActionBar,
-  deleteSelectedFromActionBar
-} = useAppActions({
+const appActions = useAppActions({
   simulatorStore,
   isPhoneLayout,
   closePhoneSheets,
@@ -144,18 +83,18 @@ onBeforeUnmount(() => {
           :demo-mode="simulatorStore.demoMode"
           :demo-button-title="simulatorStore.demoButtonTitle"
           :demo-button-label="simulatorStore.demoButtonLabel"
-          @toggle-play="togglePlayPause"
+          @toggle-play="appActions.togglePlayPause"
           @toggle-classroom="simulatorStore.toggleClassroomMode"
-          @reset-scene="resetScene"
-          @clear-scene="clearScene"
-          @save-scene="saveScene"
-          @load-scene="loadScene"
-          @export-scene="exportScene"
-          @open-import="openImportDialog"
-          @toggle-theme="toggleTheme"
-          @open-variables="openVariablesPanel"
-          @toggle-markdown="toggleMarkdownBoard"
-          @toggle-demo="toggleDemoMode"
+          @reset-scene="appActions.resetScene"
+          @clear-scene="appActions.clearScene"
+          @save-scene="appActions.saveScene"
+          @load-scene="appActions.loadScene"
+          @export-scene="appActions.exportScene"
+          @open-import="appActions.openImportDialog"
+          @toggle-theme="appActions.toggleTheme"
+          @open-variables="appActions.openVariablesPanel"
+          @toggle-markdown="appActions.toggleMarkdownBoard"
+          @toggle-demo="appActions.toggleDemoMode"
         />
         <input
           id="import-file-input"
@@ -163,7 +102,7 @@ onBeforeUnmount(() => {
           type="file"
           accept=".json"
           style="display: none"
-          @change="handleImportChange"
+          @change="appActions.handleImportChange"
         />
         <HeaderStatusAndSettings
           :is-phone-layout="isPhoneLayout"
@@ -180,12 +119,12 @@ onBeforeUnmount(() => {
           :time-step="simulatorStore.timeStep"
           :time-step-label="simulatorStore.timeStepLabel"
           :demo-mode="simulatorStore.demoMode"
-          @set-show-energy="setShowEnergy"
-          @set-pixels-per-meter="setPixelsPerMeter"
-          @set-gravity="setGravity"
-          @set-boundary-mode="setBoundaryMode"
-          @set-boundary-margin="setBoundaryMargin"
-          @set-time-step="setTimeStep"
+          @set-show-energy="appActions.setShowEnergy"
+          @set-pixels-per-meter="appActions.setPixelsPerMeter"
+          @set-gravity="appActions.setGravity"
+          @set-boundary-mode="appActions.setBoundaryMode"
+          @set-boundary-margin="appActions.setBoundaryMargin"
+          @set-time-step="appActions.setTimeStep"
         />
       </div>
     </header>
@@ -193,8 +132,8 @@ onBeforeUnmount(() => {
     <DesktopToolbarSidebar
       v-if="showAuthoringControls && !isPhoneLayout"
       :groups="simulatorStore.toolbarGroups"
-      @create="createObjectFromToolbar"
-      @load-preset="loadPresetAndClose"
+      @create="appActions.createObjectFromToolbar"
+      @load-preset="appActions.loadPresetAndClose"
     />
     <PhoneAuthoringSheets
       :show-authoring-controls="showAuthoringControls"
@@ -219,34 +158,34 @@ onBeforeUnmount(() => {
       :time-step-label="simulatorStore.timeStepLabel"
       :demo-mode="simulatorStore.demoMode"
       @close="closePhoneSheets"
-      @create-object="createObjectFromToolbar"
-      @load-preset="loadPresetAndClose"
-      @open-selected-properties="openSelectedPropertiesFromPhoneSheet"
-      @duplicate-selected="duplicateSelectedFromPhoneSheet"
-      @delete-selected="deleteSelectedFromPhoneSheet"
-      @update-phone-selected-value="applyPhoneSelectedQuickValue"
-      @set-show-energy="setShowEnergy"
-      @set-pixels-per-meter="setPixelsPerMeter"
-      @set-gravity="setGravity"
-      @set-boundary-mode="setBoundaryMode"
-      @set-boundary-margin="setBoundaryMargin"
-      @set-time-step="setTimeStep"
-      @export-scene="exportSceneFromPhoneMore"
-      @open-import="openImportDialogFromPhoneMore"
-      @toggle-theme="toggleThemeFromPhoneMore"
-      @save-scene="saveSceneFromPhoneMore"
-      @load-scene="loadSceneFromPhoneMore"
-      @clear-scene="clearSceneFromPhoneMore"
-      @open-variables="openVariablesPanelFromPhoneMore"
-      @toggle-markdown="toggleMarkdownBoardFromPhoneMore"
+      @create-object="appActions.createObjectFromToolbar"
+      @load-preset="appActions.loadPresetAndClose"
+      @open-selected-properties="appActions.openSelectedPropertiesFromPhoneSheet"
+      @duplicate-selected="appActions.duplicateSelectedFromPhoneSheet"
+      @delete-selected="appActions.deleteSelectedFromPhoneSheet"
+      @update-phone-selected-value="appActions.applyPhoneSelectedQuickValue"
+      @set-show-energy="appActions.setShowEnergy"
+      @set-pixels-per-meter="appActions.setPixelsPerMeter"
+      @set-gravity="appActions.setGravity"
+      @set-boundary-mode="appActions.setBoundaryMode"
+      @set-boundary-margin="appActions.setBoundaryMargin"
+      @set-time-step="appActions.setTimeStep"
+      @export-scene="appActions.exportSceneFromPhoneMore"
+      @open-import="appActions.openImportDialogFromPhoneMore"
+      @toggle-theme="appActions.toggleThemeFromPhoneMore"
+      @save-scene="appActions.saveSceneFromPhoneMore"
+      @load-scene="appActions.loadSceneFromPhoneMore"
+      @clear-scene="appActions.clearSceneFromPhoneMore"
+      @open-variables="appActions.openVariablesPanelFromPhoneMore"
+      @toggle-markdown="appActions.toggleMarkdownBoardFromPhoneMore"
     />
 
     <CanvasViewport :fps="simulatorStore.fps" />
     <ObjectActionBar
       v-if="showObjectActionBar"
-      @open-properties="openSelectedPropertiesFromActionBar"
-      @duplicate="duplicateSelectedFromActionBar"
-      @delete="deleteSelectedFromActionBar"
+      @open-properties="appActions.openSelectedPropertiesFromActionBar"
+      @duplicate="appActions.duplicateSelectedFromActionBar"
+      @delete="appActions.deleteSelectedFromActionBar"
     />
 
     <AuthoringPanels
@@ -265,13 +204,13 @@ onBeforeUnmount(() => {
       :variable-draft="simulatorStore.variableDraft"
       @update:property-drawer-model="propertyDrawerModel = $event"
       @toggle-density="simulatorStore.togglePhoneDensityMode"
-      @apply-properties="applyProperties"
+      @apply-properties="appActions.applyProperties"
       @update:markdown-board-model="markdownBoardModel = $event"
       @update:markdown-content="simulatorStore.setMarkdownContent"
       @update:markdown-mode="simulatorStore.setMarkdownMode"
       @update:markdown-font-size="simulatorStore.setMarkdownFontSize"
       @update:variables-panel-model="variablesPanelModel = $event"
-      @apply-variables="applyVariables"
+      @apply-variables="appActions.applyVariables"
     />
 
     <PhoneBottomNav
@@ -279,7 +218,7 @@ onBeforeUnmount(() => {
       :model-value="phoneActiveSheet"
       :running="simulatorStore.running"
       :has-selection="!!simulatorStore.selectedObjectId"
-      @toggle-play="togglePlayPauseFromPhoneNav"
+      @toggle-play="appActions.togglePlayPauseFromPhoneNav"
       @update:modelValue="setPhoneActiveSheet"
     />
 
@@ -291,9 +230,9 @@ onBeforeUnmount(() => {
 
     <SelectionContextMenu
       v-if="showAuthoringControls"
-      @open-properties="openSelectedProperties"
-      @duplicate="duplicateSelected"
-      @delete="deleteSelected"
+      @open-properties="appActions.openSelectedProperties"
+      @duplicate="appActions.duplicateSelected"
+      @delete="appActions.deleteSelected"
     />
   </div>
 </template>
