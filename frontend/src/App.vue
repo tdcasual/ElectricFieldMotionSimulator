@@ -6,11 +6,8 @@ import HeaderActionButtons from './components/HeaderActionButtons.vue';
 import HeaderStatusAndSettings from './components/HeaderStatusAndSettings.vue';
 import MarkdownBoard from './components/MarkdownBoard.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
-import PhoneAddSheet from './components/PhoneAddSheet.vue';
+import PhoneAuthoringSheets from './components/PhoneAuthoringSheets.vue';
 import PhoneBottomNav from './components/PhoneBottomNav.vue';
-import PhoneMoreSheet from './components/PhoneMoreSheet.vue';
-import PhoneSceneSheet from './components/PhoneSceneSheet.vue';
-import PhoneSelectedSheet from './components/PhoneSelectedSheet.vue';
 import PropertyDrawer from './components/PropertyDrawer.vue';
 import SelectionContextMenu from './components/SelectionContextMenu.vue';
 import VariablesPanel from './components/VariablesPanel.vue';
@@ -201,27 +198,19 @@ onBeforeUnmount(() => {
       @create="createObjectFromToolbar"
       @load-preset="loadPresetAndClose"
     />
-    <PhoneAddSheet
-      v-if="showAuthoringControls && isPhoneLayout && phoneAddSheetOpen"
-      :groups="simulatorStore.toolbarGroups"
-      @close="closePhoneSheets"
-      @create="createObjectFromToolbar"
-      @load-preset="loadPresetAndClose"
-    />
-    <PhoneSelectedSheet
-      v-if="showAuthoringControls && isPhoneLayout && phoneSelectedSheetOpen"
+    <PhoneAuthoringSheets
+      :show-authoring-controls="showAuthoringControls"
+      :is-phone-layout="isPhoneLayout"
+      :phone-add-sheet-open="phoneAddSheetOpen"
+      :phone-selected-sheet-open="phoneSelectedSheetOpen"
+      :phone-scene-sheet-open="phoneSceneSheetOpen"
+      :phone-more-sheet-open="phoneMoreSheetOpen"
+      :phone-any-sheet-open="phoneAnySheetOpen"
+      :toolbar-groups="simulatorStore.toolbarGroups"
       :selected-object-id="simulatorStore.selectedObjectId"
-      :title="simulatorStore.propertyTitle || '选中对象'"
-      :object-scale="phoneSelectedScale"
-      :geometry-rows="phoneSelectedGeometryRows"
-      @close="closePhoneSheets"
-      @open-properties="openSelectedPropertiesFromPhoneSheet"
-      @duplicate="duplicateSelectedFromPhoneSheet"
-      @delete="deleteSelectedFromPhoneSheet"
-      @update-value="applyPhoneSelectedQuickValue"
-    />
-    <PhoneSceneSheet
-      v-if="showAuthoringControls && isPhoneLayout && phoneSceneSheetOpen"
+      :property-title="simulatorStore.propertyTitle || '选中对象'"
+      :phone-selected-scale="phoneSelectedScale"
+      :phone-selected-geometry-rows="phoneSelectedGeometryRows"
       :show-energy-overlay="simulatorStore.showEnergyOverlay"
       :pixels-per-meter="simulatorStore.pixelsPerMeter"
       :gravity="simulatorStore.gravity"
@@ -232,16 +221,18 @@ onBeforeUnmount(() => {
       :time-step-label="simulatorStore.timeStepLabel"
       :demo-mode="simulatorStore.demoMode"
       @close="closePhoneSheets"
+      @create-object="createObjectFromToolbar"
+      @load-preset="loadPresetAndClose"
+      @open-selected-properties="openSelectedPropertiesFromPhoneSheet"
+      @duplicate-selected="duplicateSelectedFromPhoneSheet"
+      @delete-selected="deleteSelectedFromPhoneSheet"
+      @update-phone-selected-value="applyPhoneSelectedQuickValue"
       @set-show-energy="setShowEnergy"
       @set-pixels-per-meter="setPixelsPerMeter"
       @set-gravity="setGravity"
       @set-boundary-mode="setBoundaryMode"
       @set-boundary-margin="setBoundaryMargin"
       @set-time-step="setTimeStep"
-    />
-    <PhoneMoreSheet
-      v-if="showAuthoringControls && isPhoneLayout && phoneMoreSheetOpen"
-      @close="closePhoneSheets"
       @export-scene="exportSceneFromPhoneMore"
       @open-import="openImportDialogFromPhoneMore"
       @toggle-theme="toggleThemeFromPhoneMore"
@@ -251,13 +242,6 @@ onBeforeUnmount(() => {
       @open-variables="openVariablesPanelFromPhoneMore"
       @toggle-markdown="toggleMarkdownBoardFromPhoneMore"
     />
-    <button
-      v-if="showAuthoringControls && isPhoneLayout && phoneAnySheetOpen"
-      type="button"
-      class="phone-sheet-backdrop"
-      aria-label="关闭手机面板"
-      @click="closePhoneSheets"
-    ></button>
 
     <CanvasViewport :fps="simulatorStore.fps" />
     <ObjectActionBar
