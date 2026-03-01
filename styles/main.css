@@ -1033,7 +1033,13 @@ body.light-theme .preset-btn:hover {
     }
 
     .phone-sheet {
-        max-height: min(82vh, 420px);
+        max-height: min(
+            82vh,
+            420px,
+            calc(
+                100vh - var(--header-height) - var(--phone-bottom-bar-height, 72px) - var(--phone-safe-bottom-inset, 0px)
+            )
+        );
     }
 }
 
@@ -1206,7 +1212,13 @@ body.light-theme .preset-btn:hover {
     left: 0;
     right: 0;
     bottom: calc(var(--phone-bottom-bar-height, 72px) + var(--phone-safe-bottom-inset, 0px));
-    max-height: min(70vh, 520px);
+    max-height: min(
+        70vh,
+        520px,
+        calc(
+            100vh - var(--header-height) - var(--phone-bottom-bar-height, 72px) - var(--phone-safe-bottom-inset, 0px)
+        )
+    );
     display: flex;
     flex-direction: column;
     border-top: 1px solid var(--border-color);

@@ -1262,3 +1262,28 @@ test('orientation switch keeps variables backdrop close recoverable on phone', a
   await page.locator('#phone-nav-scene-btn').tap();
   await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
 });
+
+test('phone short landscape keeps scene sheet below header region', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only short-landscape overlap check');
+  }
+
+  await page.setViewportSize({ width: 744, height: 390 });
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+  await page.locator('#phone-nav-scene-btn').tap();
+  const sceneSheet = page.getByTestId('phone-scene-sheet');
+  await expect(sceneSheet).toBeVisible();
+
+  const header = page.locator('#header');
+  await expect(header).toBeVisible();
+  const headerBox = await header.boundingBox();
+  const sceneSheetBox = await sceneSheet.boundingBox();
+
+  expect(headerBox).not.toBeNull();
+  expect(sceneSheetBox).not.toBeNull();
+  const headerBottom = headerBox!.y + headerBox!.height;
+  expect(sceneSheetBox!.y).toBeGreaterThanOrEqual(headerBottom);
+});
