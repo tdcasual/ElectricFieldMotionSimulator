@@ -817,8 +817,7 @@ body.light-theme .preset-btn:hover {
     --phone-panel-input-height: 44px;
     --phone-panel-input-font-size: 16px;
     --phone-panel-textarea-height: 48px;
-    --phone-panel-checkbox-size: 18px;
-    --phone-panel-checkbox-margin-top: 6px;
+    --phone-panel-checkbox-size: 24px;
     --phone-panel-action-btn-height: 44px;
     --phone-panel-density-btn-height: 44px;
     --phone-panel-density-btn-font-size: 11px;
@@ -854,8 +853,7 @@ body.light-theme .preset-btn:hover {
     --phone-panel-input-height: 48px;
     --phone-panel-input-font-size: 16px;
     --phone-panel-textarea-height: 56px;
-    --phone-panel-checkbox-size: 20px;
-    --phone-panel-checkbox-margin-top: 8px;
+    --phone-panel-checkbox-size: 26px;
     --phone-panel-action-btn-height: 48px;
     --phone-panel-density-btn-height: 48px;
     --phone-panel-density-btn-font-size: 12px;
@@ -977,10 +975,22 @@ body.light-theme .preset-btn:hover {
     min-height: var(--phone-panel-textarea-height);
 }
 
-#app.layout-phone #property-panel .property-value input[type="checkbox"] {
+#app.layout-phone #property-panel .property-checkbox-field {
+    width: 100%;
+    min-height: var(--phone-panel-input-height);
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    touch-action: manipulation;
+}
+
+#app.layout-phone #property-panel .property-checkbox-input {
     width: var(--phone-panel-checkbox-size);
     height: var(--phone-panel-checkbox-size);
-    margin-top: var(--phone-panel-checkbox-margin-top);
+    margin: 0;
 }
 
 #app.layout-phone #property-panel .panel-header-actions .btn {

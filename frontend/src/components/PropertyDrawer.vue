@@ -226,13 +226,19 @@ const quickFields = computed<SchemaField[]>(() => {
                 <label :for="`quick-${field.key}`">{{ field.label ?? field.key }}</label>
               </dt>
               <dd class="property-value" data-testid="quick-field">
-                <input
+                <label
                   v-if="field.type === 'checkbox'"
-                  :id="`quick-${field.key}`"
-                  v-model="draft[field.key]"
-                  type="checkbox"
-                  :disabled="!isEnabled(field)"
-                />
+                  class="property-checkbox-field"
+                  :for="`quick-${field.key}`"
+                >
+                  <input
+                    :id="`quick-${field.key}`"
+                    v-model="draft[field.key]"
+                    class="property-checkbox-input"
+                    type="checkbox"
+                    :disabled="!isEnabled(field)"
+                  />
+                </label>
                 <select
                   v-else-if="field.type === 'select'"
                   :id="`quick-${field.key}`"
@@ -279,13 +285,19 @@ const quickFields = computed<SchemaField[]>(() => {
                   <label :for="`prop-${sectionIndex}-${field.key}`">{{ field.label ?? field.key }}</label>
                 </dt>
                 <dd class="property-value" :style="{ display: isVisible(field) ? '' : 'none' }">
-                  <input
+                  <label
                     v-if="field.type === 'checkbox'"
-                    :id="`prop-${sectionIndex}-${field.key}`"
-                    v-model="draft[field.key]"
-                    type="checkbox"
-                    :disabled="!isEnabled(field)"
-                  />
+                    class="property-checkbox-field"
+                    :for="`prop-${sectionIndex}-${field.key}`"
+                  >
+                    <input
+                      :id="`prop-${sectionIndex}-${field.key}`"
+                      v-model="draft[field.key]"
+                      class="property-checkbox-input"
+                      type="checkbox"
+                      :disabled="!isEnabled(field)"
+                    />
+                  </label>
                   <select
                     v-else-if="field.type === 'select'"
                     :id="`prop-${sectionIndex}-${field.key}`"

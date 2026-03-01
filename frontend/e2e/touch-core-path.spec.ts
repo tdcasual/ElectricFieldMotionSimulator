@@ -399,6 +399,51 @@ test('phone form inputs keep zoom-safe font size', async ({ page }, testInfo) =>
   expect(gravityFontSize).toBeGreaterThanOrEqual(16);
 });
 
+test('phone property checkbox rows expose a full-height tap target', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only checkbox ergonomics check');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+  await openPropertyPanelFromActionBar(page);
+
+  const checkboxField = page
+    .locator('#property-panel .property-checkbox-field:has(input[type="checkbox"]:not(:disabled))')
+    .first();
+  await expect(checkboxField).toBeVisible();
+  const checkboxInput = checkboxField.locator('input[type="checkbox"]').first();
+  await expect(checkboxInput).toBeVisible();
+  await checkboxField.scrollIntoViewIfNeeded();
+
+  const fieldHeight = await checkboxField.evaluate((el) => {
+    return el.getBoundingClientRect().height;
+  });
+  expect(fieldHeight).toBeGreaterThanOrEqual(44);
+
+  const checkboxSize = await checkboxInput.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  expect(checkboxSize.width).toBeGreaterThanOrEqual(24);
+  expect(checkboxSize.height).toBeGreaterThanOrEqual(24);
+
+  const before = await checkboxInput.isChecked();
+  const fieldBox = await checkboxField.boundingBox();
+  expect(fieldBox).not.toBeNull();
+  await page.touchscreen.tap(fieldBox!.x + Math.min(18, fieldBox!.width - 4), fieldBox!.y + fieldBox!.height / 2);
+  await expect.poll(async () => checkboxInput.isChecked()).toBe(!before);
+});
+
 test('phone markdown and variables panels keep touch targets at least 44px', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
