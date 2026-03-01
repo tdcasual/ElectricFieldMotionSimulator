@@ -1287,3 +1287,38 @@ test('phone short landscape keeps scene sheet below header region', async ({ pag
   const headerBottom = headerBox!.y + headerBox!.height;
   expect(sceneSheetBox!.y).toBeGreaterThanOrEqual(headerBottom);
 });
+
+test('phone short landscape keeps property panel below header region', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only short-landscape overlap check for property panel');
+  }
+
+  await page.setViewportSize({ width: 744, height: 390 });
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+  await openPropertyPanelFromActionBar(page);
+
+  const header = page.locator('#header');
+  const propertyPanel = page.locator('#property-panel');
+  await expect(header).toBeVisible();
+  await expect(propertyPanel).toBeVisible();
+
+  const headerBox = await header.boundingBox();
+  const propertyPanelBox = await propertyPanel.boundingBox();
+  expect(headerBox).not.toBeNull();
+  expect(propertyPanelBox).not.toBeNull();
+
+  const headerBottom = headerBox!.y + headerBox!.height;
+  expect(propertyPanelBox!.y).toBeGreaterThanOrEqual(headerBottom);
+});

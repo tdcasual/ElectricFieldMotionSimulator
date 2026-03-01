@@ -884,12 +884,20 @@ body.light-theme .preset-btn:hover {
 }
 
 #app.layout-phone #property-panel.panel-sheet {
+    position: absolute;
     top: auto;
-    bottom: calc(var(--phone-bottom-bar-height) + var(--phone-safe-bottom-inset, 0px));
+    bottom: 0;
     left: 0;
     right: 0;
     width: auto;
-    max-height: min(70vh, 560px);
+    height: auto;
+    max-height: min(
+        70vh,
+        560px,
+        calc(
+            100vh - var(--header-height) - var(--phone-bottom-bar-height, 72px) - var(--phone-safe-bottom-inset, 0px)
+        )
+    );
     border-left: none;
     border-top: 1px solid var(--border-color);
     border-radius: 14px 14px 0 0;
