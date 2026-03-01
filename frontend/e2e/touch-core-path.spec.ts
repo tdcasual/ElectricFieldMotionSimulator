@@ -329,10 +329,23 @@ test('phone sheet controls keep touch targets at least 44px', async ({ page }, t
   const boundarySelectHeight = await page.locator('[data-testid="phone-scene-sheet"] #boundary-mode-select').evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
+  const energyToggle = page.locator('#toggle-energy-overlay');
+  const energyToggleSize = await energyToggle.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  const energyToggleRow = page.locator('[data-testid="phone-scene-sheet"] .phone-scene-body .control-label').first();
+  const energyBefore = await energyToggle.isChecked();
+  const energyRowBox = await energyToggleRow.boundingBox();
+  expect(energyRowBox).not.toBeNull();
+  await page.touchscreen.tap(energyRowBox!.x + energyRowBox!.width / 2, energyRowBox!.y + energyRowBox!.height / 2);
+  await expect.poll(async () => energyToggle.isChecked()).toBe(!energyBefore);
 
   expect(sceneCloseButtonHeight).toBeGreaterThanOrEqual(44);
   expect(gravityInputHeight).toBeGreaterThanOrEqual(44);
   expect(boundarySelectHeight).toBeGreaterThanOrEqual(44);
+  expect(energyToggleSize.width).toBeGreaterThanOrEqual(24);
+  expect(energyToggleSize.height).toBeGreaterThanOrEqual(24);
 
   await page.locator('#phone-nav-more-btn').tap();
   await expect(page.getByTestId('phone-more-sheet')).toBeVisible();

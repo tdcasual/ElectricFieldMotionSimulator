@@ -805,6 +805,7 @@ body.light-theme .preset-btn:hover {
     --phone-sheet-section-padding: 4px;
     --phone-sheet-field-input-height: 44px;
     --phone-sheet-action-btn-height: 44px;
+    --phone-sheet-checkbox-size: 24px;
     --phone-panel-section-gap: 4px;
     --phone-panel-toggle-height: 44px;
     --phone-panel-toggle-font-size: 11px;
@@ -841,6 +842,7 @@ body.light-theme .preset-btn:hover {
     --phone-sheet-section-padding: 6px;
     --phone-sheet-field-input-height: 48px;
     --phone-sheet-action-btn-height: 48px;
+    --phone-sheet-checkbox-size: 26px;
     --phone-panel-section-gap: 6px;
     --phone-panel-toggle-height: 48px;
     --phone-panel-toggle-font-size: 12px;
@@ -1329,8 +1331,8 @@ body.light-theme .preset-btn:hover {
 }
 
 .phone-scene-body .control-label input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
+    width: var(--phone-sheet-checkbox-size);
+    height: var(--phone-sheet-checkbox-size);
 }
 
 .phone-scene-body .control-label input[type="range"] {
