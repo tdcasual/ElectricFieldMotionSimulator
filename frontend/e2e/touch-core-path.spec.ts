@@ -1322,3 +1322,56 @@ test('phone short landscape keeps property panel below header region', async ({ 
   const headerBottom = headerBox!.y + headerBox!.height;
   expect(propertyPanelBox!.y).toBeGreaterThanOrEqual(headerBottom);
 });
+
+test('phone short landscape keeps markdown board below header region', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only short-landscape overlap check for markdown board');
+  }
+
+  await page.setViewportSize({ width: 744, height: 390 });
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-markdown-btn').tap();
+  const markdownBoard = page.getByTestId('markdown-board');
+  await expect(markdownBoard).toBeVisible();
+
+  const header = page.locator('#header');
+  const headerBox = await header.boundingBox();
+  const markdownBox = await markdownBoard.boundingBox();
+  expect(headerBox).not.toBeNull();
+  expect(markdownBox).not.toBeNull();
+
+  const headerBottom = headerBox!.y + headerBox!.height;
+  expect(markdownBox!.y).toBeGreaterThanOrEqual(headerBottom);
+});
+
+test('phone short landscape keeps variables panel below header region', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only short-landscape overlap check for variables panel');
+  }
+
+  await page.setViewportSize({ width: 744, height: 390 });
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-variables-btn').tap();
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  const variablesSheet = page.locator('.variables-modal.variables-sheet');
+  await expect(variablesSheet).toBeVisible();
+
+  const header = page.locator('#header');
+  const headerBox = await header.boundingBox();
+  const variablesBox = await variablesSheet.boundingBox();
+  expect(headerBox).not.toBeNull();
+  expect(variablesBox).not.toBeNull();
+
+  const headerBottom = headerBox!.y + headerBox!.height;
+  expect(variablesBox!.y).toBeGreaterThanOrEqual(headerBottom);
+});
