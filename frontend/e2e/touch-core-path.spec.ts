@@ -1204,3 +1204,61 @@ test('property drawer backdrop keeps close interaction recoverable after orienta
   await page.locator('#phone-nav-scene-btn').tap();
   await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
 });
+
+test('orientation switch keeps markdown backdrop close recoverable on phone', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only backdrop recovery check for markdown after orientation');
+  }
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-markdown-btn').tap();
+  await expect(page.getByTestId('markdown-board')).toBeVisible();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByTestId('markdown-board')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('markdown-board')).toBeVisible();
+
+  const appBox = await page.locator('#app').boundingBox();
+  expect(appBox).not.toBeNull();
+  await page.touchscreen.tap(appBox!.x + appBox!.width / 2, appBox!.y + 80);
+
+  await expect(page.getByTestId('markdown-board')).toBeHidden();
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+});
+
+test('orientation switch keeps variables backdrop close recoverable on phone', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only backdrop recovery check for variables after orientation');
+  }
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-variables-btn').tap();
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  const appBox = await page.locator('#app').boundingBox();
+  expect(appBox).not.toBeNull();
+  await page.touchscreen.tap(appBox!.x + appBox!.width / 2, appBox!.y + 80);
+
+  await expect(page.getByTestId('variables-panel')).toBeHidden();
+  await expect(page.locator('#phone-bottom-nav')).toBeVisible();
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+});
