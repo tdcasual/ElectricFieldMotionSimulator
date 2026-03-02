@@ -211,10 +211,14 @@ test('Scene.loadFromData clears stale selection that is no longer in scene', () 
 
 test('Scene.loadFromData rejects scene payload with non-v2 version', () => {
   const scene = new Scene();
-  assert.throws(
-    () => scene.loadFromData({ version: '1.0', objects: [] }),
-    /2\.0/
-  );
+  let err = null;
+  try {
+    scene.loadFromData({ version: '1.0', objects: [] });
+  } catch (error) {
+    err = error;
+  }
+  assert.ok(err instanceof Error);
+  assert.equal(err.message, '仅支持 2.0 版本场景');
 });
 
 test('Serializer.validateSceneData rejects scene payload with non-v2 version', () => {

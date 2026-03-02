@@ -573,7 +573,7 @@ test('phone more sheet import failure keeps state and interactions recoverable',
   await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
 });
 
-test('phone more sheet import keeps legacy scene payload objects instead of dropping them', async ({ page }, testInfo) => {
+test('phone more sheet legacy import is rejected with explicit v2 policy message', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
@@ -581,7 +581,13 @@ test('phone more sheet import keeps legacy scene payload objects instead of drop
     test.skip(true, 'phone-only legacy import compatibility check');
   }
 
-  const legacyScenePath = path.resolve(process.cwd(), 'example-scene.json');
+  const legacyScenePath = path.resolve(process.cwd(), 'output', 'playwright', 'fixtures', 'legacy-scene-v1.json');
+  fs.mkdirSync(path.dirname(legacyScenePath), { recursive: true });
+  fs.writeFileSync(legacyScenePath, JSON.stringify({
+    version: '1.0',
+    settings: {},
+    objects: []
+  }));
 
   await page.locator('#phone-nav-more-btn').tap();
   await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
@@ -590,9 +596,9 @@ test('phone more sheet import keeps legacy scene payload objects instead of drop
 
   await page.setInputFiles('#import-file-input', legacyScenePath);
 
-  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/场景已导入/);
-  await expect(page.locator('#object-count')).toHaveText(/对象:\s*5/);
-  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*2/);
+  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/2\.0/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*0/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*0/);
 });
 
 test('phone import -> quick-edit -> orientation switch keeps editing and nav interactions coherent', async ({ page }, testInfo) => {

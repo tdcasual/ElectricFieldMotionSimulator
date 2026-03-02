@@ -259,8 +259,14 @@ export class Scene {
      * 从数据加载场景
      */
     loadFromData(data) {
-        if (!data || typeof data !== 'object' || data.version !== '2.0' || !Array.isArray(data.objects)) {
-            throw new Error('仅支持 2.0 版本场景，且 objects 必须是数组');
+        if (!data || typeof data !== 'object') {
+            throw new Error('场景数据格式无效');
+        }
+        if (data.version !== '2.0') {
+            throw new Error('仅支持 2.0 版本场景');
+        }
+        if (!Array.isArray(data.objects)) {
+            throw new Error('objects 必须是数组');
         }
 
         // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表

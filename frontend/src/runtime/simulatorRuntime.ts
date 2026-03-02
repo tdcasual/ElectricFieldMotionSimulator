@@ -468,7 +468,10 @@ export class SimulatorRuntime {
   loadSceneData(data: unknown) {
     if (!isRecord(data)) return false;
     const validation = Serializer.validateSceneData(data);
-    if (!validation.valid) return false;
+    if (!validation.valid) {
+      this.setStatusText(validation.error || '场景加载失败');
+      return false;
+    }
     this.scene.clear();
     this.scene.loadFromData(data);
     this.applyModeSettings();
@@ -490,6 +493,7 @@ export class SimulatorRuntime {
         }
         const validation = Serializer.validateSceneData(data);
         if (!validation.valid) {
+          this.setStatusText(validation.error || '导入失败');
           resolve(false);
           return;
         }

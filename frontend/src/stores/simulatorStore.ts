@@ -9,6 +9,7 @@ import {
 } from '../runtime/simulatorRuntime';
 import type { EmbedConfig, EmbedMode } from '../embed/embedConfig';
 import { resolveSceneSource } from '../embed/sceneSourceResolver';
+import { getSceneCompatibilityError } from '../io/sceneSchema';
 
 type ToolbarEntry = {
   type: string;
@@ -530,12 +531,20 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   function loadSceneData(data: Record<string, unknown>) {
+    const compatibilityError = getSceneCompatibilityError(data);
+    if (compatibilityError) {
+      setStatusText(compatibilityError);
+      return false;
+    }
+    const previousStatus = statusText.value;
     const ok = getRuntime().loadSceneData(data);
     if (ok) {
       closeSceneDependentDrawers();
       setStatusText('场景已加载');
     } else {
-      setStatusText('场景加载失败');
+      if (statusText.value === previousStatus) {
+        setStatusText('场景加载失败');
+      }
     }
     return ok;
   }
@@ -697,12 +706,15 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   async function importScene(file: File) {
+    const previousStatus = statusText.value;
     const ok = await getRuntime().importScene(file);
     if (ok) {
       closeSceneDependentDrawers();
       setStatusText('场景已导入');
     } else {
-      setStatusText('导入失败');
+      if (statusText.value === previousStatus) {
+        setStatusText('导入失败');
+      }
     }
     return ok;
   }
