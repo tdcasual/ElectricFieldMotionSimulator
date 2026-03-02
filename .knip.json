@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "frontend/e2e/**/*.spec.ts",
+    "frontend/public/embed.js",
+    "frontend/src/shims-vue.d.ts",
+    "frontend/src/vite-env.d.ts",
+    "frontend/src/types/legacy-runtime.d.ts"
+  ]
+}

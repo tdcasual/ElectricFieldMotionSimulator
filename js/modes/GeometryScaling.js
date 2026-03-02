@@ -1,4 +1,4 @@
-export const GEOMETRY_DIMENSION_KEYS = [
+const GEOMETRY_DIMENSION_KEYS = [
   'width',
   'height',
   'radius',
@@ -49,7 +49,7 @@ export function isGeometryDimensionKey(key) {
   return GEOMETRY_DIMENSION_KEY_SET.has(String(key ?? ''));
 }
 
-export function getSceneGeometryScale(scene) {
+function getSceneGeometryScale(scene) {
   const value = Number(scene?.settings?.pixelsPerMeter);
   return isFinitePositive(value) ? value : 1;
 }

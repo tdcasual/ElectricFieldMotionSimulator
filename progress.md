@@ -1,0 +1,403 @@
+Original prompt: 继续扫描当前项目的移动端/桌面端 UI 与交互，寻找冲突与 BUG，修复并补测试。
+
+## 2026-03-01
+- 读取当前未提交改动与回归状态，确认上一轮已补齐大量 phone e2e + legacy import 修复。
+- 新一轮聚焦剩余薄弱点：desktop 头部按钮（theme/markdown/variables/classroom）的一致性与状态同步。
+- 初步发现风险：ThemeManager 直接覆写 #theme-toggle-btn 的 textContent，可能破坏按钮语义文案一致性。
+- 下一步：先加失败 e2e 用例复现，再做最小修复并全量回归。
+- 新增 desktop e2e：验证主题按钮在切换前后都保留“主题”文案。
+- 根因修复：ThemeManager 不再把按钮文案改成纯图标，改为“☀️ 主题/🌙 主题”。
+- 新增 frontend 单测：ThemeManager 初始化与切换均保持按钮含“主题”文本。
+- 新增 desktop e2e（variables/markdown 互斥）初次运行超时，复现到真实交互冲突：variables modal backdrop 覆盖 header，导致无法直接点 header 切换到 markdown。
+- 修复：在 layout-desktop/layout-tablet 下把 `.modal-overlay` 起始 top 调整为 `var(--header-height)`，保留对主内容区的阻断，同时放开 header 交互。
+- 回归：desktop core-path 全部通过（5/5），phone 相关 variables/markdown 安全区与触控测试通过（2/2）。
+- 全量 e2e 初次回归出现 1 个视觉基线差异（desktop 1920x1080），原因是主题按钮文案修复导致截图预期变化；已仅更新该快照并再次全量回归通过。
+- 处理前端测试边界约束：theme-manager 新测改为通过 `frontend/src/engine/legacyBridge` 引入，避免直接跨层引用 `js/`。
+- 当前验证状态：`npm run test:e2e` 通过（64 passed / 46 skipped）；`npm run test:frontend` 通过（172/172）；`npm test` 通过（121/121）。
+- 继续做节点覆盖扫描（组件 id/data-testid vs. 测试引用）：剩余未引用项主要是结构容器或动态模板 id（如 `canvas-area`、`toolbar-content`、`bg-canvas`、`field-canvas`），暂未发现高风险可交互冲突。
+- 新增 desktop e2e：`classroom-mode` 在抽屉打开时仍可切换，且刷新后保持持久化状态（补齐 `classroom-mode-btn` 覆盖）。
+- desktop core-path 现为 6 条用例，已全通过（6/6）。
+- 新增 phone e2e：`import -> quick-edit -> orientation switch` 组合链路，验证导入后继续编辑与导航交互不冲突。
+- 稳定性扫描：对 import/orientation/quick-edit 相关 10 条场景做 `--repeat-each=3` 压力回归（30/30 通过），未发现竞态类新缺陷。
+- 再次全量 phone e2e 回归：49/49 通过。
+- 新增 desktop e2e：`desktop escape closes variables drawer even after focus moves to header controls`，复现真实交互缺陷（焦点离开抽屉后 Esc 无效）。
+- 根因修复：`DrawerHost` 新增文档级 Escape 监听（仅在 open + backdrop + closeOnBackdrop 条件下启用），并在 host 内 Escape 时阻断冒泡，避免重复 close。
+- 新增单测：`drawer-host` 文档级 Escape 关闭能力（焦点在 host 外时）。
+- 回归：desktop core-path 7/7 通过；phone markdown/variables/orientation 相关 11/11 通过；`drawer-host + app-shell` 单测 39/39 通过。
+- 继续扫描中新增并修复一处桌面交互缺陷：焦点离开抽屉后 `Esc` 无法关闭 variables/markdown 抽屉。
+- 新增 desktop e2e 先复现失败，再在 DrawerHost 增加文档级 Escape 关闭逻辑并补单测。
+- 压力回归：desktop core-path `--repeat-each=5`（35/35 通过）；全量 e2e（67 passed / 47 skipped）；frontend 单测（173/173）；node 单测（121/121）。
+- 本轮继续扫描又发现并修复 1 个桌面键盘交互缺陷：抽屉打开后焦点在 header 时，Tab 不会回到抽屉内部，导致焦点陷阱失效。
+- 新增 desktop e2e（先红）：`desktop tab from header while drawer open returns focus into variables panel`。
+- 修复：DrawerHost 文档级 keydown 监听新增 Tab 兜底（焦点在 host 外时将焦点收敛回 host 首/尾可聚焦元素）。
+- 新增单测：`traps document Tab back into host when focus is outside`。
+- 回归：desktop core-path 8/8 通过；phone 相关链路 14/14 通过；frontend 单测 174/174 通过。
+- 补充 phone 组合链路回归：`导入失败 -> 导入成功 -> 继续编辑 -> 清空`，验证状态恢复与后续交互可继续，测试通过。
+- 新增并验证桌面抽屉键盘闭环：
+  - `Esc`（焦点在 header 外部）可关闭抽屉；
+  - `Tab`（焦点在 header）可回到抽屉首元素；
+  - `Shift+Tab`（焦点在 header）可回到抽屉尾元素。
+- 补充单测防监听泄漏：抽屉反复开关后单次 Esc 只触发一次 close（无重复 document 监听）。
+- 当前验证：全量 e2e 通过（70 passed / 48 skipped），frontend 单测 175/175 通过。
+- 新一轮扫描发现 1 个桌面头部交互缺陷：`#variables-btn` 带 `aria-pressed` 状态但二次点击不会关闭变量面板，导致按钮语义与行为不一致。
+- 新增 desktop e2e（先红）：`desktop variables button toggles panel open and close state coherently`，复现失败（第二次点击后 `aria-pressed` 仍为 `true`）。
+- 根因修复：`App.vue` 中 Header 的 `open-variables` 入口改为显式 toggle（已开则 `closeVariablesPanel`，未开则 `openVariablesPanel`），不影响手机端 More 面板入口。
+- 补充 frontend 单测：`app-shell` 中变量按钮测试升级为“打开后再次点击关闭”闭环断言。
+- 回归：新增 e2e 单条通过（1/1）；desktop core-path 全通过（11/11）；高风险桌面交互压力回归（context menu/variables/markdown/Esc/Tab，`--repeat-each=5`）通过（35/35）；`app-shell` 单测通过（34/34）。
+- 继续扫描发现第 2 个桌面交互缺陷：桌面题板（markdown，无 backdrop）打开后，焦点切到 header 时按 `Esc` 不会关闭题板。
+- 新增 desktop e2e（先红）：`desktop escape closes markdown board even after focus moves to header controls`，稳定复现失败（题板保持可见）。
+- 根因修复：`DrawerHost` 的 Escape 处理从 “仅 backdrop 模式” 放宽为 “`modelValue + closeOnBackdrop` 即可处理”，同时保持 Tab 焦点陷阱只在 backdrop 模式生效，避免无 backdrop 面板被错误限制 Tab。
+- 新增单测：`drawer-host` 增补“non-backdrop host + document Escape”关闭能力覆盖。
+- 回归：
+  - 新增 markdown Esc e2e 通过（1/1）；
+  - desktop core-path 通过（12/12）；
+  - desktop 高风险路径压力回归（context menu/variables/markdown/Esc/Tab，`--repeat-each=5`）通过（40/40）；
+  - `drawer-host + app-shell` 单测通过（42/42）；
+  - phone 抽样链路（import-orientation + markdown/variables）通过（2/2）。
+- 补充高风险覆盖：新增 desktop e2e `desktop opening markdown board hides any existing context menu`，验证右键菜单与题板切换不冲突（通过）。
+- 二次压力回归（新增 markdown-context-menu 用例后）：
+  - desktop core-path 通过（13/13）；
+  - desktop 高风险路径 `--repeat-each=3` 通过（27/27）。
+- 新一轮继续扫描发现第 3 个真实交互缺陷：右键菜单打开后按 `Esc` 无法关闭（仅支持点击外部关闭）。
+- 新增失败用例：
+  - desktop e2e：`desktop escape closes open context menu`（先红）；
+  - node DOM 单测：`context menu closes on Escape key`（先红）。
+- 根因分析：`DragDropManager.onContextMenu` 仅注册 `document.click` 关闭处理，缺少 `document.keydown(Escape)`；且关闭监听注册放在 `setTimeout` 内，存在快速按 Esc 的竞态窗口。
+- 修复：
+  - 为右键菜单增加 `contextMenuEscapeHandler`，监听文档级 `keydown(Escape)` 并关闭菜单；
+  - 关闭菜单时统一清理 click/keydown/timer，防止监听与计时器残留；
+  - 将 Esc 监听即时注册，点击监听仍保留延迟注册，避免同事件链误关闭且消除竞态。
+- 回归验证：
+  - `npm test -- test/dragdrop_manager_dom.test.js` 通过（122/122）；
+  - 新增 e2e 单条通过（1/1）；
+  - desktop core-path 全通过（14/14）；
+  - 高风险桌面压力回归（context menu/variables/markdown/Esc/Tab，`--repeat-each=5`）通过（50/50）。
+- 本轮继续扫描发现第 4 个真实交互缺陷：右键菜单已打开时，在画布空白区域再次右键不会关闭旧菜单（菜单残留）。
+- 新增失败用例：
+  - desktop e2e：`desktop right-click on blank canvas area closes existing context menu`（先红）；
+  - node DOM 单测：`right-clicking blank area closes an already open context menu`（先红）。
+- 根因分析：`DragDropManager.onContextMenu` 在 `clickedObject === null` 分支没有任何菜单关闭/监听清理逻辑。
+- 修复：
+  - 在空白右键分支显式隐藏 `#context-menu`；
+  - 同时清理 context menu 的 close timer、click handler、escape handler，避免残留状态影响后续交互。
+- 回归验证：
+  - `npm test -- test/dragdrop_manager_dom.test.js` 通过（123/123）；
+  - 新增 e2e 组合（Esc + blank-right-click）通过（2/2）；
+  - desktop core-path 全通过（15/15）；
+  - 高风险桌面压力回归（context menu/variables/markdown/Esc/Tab，`--repeat-each=5`）通过（55/55）。
+- 本轮继续扫描发现第 5 个真实交互缺陷：右键菜单已打开时，在非画布区域（如 header）再次右键不会关闭旧菜单（菜单残留）。
+- 新增失败用例：
+  - desktop e2e：`desktop right-click on header closes existing context menu`（先红）；
+  - node DOM 单测：`right-clicking non-canvas area closes an already open context menu`（先红）。
+- 根因分析：`DragDropManager` 仅在 canvas 的 `contextmenu` 路径内管理菜单生命周期，缺少文档级“非画布右键收口”逻辑。
+- 修复：
+  - 在 `DragDropManager.init()` 新增 `document contextmenu` 监听：
+    - 若目标在 canvas 内，交由 `onContextMenu` 处理；
+    - 若目标不在 canvas 内，关闭并清理 context menu（timer/click/escape）。
+  - 同时修复实现兼容性：移除对全局 `Node` 构造器的直接依赖，改为安全 `contains` 检查，避免 jsdom 环境报错。
+- 回归验证：
+  - `npm test -- test/dragdrop_manager_dom.test.js` 通过（124/124）；
+  - 新增 e2e 组合（Esc + blank-right-click + header-right-click）通过（3/3）；
+  - desktop core-path 全通过（18/18）；
+  - 高风险桌面压力回归（context menu/variables/markdown/escape/tab/property，`--repeat-each=5`）通过（70/70）。
+- 本轮继续扫描发现第 6 个真实交互缺陷：变量面板打开时执行 `loadScene`，面板不会关闭，导致变量草稿与新场景状态可能不一致（stale draft）。
+- 新增失败用例：
+  - desktop e2e：`desktop load scene closes variables panel to avoid stale variable drafts`（先红）；
+  - frontend 单测：`closes variables drawer after successful loadScene to avoid stale drafts`（先红）。
+- 根因分析：`simulatorStore` 的场景切换操作（`loadScene` 等）只关闭 `property`，未关闭 `variables`。
+- 修复：
+  - 新增 `closeSceneDependentDrawers()`，统一关闭 `property + variables`；
+  - 在 `loadSceneData`、`clearScene`、`loadScene`、`importScene`、`loadPreset` 成功路径中统一调用，消除场景切换后变量面板旧草稿残留。
+- 回归验证：
+  - `npm run test:frontend -- frontend/test/simulator-store.test.ts` 通过（19/19）；
+  - 新增 e2e 单条通过（1/1）；
+  - desktop core-path 全通过（21/21）；
+  - 高风险桌面回归（context menu/variables/markdown/escape/tab/property/load/clear，`--repeat-each=3`）通过（51/51）。
+- 本轮继续扫描发现第 7 个真实交互缺陷：变量面板打开时执行 `resetScene`，面板不会关闭，存在变量草稿残留风险。
+- 新增失败用例：
+  - desktop e2e：`desktop reset scene closes variables panel to avoid stale variable drafts`（先红）；
+  - frontend 单测：`closes variables drawer after successful resetScene to avoid stale drafts`（先红）。
+- 根因分析：`simulatorStore.resetScene()` 成功路径未复用场景切换后的抽屉关闭逻辑。
+- 修复：
+  - `resetScene` 成功后调用 `closeSceneDependentDrawers()`；
+  - 保持失败路径只提示状态，不额外改 UI。
+- 回归验证：
+  - `npm run test:frontend -- frontend/test/simulator-store.test.ts` 通过（20/20）；
+  - 新增 e2e 单条通过（1/1）；
+  - desktop core-path 全通过（22/22）；
+  - 高风险桌面回归（context menu/variables/markdown/escape/tab/property/load/clear/reset，`--repeat-each=3`）通过（54/54）。
+
+- 新一轮聚焦“导入成功/失败与抽屉状态一致性”补盲（desktop）：
+  - 新增 desktop e2e：
+    - `desktop successful import keeps markdown board open for note continuity`
+    - `desktop failed import keeps variables drawer open with current draft intact`
+  - 新增 frontend 单测：
+    - `keeps markdown board open after successful importScene to preserve notes`
+    - `keeps variables drawer open after failed importScene to avoid draft loss`
+- 结果：该方向未复现新缺陷，行为符合预期（导入成功只关闭 scene-dependent 抽屉，导入失败不破坏当前草稿与抽屉状态）。
+- 本轮验证：
+  - `npm run test:frontend -- frontend/test/simulator-store.test.ts` 通过（23/23）
+  - `npm run test:e2e -- frontend/e2e/core-path.spec.ts --project=desktop-chromium --grep "successful import keeps markdown board|failed import keeps variables drawer"` 通过（2/2）
+  - 压力回归 `--repeat-each=5` 通过（10/10）
+  - desktop core-path 全量回归通过（25/25）
+- 扩圈验证（本轮继续）：
+  - `npm run test:e2e` 全量通过（86 passed / 48 skipped）
+  - `npm run test:frontend` 全量通过（181/181）
+  - `npm test` 全量通过（124/124）
+- 当前结论：本轮“继续扫描”未发现新的 UI/交互缺陷，新增覆盖已锁定导入成功/失败与抽屉状态一致性。
+
+- 按“继续扫描 + 清理无效代码”要求，追加做一轮静态死代码清理（无行为变更）：
+  - 先用 `knip` 扫描并人工复核引用，确认 6 个未使用导出与 2 个未使用导出类型可安全收敛。
+  - 清理项：
+    - `js/interactions/TangencyEngine.js`：`distancePointToSegment` 从导出改为内部函数。
+    - `js/modes/GeometryScaling.js`：`GEOMETRY_DIMENSION_KEYS`、`getSceneGeometryScale` 从导出改为内部符号。
+    - `js/rendering/ObjectRenderers.js`：`ObjectRenderers` 从导出改为内部常量（保留 `getObjectRenderer` 导出）。
+    - `js/ui/SchemaForm.js`：`getAllowedVariableNames`、`buildExpressionContext` 从导出改为内部函数。
+    - `frontend/src/components/ToolbarPanel.vue`：移除未使用导出类型 `ToolbarEntry` / `ToolbarGroup` 的 `export`。
+  - 顺手修复 1 处测试层无效签名：
+    - `frontend/test/simulator-store.test.ts` 中 `toggleDemoMode` mock 从 `mockImplementation(() => {})` 改为 `mockReturnValue(true)`，与函数签名一致。
+- 本轮验证（清理后）：
+  - `npm test -- test/tangency_engine.test.js test/schema_form.test.js test/renderer_registry.test.js` 通过（124/124）
+  - `npm run test:frontend -- frontend/test/toolbar-panel.test.ts frontend/test/simulator-store.test.ts` 通过（25/25）
+  - `npm run test:frontend` 全量通过（181/181）
+  - `npm run test:e2e -- frontend/e2e/core-path.spec.ts --project=desktop-chromium` 通过（25/25）
+  - `knip` 复扫：未使用导出项已清零（仅剩工具配置/依赖级提示，需单独规划，不在本次交互修复范围）
+
+- 新一轮继续（用户指令：继续，过程中清理无效代码）：
+  - 手机端高风险压力回归先行：
+    - `npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "import|orientation switch|utility drawer backdrop|short landscape|density toggle|markdown|variables" --repeat-each=3`
+    - 结果：66/66 通过，未复现新交互冲突。
+  - 无效配置/依赖清理（低风险、无行为变更）：
+    - 删除废弃配置文件：
+      - `frontend/.eslintrc.cjs`
+      - `frontend/postcss.config.cjs`
+      - `frontend/tailwind.config.ts`
+    - 移除未使用 devDependencies：
+      - `@tailwindcss/postcss`
+      - `autoprefixer`
+      - `postcss`
+      - `tailwindcss`
+  - 清理后验证：
+    - `npm run build:frontend` 通过
+    - `npm run test:frontend` 全量通过（181/181）
+    - `npm test` 全量通过（124/124）
+    - `npm run test:e2e -- frontend/e2e/core-path.spec.ts --project=desktop-chromium` 通过（25/25）
+  - 当前结论：本轮继续未发现新增 BUG；无效配置与依赖已进一步收敛，交互与测试门禁保持稳定。
+
+- 继续下一轮（聚焦：工具级无效代码噪音 + embed/responsive 冲突扫描）：
+  - 新增 `knip` 基线配置，清理工具误报噪音（不删除有效运行文件）：
+    - 新文件：`.knip.json`
+    - 忽略项覆盖：
+      - `frontend/e2e/**/*.spec.ts`（测试入口）
+      - `frontend/public/embed.js`（通过 HTML script src 使用）
+      - `frontend/src/shims-vue.d.ts`、`frontend/src/vite-env.d.ts`、`frontend/src/types/legacy-runtime.d.ts`（类型声明入口）
+  - 结果：`npx -y knip` 返回空结果（当前无可报告无效项）。
+  - 交互压力回归：
+    - `npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --repeat-each=3` 通过（15/15）
+    - `npm run test:e2e -- frontend/e2e/responsive-visual.spec.ts --project=desktop-chromium` 通过（4/4）
+    - `npm run test:frontend -- frontend/test/embed-bootstrap.test.ts frontend/test/host-bridge.test.ts` 通过（9/9）
+  - 当前结论：embed 与响应式视觉链路未发现新冲突；无效代码清理已从“删代码”推进到“工具基线稳定”。
+
+- 继续查找中新增 1 个真实 embed 交互缺陷（已修复）：
+  - 缺陷：`ElectricFieldApp.destroy()` 在命令请求未返回时，会清空 `pendingCommands` 但不 reject 对应 Promise，导致调用方 Promise 永久 pending。
+  - 复现方式：`app.play()` 后立即 `app.destroy()`；旧实现下 Promise 不会 resolve/reject。
+  - 新增失败用例（先红）：
+    - `frontend/e2e/embed-protocol.spec.ts`
+    - 用例：`embed sdk destroy rejects in-flight command promises instead of leaving them pending`
+    - 红测现象：期望 `rejected`，实际 `pending`。
+  - 根因分析：
+    - `sendCommand` 的超时回调只在 `pendingCommands[id]` 存在时 reject；
+    - `destroy()` 直接把 `pendingCommands` 置空，导致超时回调提前短路，Promise 丢失结算路径。
+  - 修复：
+    - `frontend/public/embed.js`
+    - `sendCommand` 为 pending 项记录 `timeoutId` 与 `command`；
+    - 命令结果返回时清理对应 `timeoutId`；
+    - `destroy()` 遍历并 reject 所有未完成命令（`code: 'destroyed'`），并清理超时计时器，避免悬空 Promise。
+  - 验证：
+    - 红测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --grep "destroy rejects in-flight"`（失败，`pending`）
+    - 绿测：同命令通过（1/1）
+    - 稳定性：`--repeat-each=5` 通过（5/5）
+    - 回归：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium` 通过（6/6）
+  - 备注：期间出现过一次 Playwright web server 启动异常（`ERR_CONNECTION_REFUSED`），复跑后未复现，判定为环境瞬态故障而非功能回归。
+
+- 继续扫描新增 1 个真实运行时交互缺陷（已修复）：
+  - 缺陷：横竖屏/布局变化后立即“居中创建对象”时，`createObjectAtCenter()` 可能使用旧 viewport 计算中心，导致对象生成点与当前画布中心不一致，进而出现手机端中心点击选不中。
+  - 新增失败用例（先红）：
+    - `frontend/test/simulator-runtime.test.ts`
+    - 用例：`createObjectAtCenter syncs renderer viewport before computing center point`
+  - 修复：
+    - `frontend/src/runtime/simulatorRuntime.ts`
+    - 在 `createObjectAtCenter` 里先执行 `renderer.resize()` + `syncViewportFromRenderer()` 再计算中心点。
+  - 验证：
+    - `npm run test:frontend -- simulator-runtime` 通过（8/8）
+    - `npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "phone short landscape keeps property panel below header region" --repeat-each=25 --workers=5` 通过（25/25）
+
+- 继续扫描新增 1 个稳定可复现的手机端交互冲突（已修复）：
+  - 现象：`object action bar stays above safe-area-aware phone nav` 在 `phone-chromium` 下稳定失败；创建对象后点击“旧中心点”无法选中，动作条不出现。
+  - 根因：该用例在创建对象前计算了画布中心；对象计数/状态更新后 header 高度变化，画布高度从 `514` 变为 `480`，中心点下移 `17px`，导致点击坐标与真实中心偏移。
+  - 修复：
+    - `frontend/e2e/touch-core-path.spec.ts`
+    - 增加 `getCanvasCenter` 辅助函数；
+    - `selectCenterObject` 增加一次“按最新画布中心重试”恢复逻辑；
+    - 将 `safe-area action-bar` 用例改为创建对象后再取中心并通过 helper 选择对象。
+  - 验证：
+    - `npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "object action bar stays above safe-area-aware phone nav" --repeat-each=12 --workers=3` 通过（12/12）
+    - `npm run test:e2e -- --repeat-each=2` 通过（176 passed / 96 skipped）
+
+- 继续扫描新增 1 个 embed 生命周期缺陷（已修复）：
+  - 缺陷：`ElectricFieldApp` 在未显式配置 `targetOrigin` 时，只在首次注入推导一次 origin；若运行时 `targetOrigin` 变脏（或注入上下文变化），后续重注入不会重新推导，命令可能发往错误 origin 导致超时。
+  - 新增失败用例（先红）：
+    - `frontend/e2e/embed-protocol.spec.ts`
+    - 用例：`embed sdk re-inject recalibrates derived target origin after stale targetOrigin`
+  - 修复：
+    - `frontend/public/embed.js`
+    - 新增 `configuredTargetOrigin`：
+      - 若用户显式传入 `targetOrigin`，每次注入都使用该固定值；
+      - 若未显式传入，则每次 `inject()` 都基于当前 iframe `src` 重新推导 `targetOrigin`（而不是只在 `*` 时首次推导）。
+  - 验证：
+    - `npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --grep "re-inject recalibrates derived target origin"` 通过（1/1）
+    - `npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --repeat-each=3` 通过（24/24）
+    - `npm run test:e2e -- frontend/e2e/core-path.spec.ts --project=desktop-chromium --grep "view mode|escape|variables|markdown|tab from header|shift-tab|classroom mode" --repeat-each=3` 通过（48/48）
+    - `npx -y knip` 通过（空输出）
+    - `npm run lint:frontend` / `npm run typecheck:frontend` / `npm run test:frontend -- simulator-runtime` 全通过
+
+- 继续扫描新增 1 个 embed 生命周期缺陷（已修复）：
+  - 缺陷：`ElectricFieldApp` 在显式配置 `targetOrigin` 的场景下，若运行时更新 `app.options.targetOrigin` 并重注入，旧实现不会重新读取配置，导致消息 origin 校验与 postMessage 目标仍使用旧值，命令超时。
+  - 新增失败用例（先红）：
+    - `frontend/e2e/embed-protocol.spec.ts`
+    - 用例：`embed sdk re-inject honors updated explicit targetOrigin option`
+  - 修复：
+    - `frontend/public/embed.js`
+    - 每次 `inject()` 都重新读取 `this.options.targetOrigin`：
+      - 显式配置存在时使用最新显式值；
+      - 未显式配置时仍基于当前 iframe `src` 推导 origin。
+  - 验证：
+    - `npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --grep "updated explicit targetOrigin option"` 通过（1/1）
+    - `npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --repeat-each=3` 通过（27/27）
+
+- 继续扫描新增 1 个 embed 交互缺陷（已修复）：
+  - 缺陷：`inject()` 后立刻调用命令（如 `play()`）时，若 iframe 尚未 ready，消息会在子页监听建立前丢失，只能 5 秒后超时，造成“ready 前命令悬挂”。
+  - 新增失败用例（先红）：
+    - `frontend/e2e/embed-protocol.spec.ts`
+    - 用例：`embed sdk queues commands issued before ready and settles without timeout`
+    - 红测现象：期望 `resolved`，实际 `pending`。
+  - 修复：
+    - `frontend/public/embed.js`
+    - 增加 `ready` 状态与 `commandQueue`：
+      - ready 前命令进入队列；
+      - 收到 `ready` 事件后统一 flush；
+      - `timeout` / `destroy` / `re-inject` 时同步清理队列并 reject 对应 Promise，避免幽灵命令与悬挂。
+  - 验证：
+    - 红测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --grep "queues commands issued before ready"`（失败，`pending`）
+    - 绿测：同命令通过（1/1）
+    - embed 压测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --repeat-each=3` 通过（30/30）
+    - 全量回归：`npm run test:e2e -- --repeat-each=2` 通过（180 passed / 96 skipped）
+    - 全量回归（单次）：`npm run test:e2e` 通过（91 passed / 48 skipped）
+    - 手机高风险压力：`npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "orientation switch|utility drawer|markdown board|variables panel|short landscape|safe-area|object action bar" --repeat-each=5 --workers=5` 通过（110/110）
+    - 静态与前端门禁：`npx -y knip`（空输出）、`npm run lint:frontend`、`npm run typecheck:frontend`、`npm run test:frontend -- frontend/test/embed-bootstrap.test.ts frontend/test/host-bridge.test.ts` 全通过。
+
+- 当前轮次结论：
+  - 新增并修复 2 个 embed 生命周期/交互缺陷（explicit `targetOrigin` 动态更新、ready 前命令丢失）。
+  - 手机端 safe-area + orientation + drawer/backdrop 高压链路未发现新增 UI/交互冲突。
+
+- 继续扫描新增 1 个 embed 时序缺陷（已修复）：
+  - 缺陷：ready 前命令入队后，超时计时器从“入队时刻”开始计算；当 iframe ready 握手超过 5s 时，命令会在真正发送前被提前超时拒绝。
+  - 新增失败用例（先红）：
+    - `frontend/e2e/embed-protocol.spec.ts`
+    - 用例：`embed sdk pre-ready queued command survives delayed ready handshake`
+    - 红测现象：期望 `resolved`，实际 `rejected(timeout)`。
+  - 修复：
+    - `frontend/public/embed.js`
+    - 将超时起点改为“命令真正 postMessage 发送时”：
+      - 新增 `dispatchPendingCommand` 与 `startCommandTimeout`；
+      - `sendCommand` 在 ready 前仅入队 id，不启动 timeout；
+      - `ready` 后 flush 队列并逐条发送，再启动对应 timeout；
+      - 仍保持 `destroy/reinject/timeout` 的统一清理与 reject 语义。
+  - 验证：
+    - 红测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --grep "survives delayed ready handshake"`（失败）
+    - 绿测：同命令通过（1/1）
+    - 相关用例：`--grep "queues commands issued before ready|survives delayed ready handshake"` 通过（2/2）
+    - embed 压测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --repeat-each=3` 通过（33/33）
+    - 全量回归：`npm run test:e2e` 通过（92 passed / 48 skipped）
+    - 静态门禁：`npm run lint:frontend`、`npm run typecheck:frontend`、`npx -y knip` 全通过。
+
+- 本轮结论更新：
+  - 新增并修复 3 个 embed 生命周期/时序缺陷（explicit `targetOrigin` 动态更新、ready 前命令丢失、delayed-ready 下提前 timeout）。
+  - 手机端交互高压链路（safe-area/orientation/drawer/backdrop）继续稳定，暂未发现新增 UI 冲突。
+
+- 继续扫描新增 1 个 embed 时序缺陷（已修复）：
+  - 缺陷：为修复 delayed-ready 引入“发送时才启动 timeout”后，出现新回归：若 iframe 永远不发送 `ready`，队列命令会无限 pending（不再超时）。
+  - 新增失败用例（先红）：
+    - `frontend/e2e/embed-protocol.spec.ts`
+    - 用例：`embed sdk queued command times out when ready handshake never arrives`
+    - 红测现象：期望 `rejected(timeout)`，实际 `pending`。
+  - 修复：
+    - `frontend/public/embed.js`
+    - 增加“排队等待超时”与“响应超时”双阶段超时模型：
+      - `COMMAND_QUEUE_TIMEOUT_MS = 6000`：命令在 ready 前排队超过阈值则 reject timeout；
+      - `COMMAND_RESPONSE_TIMEOUT_MS = 5000`：命令实际 postMessage 发送后等待结果超时则 reject timeout；
+      - dispatch 时清理 queue timeout，result/destroy/reinject 时统一清理两类 timeout，避免悬挂或泄漏。
+  - 验证：
+    - 红测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --grep "queued command times out when ready handshake never arrives"`（失败，`pending`）
+    - 绿测：同命令通过（1/1）
+    - 三条关键时序用例：`--grep "queues commands issued before ready|survives delayed ready handshake|queued command times out when ready handshake never arrives"` 通过（3/3）
+    - embed 压测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --repeat-each=2` 通过（24/24）
+    - 全量回归：`npm run test:e2e` 通过（93 passed / 48 skipped）
+    - 静态门禁：`npm run lint:frontend`、`npm run typecheck:frontend`、`npx -y knip` 全通过。
+
+- 本轮结论更新（追加）：
+  - embed 命令时序模型已稳定为双阶段超时（queue + response），覆盖“慢 ready”“永不 ready”“正常 ready”三类路径。
+  - 手机端 UI/交互回归继续稳定，暂无新增冲突。
+
+- 继续扫描新增 1 个 embed 时序缺陷（已修复）：
+  - 缺陷：ready 前排队命令若携带不可结构化克隆的 payload（例如函数），在 ready 后 flush 阶段 `postMessage` 抛错，但旧实现未捕获，导致 Promise 悬挂为 `pending`。
+  - 新增失败用例（先红）：
+    - `frontend/e2e/embed-protocol.spec.ts`
+    - 用例：`embed sdk rejects queued command with uncloneable payload instead of hanging`
+    - 红测现象：期望 `rejected`，实际 `pending`。
+  - 修复：
+    - `frontend/public/embed.js`
+    - 在 `dispatchPendingCommand` 为 `postMessage` 增加 `try/catch`：
+      - 发送失败时立即移除 pending 并 reject（`code: post-message-failed`）；
+      - 同步清理队列残留，避免悬挂命令。
+  - 验证：
+    - 红测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --grep "uncloneable payload"`（失败，`pending`）
+    - 绿测：同命令通过（1/1）
+    - 关键时序链路：`--grep "uncloneable payload|queued command times out when ready handshake never arrives|survives delayed ready handshake|queues commands issued before ready"` 通过（4/4）
+    - embed 压测：`npm run test:e2e -- frontend/e2e/embed-protocol.spec.ts --project=desktop-chromium --repeat-each=2` 通过（26/26）
+    - 全量回归：`npm run test:e2e` 通过（94 passed / 48 skipped）
+    - 静态门禁：`npm run lint:frontend`、`npm run typecheck:frontend`、`npx -y knip` 全通过。
+
+- 本轮结论更新（再追加）：
+  - embed 时序稳定性再补齐一类异常路径（不可序列化 payload），当前“正常/慢 ready/永不 ready/发送异常”四类命令链路均有覆盖并通过。
+  - 手机端 UI/交互回归继续稳定，暂无新增冲突。
+
+- 继续扫描（移动端高频竞态压力轮）：
+  - 目标：在最新 embed 修复后，再验证手机端核心冲突场景是否受影响（快速抽屉切换、旋转恢复、短横屏安全区、动作条避让）。
+  - 压测命令：
+    - `npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "rapid phone sheet switching|orientation switch while sheet open|utility drawer backdrop closes|phone short landscape keeps|object action bar stays above" --repeat-each=8 --workers=6`
+  - 结果：64/64 通过。
+
+- 当前结论（本轮继续后）：
+  - 本轮新增并修复 1 个 embed 时序缺陷（queued + uncloneable payload 挂起）。
+  - 门禁持续全绿：`npm run test:e2e`（94 passed / 48 skipped）、`npm run lint:frontend`、`npm run typecheck:frontend`、`npx -y knip`。
+  - 手机端 UI/交互在高频竞态与安全区链路下仍稳定，暂未发现新增冲突。
+
+- 继续扫描（高强度手机竞态压力轮）：
+  - 压测命令：
+    - `npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "rapid phone sheet switching|orientation switch while sheet open|orientation switch with markdown board open|orientation switch keeps markdown backdrop close recoverable|orientation switch keeps variables backdrop close recoverable|utility drawer backdrop closes|object action bar stays above" --repeat-each=15 --workers=6`
+  - 结果：105/105 通过，未发现新增交互冲突。
+
+- 继续扫描（密度模式专项压力轮）：
+  - 压测命令：
+    - `npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "phone density toggle changes property panel row density|phone landscape density toggle scales nav and sheet controls" --repeat-each=20 --workers=6`
+  - 结果：40/40 通过，未发现布局错位/可点击区漂移。
+
+- 继续扫描（导入链路专项压力轮）：
+  - 压测命令：
+    - `npm run test:e2e -- frontend/e2e/touch-core-path.spec.ts --project=phone-chromium --grep "import failure then success keeps follow-up edit and clear interactions recoverable|import -> quick-edit -> orientation switch keeps editing and nav interactions coherent|import failure keeps state and interactions recoverable|more sheet save-load-clear flow stays coherent" --repeat-each=12 --workers=6`
+  - 结果：48/48 通过，未发现导入失败恢复与后续编辑链路冲突。
+
+- 本轮继续结论：
+  - 在最新 embed 修复基础上，手机端高频交互链路仍稳定。
+  - 本轮未复现新的 UI/交互 BUG；下一轮继续扩展到桌面+手机混合焦点/键盘边界与长时操作链路。

@@ -10,6 +10,7 @@ const props = defineProps<{
   boundaryMargin: number;
   timeStep: number;
   timeStepLabel: string;
+  vertexEditMode: boolean;
   demoMode: boolean;
 }>();
 
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   (event: 'set-boundary-mode', payload: Event): void;
   (event: 'set-boundary-margin', payload: Event): void;
   (event: 'set-time-step', payload: Event): void;
+  (event: 'set-vertex-edit-mode', payload: Event): void;
 }>();
 </script>
 
@@ -27,6 +29,15 @@ const emit = defineEmits<{
   <label class="control-label">
     <span>显示能量:</span>
     <input id="toggle-energy-overlay" type="checkbox" :checked="props.showEnergyOverlay" @change="(event) => emit('set-show-energy', event)" />
+  </label>
+  <label class="control-label">
+    <span>顶点编辑:</span>
+    <input
+      id="toggle-vertex-edit-mode"
+      type="checkbox"
+      :checked="props.vertexEditMode"
+      @change="(event) => emit('set-vertex-edit-mode', event)"
+    />
   </label>
   <label class="control-label">
     <span>比例尺: 1m =</span>

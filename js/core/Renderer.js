@@ -9,6 +9,8 @@ import { computeResponsiveParticleMetrics } from '../rendering/ResponsiveSizing.
 import { ForceCalculator } from '../physics/ForceCalculator.js';
 import { registry } from './registerObjects.js';
 import { getObjectRenderer } from '../rendering/ObjectRenderers.js';
+import { computeVertexBounds } from '../geometry/VertexGeometry.js';
+import { getGeometryCircleBoundary, getGeometryWorldVertices } from '../geometry/GeometryKernel.js';
 
 export class Renderer {
     constructor() {
@@ -245,24 +247,48 @@ export class Renderer {
 
     drawElectricField(field, scene) {
         this.fieldCtx.save();
+        const vertexModeEnabled = scene?.settings?.vertexEditMode === true;
+        const isUniformField = field.type === 'electric-field-rect' || field.type === 'electric-field-circle';
+        const circleBoundary = isUniformField ? getGeometryCircleBoundary(field) : null;
+        const polygonVertices = isUniformField && !circleBoundary ? getGeometryWorldVertices(field) : [];
+        const polygonBounds = polygonVertices.length ? computeVertexBounds(polygonVertices) : null;
+        const tracePolygonPath = () => {
+            if (!polygonVertices.length) return false;
+            this.fieldCtx.beginPath();
+            this.fieldCtx.moveTo(polygonVertices[0].x, polygonVertices[0].y);
+            for (let i = 1; i < polygonVertices.length; i += 1) {
+                this.fieldCtx.lineTo(polygonVertices[i].x, polygonVertices[i].y);
+            }
+            if (typeof this.fieldCtx.closePath === 'function') {
+                this.fieldCtx.closePath();
+            } else {
+                this.fieldCtx.lineTo(polygonVertices[0].x, polygonVertices[0].y);
+            }
+            return true;
+        };
 
         // 绘制场边界
         this.fieldCtx.strokeStyle = 'rgba(255, 200, 0, 0.6)';
         this.fieldCtx.lineWidth = 2;
 
-        if (field.type === 'electric-field-rect') {
-            this.fieldCtx.strokeRect(field.x, field.y, field.width, field.height);
+        if (isUniformField) {
+            if (circleBoundary) {
+                this.fieldCtx.beginPath();
+                this.fieldCtx.arc(circleBoundary.x, circleBoundary.y, circleBoundary.radius, 0, Math.PI * 2);
+                this.fieldCtx.stroke();
+                this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
+                this.fieldCtx.fill();
+            } else if (tracePolygonPath()) {
+                this.fieldCtx.stroke();
+                this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
+                this.fieldCtx.fill();
+            } else {
+                this.fieldCtx.strokeRect(field.x, field.y, field.width, field.height);
 
-            // 填充半透明背景
-            this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
-            this.fieldCtx.fillRect(field.x, field.y, field.width, field.height);
-        } else if (field.type === 'electric-field-circle') {
-            this.fieldCtx.beginPath();
-            this.fieldCtx.arc(field.x, field.y, field.radius, 0, Math.PI * 2);
-            this.fieldCtx.stroke();
-
-            this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
-            this.fieldCtx.fill();
+                // 填充半透明背景
+                this.fieldCtx.fillStyle = 'rgba(255, 200, 0, 0.1)';
+                this.fieldCtx.fillRect(field.x, field.y, field.width, field.height);
+            }
         } else if (field.type === 'semicircle-electric-field') {
             // 半圆电场 - 绘制半圆
             const angle = field.orientation * Math.PI / 180;
@@ -391,13 +417,17 @@ export class Renderer {
         }
 
         // 显示场强（便于查看）
-        if (field.type === 'electric-field-rect' ||
-            field.type === 'electric-field-circle' ||
-            field.type === 'semicircle-electric-field') {
+        if (isUniformField || field.type === 'semicircle-electric-field') {
             const strength = Number.isFinite(field.strength) ? field.strength : 0;
             let labelX = field.x + 8;
             let labelY = field.y + 18;
-            if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
+            if (isUniformField && polygonBounds) {
+                labelX = polygonBounds.minX + 8;
+                labelY = polygonBounds.minY + 18;
+            } else if (circleBoundary) {
+                labelX = circleBoundary.x - circleBoundary.radius + 8;
+                labelY = circleBoundary.y - circleBoundary.radius + 18;
+            } else if (field.type === 'semicircle-electric-field') {
                 const r = Number.isFinite(field.radius) ? field.radius : 0;
                 labelX = field.x - r + 8;
                 labelY = field.y - r + 18;
@@ -411,12 +441,16 @@ export class Renderer {
             this.fieldCtx.lineWidth = 3;
             this.fieldCtx.setLineDash([5, 5]);
 
-            if (field.type === 'electric-field-rect') {
-                this.fieldCtx.strokeRect(field.x - 5, field.y - 5, field.width + 10, field.height + 10);
-            } else if (field.type === 'electric-field-circle') {
-                this.fieldCtx.beginPath();
-                this.fieldCtx.arc(field.x, field.y, field.radius + 5, 0, Math.PI * 2);
-                this.fieldCtx.stroke();
+            if (isUniformField) {
+                if (circleBoundary) {
+                    this.fieldCtx.beginPath();
+                    this.fieldCtx.arc(circleBoundary.x, circleBoundary.y, circleBoundary.radius + 5, 0, Math.PI * 2);
+                    this.fieldCtx.stroke();
+                } else if (tracePolygonPath()) {
+                    this.fieldCtx.stroke();
+                } else {
+                    this.fieldCtx.strokeRect(field.x - 5, field.y - 5, field.width + 10, field.height + 10);
+                }
             } else if (field.type === 'semicircle-electric-field') {
                 this.fieldCtx.beginPath();
                 this.fieldCtx.arc(field.x, field.y, field.radius + 5, 0, Math.PI * 2);
@@ -462,15 +496,26 @@ export class Renderer {
             this.fieldCtx.setLineDash([]);
 
             // 缩放控制点（仅匀强电场）
-            if (field.type === 'electric-field-rect' ||
-                field.type === 'electric-field-circle' ||
-                field.type === 'semicircle-electric-field') {
+            if (isUniformField || field.type === 'semicircle-electric-field') {
                 const handles = [];
-                if (field.type === 'electric-field-rect') {
-                    handles.push({ x: field.x, y: field.y });
-                    handles.push({ x: field.x + field.width, y: field.y });
-                    handles.push({ x: field.x, y: field.y + field.height });
-                    handles.push({ x: field.x + field.width, y: field.y + field.height });
+                if (isUniformField) {
+                    if (circleBoundary) {
+                        handles.push({ x: circleBoundary.x + circleBoundary.radius, y: circleBoundary.y });
+                    } else if (vertexModeEnabled && polygonVertices.length) {
+                        for (const point of polygonVertices) {
+                            handles.push({ x: point.x, y: point.y });
+                        }
+                    } else if (polygonBounds) {
+                        handles.push({ x: polygonBounds.minX, y: polygonBounds.minY });
+                        handles.push({ x: polygonBounds.maxX, y: polygonBounds.minY });
+                        handles.push({ x: polygonBounds.minX, y: polygonBounds.maxY });
+                        handles.push({ x: polygonBounds.maxX, y: polygonBounds.maxY });
+                    } else {
+                        handles.push({ x: field.x, y: field.y });
+                        handles.push({ x: field.x + field.width, y: field.y });
+                        handles.push({ x: field.x, y: field.y + field.height });
+                        handles.push({ x: field.x + field.width, y: field.y + field.height });
+                    }
                 } else {
                     const r = Math.max(0, field.radius ?? 0);
                     handles.push({ x: field.x + r, y: field.y });
@@ -497,7 +542,9 @@ export class Renderer {
 
         const strength = Number.isFinite(field.strength) ? field.strength : 0;
         const hasDirection = Math.abs(strength) > 1e-12;
-        const shape = field.shape || 'rect';
+        const vertexModeEnabled = scene?.settings?.vertexEditMode === true;
+        const circleBoundary = getGeometryCircleBoundary(field);
+        const polygonVertices = circleBoundary ? [] : getGeometryWorldVertices(field);
         const colorRgb = strength >= 0 ? [100, 150, 255] : [255, 100, 100];
         const borderColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.65)`;
         const fillColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.08)`;
@@ -505,34 +552,35 @@ export class Renderer {
 
         const beginShapePath = () => {
             this.fieldCtx.beginPath();
-            if (shape === 'circle') {
-                const r = Math.max(0, field.radius ?? 0);
-                this.fieldCtx.arc(field.x, field.y, r, 0, Math.PI * 2);
+            if (circleBoundary) {
+                const r = Math.max(0, circleBoundary.radius ?? 0);
+                this.fieldCtx.arc(circleBoundary.x, circleBoundary.y, r, 0, Math.PI * 2);
                 return {
-                    minX: field.x - r,
-                    minY: field.y - r,
-                    maxX: field.x + r,
-                    maxY: field.y + r
+                    minX: circleBoundary.x - r,
+                    minY: circleBoundary.y - r,
+                    maxX: circleBoundary.x + r,
+                    maxY: circleBoundary.y + r
                 };
             }
 
-            if (shape === 'triangle') {
-                const x = field.x;
-                const y = field.y;
-                const w = field.width ?? 0;
-                const h = field.height ?? 0;
-                this.fieldCtx.moveTo(x + w / 2, y);
-                this.fieldCtx.lineTo(x, y + h);
-                this.fieldCtx.lineTo(x + w, y + h);
-                this.fieldCtx.closePath();
-                return { minX: x, minY: y, maxX: x + w, maxY: y + h };
+            const polygonBounds = computeVertexBounds(polygonVertices);
+            if (polygonVertices.length && polygonBounds) {
+                this.fieldCtx.moveTo(polygonVertices[0].x, polygonVertices[0].y);
+                for (let i = 1; i < polygonVertices.length; i += 1) {
+                    this.fieldCtx.lineTo(polygonVertices[i].x, polygonVertices[i].y);
+                }
+                if (typeof this.fieldCtx.closePath === 'function') {
+                    this.fieldCtx.closePath();
+                } else {
+                    this.fieldCtx.lineTo(polygonVertices[0].x, polygonVertices[0].y);
+                }
+                return { ...polygonBounds };
             }
 
-            // rect (默认)
-            const x = field.x;
-            const y = field.y;
-            const w = field.width ?? 0;
-            const h = field.height ?? 0;
+            const x = Number.isFinite(field?.x) ? field.x : 0;
+            const y = Number.isFinite(field?.y) ? field.y : 0;
+            const w = Number.isFinite(field?.width) ? field.width : 0;
+            const h = Number.isFinite(field?.height) ? field.height : 0;
             this.fieldCtx.rect(x, y, w, h);
             return { minX: x, minY: y, maxX: x + w, maxY: y + h };
         };
@@ -545,24 +593,17 @@ export class Renderer {
         this.fieldCtx.fillStyle = fillColor;
         this.fieldCtx.fill();
 
-        // 圆形/矩形磁场绘制几何中心标记，便于对齐
+        // 绘制几何中心标记，便于对齐
         const center = (() => {
-            if (shape === 'circle') {
-                if (!Number.isFinite(field.x) || !Number.isFinite(field.y)) return null;
-                return { x: field.x, y: field.y };
-            }
-            if (shape === 'rect') {
-                if (
-                    !Number.isFinite(field.x) ||
-                    !Number.isFinite(field.y) ||
-                    !Number.isFinite(field.width) ||
-                    !Number.isFinite(field.height)
-                ) {
-                    return null;
-                }
+            if (
+                Number.isFinite(bounds?.minX) &&
+                Number.isFinite(bounds?.maxX) &&
+                Number.isFinite(bounds?.minY) &&
+                Number.isFinite(bounds?.maxY)
+            ) {
                 return {
-                    x: field.x + field.width / 2,
-                    y: field.y + field.height / 2
+                    x: (bounds.minX + bounds.maxX) / 2,
+                    y: (bounds.minY + bounds.maxY) / 2
                 };
             }
             return null;
@@ -633,26 +674,25 @@ export class Renderer {
 
             // 缩放控制点
             const handles = [];
-            if (shape === 'circle') {
-                const r = Math.max(0, field.radius ?? 0);
-                handles.push({ key: 'radius', x: field.x + r, y: field.y });
-            } else if (shape === 'triangle') {
-                const x = field.x;
-                const y = field.y;
-                const w = field.width ?? 0;
-                const h = field.height ?? 0;
-                handles.push({ key: 'apex', x: x + w / 2, y });
-                handles.push({ key: 'bl', x, y: y + h });
-                handles.push({ key: 'br', x: x + w, y: y + h });
+            if (circleBoundary) {
+                const r = Math.max(0, circleBoundary.radius ?? 0);
+                handles.push({ key: 'radius', x: circleBoundary.x + r, y: circleBoundary.y });
+            } else if (vertexModeEnabled) {
+                if (polygonVertices.length) {
+                    for (let i = 0; i < polygonVertices.length; i += 1) {
+                        handles.push({ key: `v${i}`, x: polygonVertices[i].x, y: polygonVertices[i].y });
+                    }
+                } else {
+                    handles.push({ key: 'nw', x: bounds.minX, y: bounds.minY });
+                    handles.push({ key: 'ne', x: bounds.maxX, y: bounds.minY });
+                    handles.push({ key: 'sw', x: bounds.minX, y: bounds.maxY });
+                    handles.push({ key: 'se', x: bounds.maxX, y: bounds.maxY });
+                }
             } else {
-                const x = field.x;
-                const y = field.y;
-                const w = field.width ?? 0;
-                const h = field.height ?? 0;
-                handles.push({ key: 'nw', x, y });
-                handles.push({ key: 'ne', x: x + w, y });
-                handles.push({ key: 'sw', x, y: y + h });
-                handles.push({ key: 'se', x: x + w, y: y + h });
+                handles.push({ key: 'nw', x: bounds.minX, y: bounds.minY });
+                handles.push({ key: 'ne', x: bounds.maxX, y: bounds.minY });
+                handles.push({ key: 'sw', x: bounds.minX, y: bounds.maxY });
+                handles.push({ key: 'se', x: bounds.maxX, y: bounds.maxY });
             }
 
             const size = 10;

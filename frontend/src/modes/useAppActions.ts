@@ -26,6 +26,7 @@ type AppActionStore = {
   setBoundaryMode: (mode: BoundaryMode) => void;
   setBoundaryMargin: (value: number) => void;
   setTimeStep: (value: number) => void;
+  setVertexEditMode: (enabled: boolean) => void;
   loadPreset: (name: string) => void;
   openPropertyPanel: () => void;
   duplicateSelected: () => void;
@@ -151,6 +152,11 @@ export function useAppActions(options: UseAppActionsOptions) {
   function setTimeStep(event: Event) {
     const target = event.target as HTMLInputElement;
     simulatorStore.setTimeStep(Number(target.value));
+  }
+
+  function setVertexEditMode(event: Event) {
+    const target = event.target as HTMLInputElement;
+    simulatorStore.setVertexEditMode(!!target.checked);
   }
 
   function loadPreset(name: string) {
@@ -311,6 +317,7 @@ export function useAppActions(options: UseAppActionsOptions) {
     setBoundaryMode,
     setBoundaryMargin,
     setTimeStep,
+    setVertexEditMode,
     loadPreset,
     openSelectedProperties,
     duplicateSelected,

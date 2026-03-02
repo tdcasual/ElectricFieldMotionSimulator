@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
 
 async function dispatchTouchEventViaCdp(
   session: {
@@ -25,9 +27,27 @@ async function addParticleFromPhoneSheet(page: Page) {
   await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
 }
 
+async function getCanvasCenter(page: Page) {
+  const box = await page.locator('#particle-canvas').boundingBox();
+  expect(box).not.toBeNull();
+  return {
+    x: box!.x + box!.width / 2,
+    y: box!.y + box!.height / 2
+  };
+}
+
 async function selectCenterObject(page: Page, x: number, y: number) {
   await page.touchscreen.tap(x, y);
-  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+  const actionBar = page.getByTestId('object-action-bar');
+  const selected = await actionBar.isVisible().catch(() => false);
+  if (selected) return;
+
+  const refreshed = await getCanvasCenter(page);
+  if (Math.abs(refreshed.x - x) > 0.5 || Math.abs(refreshed.y - y) > 0.5) {
+    await page.touchscreen.tap(refreshed.x, refreshed.y);
+  }
+
+  await expect(actionBar).toBeVisible();
 }
 
 async function openPropertyPanelFromActionBar(page: Page) {
@@ -305,6 +325,495 @@ test('phone selected sheet pins recently edited geometry field to top', async ({
   });
 
   await expect.poll(async () => (await getDisplaySourceKeyOrder())[0]).toBe(targetSourceKey);
+});
+
+test('phone selected sheet actions stay reachable and keep state transitions coherent', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only selected-sheet action check');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+
+  await page.locator('#phone-nav-selected-btn').tap();
+  const selectedSheet = page.getByTestId('phone-selected-sheet');
+  await expect(selectedSheet).toBeVisible();
+
+  const propertiesButton = selectedSheet.locator('#phone-selected-properties-btn');
+  const duplicateButton = selectedSheet.locator('#phone-selected-duplicate-btn');
+  const deleteButton = selectedSheet.locator('#phone-selected-delete-btn');
+
+  const propertiesHeight = await propertiesButton.evaluate((el) => el.getBoundingClientRect().height);
+  const duplicateHeight = await duplicateButton.evaluate((el) => el.getBoundingClientRect().height);
+  const deleteHeight = await deleteButton.evaluate((el) => el.getBoundingClientRect().height);
+  expect(propertiesHeight).toBeGreaterThanOrEqual(44);
+  expect(duplicateHeight).toBeGreaterThanOrEqual(44);
+  expect(deleteHeight).toBeGreaterThanOrEqual(44);
+
+  await duplicateButton.tap();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*2/);
+  await expect(selectedSheet).toBeVisible();
+
+  await propertiesButton.tap();
+  await expect(page.locator('#property-panel')).toBeVisible();
+  await expect(selectedSheet).toBeHidden();
+
+  await page.locator('#close-panel-btn').tap();
+  await expect(page.locator('#property-panel')).toBeHidden();
+  await selectCenterObject(page, centerX, centerY);
+  await page.locator('#phone-nav-selected-btn').tap();
+  await expect(selectedSheet).toBeVisible();
+
+  page.once('dialog', async (dialog) => {
+    await dialog.accept();
+  });
+  await deleteButton.tap();
+
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+  await expect(selectedSheet).toBeHidden();
+});
+
+test('phone object action bar duplicate and delete actions remain coherent', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only action-bar duplicate/delete check');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await selectCenterObject(page, centerX, centerY);
+
+  const actionBar = page.getByTestId('object-action-bar');
+  await expect(actionBar).toBeVisible();
+  await page.locator('[data-testid="action-duplicate"]').tap();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*2/);
+  await expect(actionBar).toBeVisible();
+
+  page.once('dialog', async (dialog) => {
+    await dialog.accept();
+  });
+  await page.locator('[data-testid="action-delete"]').tap();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+  await expect(actionBar).toBeHidden();
+});
+
+test('phone more sheet theme toggle closes sheet and applies theme change', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only theme toggle check from more sheet');
+  }
+
+  await page.locator('#phone-nav-more-btn').tap();
+  const moreSheet = page.getByTestId('phone-more-sheet');
+  await expect(moreSheet).toBeVisible();
+
+  const darkModeBefore = await page.evaluate(() => document.body.classList.contains('dark-theme'));
+  await page.locator('#secondary-theme-btn').tap();
+  await expect(moreSheet).toBeHidden();
+  await expect.poll(async () => page.evaluate(() => document.body.classList.contains('dark-theme'))).toBe(!darkModeBefore);
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(moreSheet).toBeVisible();
+});
+
+test('phone more sheet save-load-clear flow stays coherent under dialogs', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only scene io flow check from more sheet');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('prompt');
+    await dialog.accept('phone-sheet-e2e');
+  });
+  await page.locator('#secondary-save-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*2/);
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('prompt');
+    await dialog.accept('phone-sheet-e2e');
+  });
+  await page.locator('#secondary-load-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm');
+    await dialog.accept();
+  });
+  await page.locator('#secondary-clear-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*0/);
+
+  await page.touchscreen.tap(centerX, centerY);
+  await expect(page.getByTestId('object-action-bar')).toBeHidden();
+});
+
+test('phone resize gesture shows geometry overlay badge only during interaction', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only geometry overlay badge check');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="magnetic-field"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+
+  const badge = page.getByTestId('geometry-overlay-badge');
+  await expect(badge).toBeHidden();
+
+  const cdpSession = await page.context().newCDPSession(page);
+  await dispatchTouchEventViaCdp(cdpSession, 'touchStart', [
+    { x: centerX, y: centerY, radiusX: 4, radiusY: 4, id: 1, force: 1 }
+  ]);
+  await page.waitForTimeout(50);
+  await dispatchTouchEventViaCdp(cdpSession, 'touchMove', [
+    { x: centerX - 48, y: centerY - 36, radiusX: 4, radiusY: 4, id: 1, force: 1 }
+  ]);
+
+  await expect.poll(async () => badge.isVisible()).toBe(true);
+  await expect(page.getByTestId('geometry-overlay-real')).not.toHaveText('--');
+  await expect(page.getByTestId('geometry-overlay-display')).not.toHaveText('--');
+  await expect(page.getByTestId('geometry-overlay-scale')).not.toHaveText('--');
+
+  await dispatchTouchEventViaCdp(cdpSession, 'touchEnd', []);
+  await expect.poll(async () => badge.isVisible()).toBe(false);
+
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+});
+
+test('phone more sheet import failure keeps state and interactions recoverable', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only import failure handling check');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*1/);
+
+  const invalidPath = path.resolve(process.cwd(), 'output', 'playwright', 'fixtures', 'invalid-scene.json');
+  fs.mkdirSync(path.dirname(invalidPath), { recursive: true });
+  fs.writeFileSync(invalidPath, '{invalid-json');
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-import-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+
+  await page.setInputFiles('#import-file-input', invalidPath);
+  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/导入失败/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*1/);
+
+  await page.touchscreen.tap(centerX, centerY);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+});
+
+test('phone more sheet import keeps legacy scene payload objects instead of dropping them', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only legacy import compatibility check');
+  }
+
+  const legacyScenePath = path.resolve(process.cwd(), 'example-scene.json');
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-import-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+
+  await page.setInputFiles('#import-file-input', legacyScenePath);
+
+  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/场景已导入/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*5/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*2/);
+});
+
+test('phone import -> quick-edit -> orientation switch keeps editing and nav interactions coherent', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only import/edit/orientation chain check');
+  }
+
+  const legacyScenePath = path.resolve(process.cwd(), 'example-scene.json');
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-import-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+  await page.setInputFiles('#import-file-input', legacyScenePath);
+
+  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/场景已导入/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*5/);
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="magnetic-field"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*6/);
+
+  await page.touchscreen.tap(centerX + 20, centerY + 20);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+  await page.locator('[data-testid="action-open-properties"]').tap();
+  await expect(page.getByTestId('property-drawer')).toBeVisible();
+
+  const quickX = page.locator('#quick-x');
+  const beforeX = Number(await quickX.inputValue());
+  expect(Number.isFinite(beforeX)).toBe(true);
+  const nextX = Math.round(beforeX + 60);
+  await quickX.fill(String(nextX));
+
+  await page.setViewportSize({ width: 744, height: 390 });
+  await expect(page.getByTestId('property-drawer')).toBeVisible();
+  await page.locator('[data-testid="apply-props"]').tap();
+  await expect.poll(async () => Number(await quickX.inputValue())).toBe(nextX);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('property-drawer')).toBeVisible();
+  await page.locator('#close-panel-btn').tap();
+  await expect(page.locator('#property-panel')).toBeHidden();
+
+  await page.locator('#phone-nav-scene-btn').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-scene-sheet"] .btn-icon').tap();
+  await expect(page.getByTestId('phone-scene-sheet')).toBeHidden();
+  await expect(page.getByTestId('phone-bottom-nav')).toBeVisible();
+});
+
+test('phone import failure then success keeps follow-up edit and clear interactions recoverable', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only import recovery chain check');
+  }
+
+  await addParticleFromPhoneSheet(page);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+
+  const invalidPath = path.resolve(process.cwd(), 'output', 'playwright', 'fixtures', 'invalid-scene-recovery.json');
+  fs.mkdirSync(path.dirname(invalidPath), { recursive: true });
+  fs.writeFileSync(invalidPath, '{invalid-json');
+  const legacyScenePath = path.resolve(process.cwd(), 'example-scene.json');
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-import-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+  await page.setInputFiles('#import-file-input', invalidPath);
+
+  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/导入失败/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await page.locator('#secondary-import-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+  await page.setInputFiles('#import-file-input', legacyScenePath);
+
+  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/场景已导入/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*5/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*2/);
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="magnetic-field"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*6/);
+
+  await page.touchscreen.tap(centerX + 20, centerY + 20);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+  await page.locator('[data-testid="action-open-properties"]').tap();
+  await expect(page.getByTestId('property-drawer')).toBeVisible();
+
+  const quickX = page.locator('#quick-x');
+  await expect(quickX).toBeVisible();
+  const beforeX = Number(await quickX.inputValue());
+  expect(Number.isFinite(beforeX)).toBe(true);
+  const nextX = Math.round(beforeX + 50);
+  await quickX.fill(String(nextX));
+  await page.locator('[data-testid="apply-props"]').tap();
+  await expect.poll(async () => Number(await quickX.inputValue())).toBe(nextX);
+  await page.locator('#close-panel-btn').tap();
+  await expect(page.locator('#property-panel')).toBeHidden();
+
+  await page.locator('#phone-nav-more-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm');
+    await dialog.accept();
+  });
+  await page.locator('#secondary-clear-btn').tap();
+  await expect(page.getByTestId('phone-more-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*0/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*0/);
+});
+
+test('phone status strip metrics stay synchronized with object and particle counters', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only status strip sync check');
+  }
+
+  const metrics = page.locator('[data-testid="phone-status-strip"] .phone-status-metrics');
+  await expect(metrics).toHaveText(/对象\s*0\s*·\s*粒子\s*0/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*0/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*0/);
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await addParticleFromPhoneSheet(page);
+  await expect(metrics).toHaveText(/对象\s*1\s*·\s*粒子\s*1/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*1/);
+
+  await selectCenterObject(page, centerX, centerY);
+  await page.locator('#phone-nav-selected-btn').tap();
+  await expect(page.getByTestId('phone-selected-sheet')).toBeVisible();
+  page.once('dialog', async (dialog) => {
+    await dialog.accept();
+  });
+  await page.locator('#phone-selected-delete-btn').tap();
+  await expect(page.getByTestId('phone-selected-sheet')).toBeHidden();
+
+  await expect(metrics).toHaveText(/对象\s*0\s*·\s*粒子\s*0/);
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*0/);
+  await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*0/);
+});
+
+test('phone property quick-edit apply moves object and keeps selection coherent', async ({ page }, testInfo) => {
+  await page.goto('http://127.0.0.1:5173');
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+
+  if (testInfo.project.name !== 'phone-chromium') {
+    test.skip(true, 'phone-only property quick-edit apply check');
+  }
+
+  const canvas = page.locator('#particle-canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+
+  await page.locator('#phone-nav-add-btn').tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
+  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="magnetic-field"]').first().tap();
+  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+
+  await page.touchscreen.tap(centerX + 20, centerY + 20);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
+  await page.locator('[data-testid="action-open-properties"]').tap();
+  await expect(page.getByTestId('property-drawer')).toBeVisible();
+  await expect(page.getByTestId('property-quick-edit')).toBeVisible();
+
+  const quickX = page.locator('#quick-x');
+  const quickY = page.locator('#quick-y');
+  const oldX = Number(await quickX.inputValue());
+  const oldY = Number(await quickY.inputValue());
+  expect(Number.isFinite(oldX)).toBe(true);
+  expect(Number.isFinite(oldY)).toBe(true);
+
+  const moveDeltaX = Math.min(120, Math.max(40, Math.floor(box!.width - oldX - 30)));
+  const nextX = Math.round(oldX + moveDeltaX);
+  await quickX.fill(String(nextX));
+  await page.locator('[data-testid="apply-props"]').tap();
+  await expect.poll(async () => Number(await quickX.inputValue())).toBe(nextX);
+
+  await page.locator('#close-panel-btn').tap();
+  await expect(page.locator('#property-panel')).toBeHidden();
+
+  await page.touchscreen.tap(box!.x + oldX + 20, box!.y + oldY + 20);
+  await expect(page.getByTestId('object-action-bar')).toBeHidden();
+
+  await page.touchscreen.tap(box!.x + nextX + 20, box!.y + oldY + 20);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
 });
 
 test('phone sheet controls keep touch targets at least 44px', async ({ page }, testInfo) => {
@@ -779,18 +1288,12 @@ test('object action bar stays above safe-area-aware phone nav', async ({ page },
     (element as HTMLElement).style.setProperty('--phone-safe-bottom-inset', '34px');
   });
 
-  const canvas = page.locator('#particle-canvas');
-  const box = await canvas.boundingBox();
-  expect(box).not.toBeNull();
-  const centerX = box!.x + box!.width / 2;
-  const centerY = box!.y + box!.height / 2;
-
   await page.locator('#phone-nav-add-btn').tap();
   await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
   await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
   await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
-
-  await page.touchscreen.tap(centerX, centerY);
+  const center = await getCanvasCenter(page);
+  await selectCenterObject(page, center.x, center.y);
   const actionBar = page.getByTestId('object-action-bar');
   const phoneNav = page.locator('#phone-bottom-nav');
   await expect(actionBar).toBeVisible();

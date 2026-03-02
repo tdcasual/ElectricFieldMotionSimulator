@@ -22,7 +22,7 @@ describe('embed bootstrap in simulator store', () => {
     store.createObjectAtCenter('particle');
     expect(store.objectCount).toBe(1);
 
-    const ok = store.loadSceneData({ version: '1.0', settings: {}, objects: [] });
+    const ok = store.loadSceneData({ version: '2.0', settings: {}, objects: [] });
     expect(ok).toBe(true);
     expect(store.objectCount).toBe(0);
   });

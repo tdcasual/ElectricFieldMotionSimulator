@@ -33,13 +33,13 @@ export function isFieldEnabled(field, values) {
   }
 }
 
-export function getAllowedVariableNames(scene) {
+function getAllowedVariableNames(scene) {
   const vars = scene?.variables;
   if (!vars || typeof vars !== 'object' || Array.isArray(vars)) return [];
   return Object.keys(vars);
 }
 
-export function buildExpressionContext(scene) {
+function buildExpressionContext(scene) {
   const ctx = Object.create(null);
   ctx.t = Number.isFinite(scene?.time) ? scene.time : 0;
   const vars = scene?.variables;

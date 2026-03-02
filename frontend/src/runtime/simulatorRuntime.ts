@@ -194,6 +194,7 @@ export class SimulatorRuntime {
     this.mode = 'normal';
     this.scene.settings.mode = this.mode;
     this.applyHostInteractionSettings();
+    (window as Window & { app?: AnyRecord }).app = this.appAdapter;
 
     this.renderer.init();
     this.syncViewportFromRenderer();
@@ -221,6 +222,10 @@ export class SimulatorRuntime {
     this.mounted = false;
     this.dragDropManager?.dispose?.();
     this.dragDropManager = null;
+    const globalWindow = window as Window & { app?: AnyRecord };
+    if (globalWindow.app === this.appAdapter) {
+      delete globalWindow.app;
+    }
     const particleCanvas = document.getElementById('particle-canvas');
     if (particleCanvas instanceof HTMLCanvasElement) {
       particleCanvas.removeEventListener('wheel', this.handleDemoWheelBound);
@@ -387,6 +392,9 @@ export class SimulatorRuntime {
 
   createObjectAtCenter(type: string) {
     if (!type) return;
+    // Ensure center placement uses the latest viewport after orientation/layout changes.
+    this.renderer.resize();
+    this.syncViewportFromRenderer();
     const bounds = this.scene.getWorldViewportBounds(0);
     const x = (bounds.minX + bounds.maxX) / 2;
     const y = (bounds.minY + bounds.maxY) / 2;

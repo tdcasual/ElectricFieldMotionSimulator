@@ -56,5 +56,5 @@ test('registry preserves magnetic variant types', async () => {
   const { registry } = await import('../js/core/registerObjects.js');
   const circle = registry.create('magnetic-field-circle', { x: 10, y: 20 });
   assert.equal(circle.type, 'magnetic-field-circle');
-  assert.equal(circle.shape, 'circle');
+  assert.equal(circle.getGeometry()?.kind, 'circle');
 });

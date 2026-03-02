@@ -153,6 +153,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const gravity = ref(10);
   const boundaryMode = ref<'margin' | 'remove' | 'bounce' | 'wrap'>('margin');
   const boundaryMargin = ref(200);
+  const vertexEditMode = ref(false);
   const classroomMode = ref(false);
 
   const activeDrawer = ref<ActiveDrawer>(null);
@@ -204,6 +205,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     gravity.value = asNonNegativeNumber(settings.gravity, 10);
     boundaryMode.value = normalizeBoundaryMode(settings.boundaryMode);
     boundaryMargin.value = asNonNegativeNumber(settings.boundaryMargin, 200);
+    vertexEditMode.value = settings.vertexEditMode === true;
   }
 
   function updatePropertyPayload(payload: PropertyPayload) {
@@ -347,6 +349,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   function closeAllDrawers() {
     activeDrawer.value = null;
+  }
+
+  function closeSceneDependentDrawers() {
+    closePropertyPanel();
+    closeVariablesPanel();
   }
 
   function closePropertyPanel() {
@@ -525,7 +532,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   function loadSceneData(data: Record<string, unknown>) {
     const ok = getRuntime().loadSceneData(data);
     if (ok) {
-      closePropertyPanel();
+      closeSceneDependentDrawers();
       setStatusText('场景已加载');
     } else {
       setStatusText('场景加载失败');
@@ -577,6 +584,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   function toggleDemoMode() {
     getRuntime().toggleDemoMode();
+    closeSceneDependentDrawers();
   }
 
   function setTimeStep(next: number) {
@@ -623,6 +631,14 @@ export const useSimulatorStore = defineStore('simulator', () => {
     current.requestRender({ updateUI: true });
   }
 
+  function setVertexEditMode(next: boolean) {
+    const current = getRuntime();
+    const enabled = !!next;
+    vertexEditMode.value = enabled;
+    current.scene.settings.vertexEditMode = enabled;
+    current.requestRender({ updateUI: true, trackBaseline: false });
+  }
+
   function createObjectAtCenter(type: string) {
     if (!type) return;
     getRuntime().createObjectAtCenter(type);
@@ -641,11 +657,14 @@ export const useSimulatorStore = defineStore('simulator', () => {
     const restored = getRuntime().resetScene();
     if (!restored) {
       setStatusText('暂无可重置的起始状态');
+      return;
     }
+    closeSceneDependentDrawers();
   }
 
   function clearScene() {
     getRuntime().clearScene();
+    closeSceneDependentDrawers();
   }
 
   function saveScene(name: string) {
@@ -664,7 +683,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     if (!name || !name.trim()) return false;
     const ok = getRuntime().loadScene(name.trim());
     if (ok) {
-      closePropertyPanel();
+      closeSceneDependentDrawers();
       setStatusText(`场景 "${name.trim()}" 已加载`);
     } else {
       setStatusText(`场景 "${name.trim()}" 不存在`);
@@ -680,7 +699,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   async function importScene(file: File) {
     const ok = await getRuntime().importScene(file);
     if (ok) {
-      closePropertyPanel();
+      closeSceneDependentDrawers();
       setStatusText('场景已导入');
     } else {
       setStatusText('导入失败');
@@ -695,7 +714,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     current.stop();
     current.scene.clear();
     current.scene.loadFromData(preset.data);
-    closePropertyPanel();
+    closeSceneDependentDrawers();
     current.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
     setStatusText(`已加载预设场景: ${preset.name}`);
     return true;
@@ -745,6 +764,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     gravity,
     boundaryMode,
     boundaryMargin,
+    vertexEditMode,
     propertyDrawerOpen,
     propertyTitle,
     propertySections,
@@ -780,6 +800,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     setGravity,
     setBoundaryMode,
     setBoundaryMargin,
+    setVertexEditMode,
     createObjectAtCenter,
     duplicateSelected,
     deleteSelected,

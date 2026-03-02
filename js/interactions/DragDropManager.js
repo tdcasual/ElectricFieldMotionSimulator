@@ -18,6 +18,18 @@ import {
     setObjectDisplayDimension
 } from '../modes/GeometryScaling.js';
 import { computePointTangencyMatch, computeTangencyMatch } from './TangencyEngine.js';
+import {
+    computeVertexBounds,
+    getWorldVertices,
+    hasLocalVertices,
+    normalizeObjectVerticesFromWorld,
+    scaleWorldVerticesToBounds
+} from '../geometry/VertexGeometry.js';
+import {
+    getGeometryBoundarySegments,
+    getGeometryCircleBoundary,
+    getGeometryWorldVertices
+} from '../geometry/GeometryKernel.js';
 
 const TOOL_ALIASES = {
     'electric-field-semicircle': { type: 'semicircle-electric-field' },
@@ -79,43 +91,36 @@ function isFinitePositive(value) {
     return Number.isFinite(value) && value > 0;
 }
 
-function buildRectSegments(object) {
-    const x = object?.x;
-    const y = object?.y;
-    const w = object?.width;
-    const h = object?.height;
-    if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFinitePositive(w) || !isFinitePositive(h)) {
-        return [];
+function computeRectFromHandle(handle, start, pos, minSize) {
+    const startX = start.x;
+    const startY = start.y;
+    const startW = start.width;
+    const startH = start.height;
+    const startRight = startX + startW;
+    const startBottom = startY + startH;
+
+    if (handle === 'nw') {
+        const newX = Math.min(pos.x, startRight - minSize);
+        const newY = Math.min(pos.y, startBottom - minSize);
+        const newW = Math.max(minSize, startRight - newX);
+        const newH = Math.max(minSize, startBottom - newY);
+        return { x: newX, y: newY, width: newW, height: newH };
     }
-
-    return [
-        { x1: x, y1: y, x2: x + w, y2: y },
-        { x1: x + w, y1: y, x2: x + w, y2: y + h },
-        { x1: x + w, y1: y + h, x2: x, y2: y + h },
-        { x1: x, y1: y + h, x2: x, y2: y }
-    ];
-}
-
-function buildTriangleSegments(object) {
-    const x = object?.x;
-    const y = object?.y;
-    const w = object?.width;
-    const h = object?.height;
-    if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFinitePositive(w) || !isFinitePositive(h)) {
-        return [];
+    if (handle === 'ne') {
+        const newY = Math.min(pos.y, startBottom - minSize);
+        const newW = Math.max(minSize, pos.x - startX);
+        const newH = Math.max(minSize, startBottom - newY);
+        return { x: startX, y: newY, width: newW, height: newH };
     }
-
-    const ax = x + w / 2;
-    const ay = y;
-    const bx = x;
-    const by = y + h;
-    const cx = x + w;
-    const cy = y + h;
-    return [
-        { x1: ax, y1: ay, x2: bx, y2: by },
-        { x1: bx, y1: by, x2: cx, y2: cy },
-        { x1: cx, y1: cy, x2: ax, y2: ay }
-    ];
+    if (handle === 'sw') {
+        const newX = Math.min(pos.x, startRight - minSize);
+        const newW = Math.max(minSize, startRight - newX);
+        const newH = Math.max(minSize, pos.y - startY);
+        return { x: newX, y: startY, width: newW, height: newH };
+    }
+    const newW = Math.max(minSize, pos.x - startX);
+    const newH = Math.max(minSize, pos.y - startY);
+    return { x: startX, y: startY, width: newW, height: newH };
 }
 
 function buildDisappearZoneSegment(object) {
@@ -134,14 +139,7 @@ function buildDisappearZoneSegment(object) {
 }
 
 export function getObjectCircleBoundary(object) {
-    if (!object) return null;
-    const isElectricCircle = object.type === 'electric-field-circle';
-    const isMagneticCircle = object.type?.includes('magnetic-field') && (object.shape || 'rect') === 'circle';
-    if (!isElectricCircle && !isMagneticCircle) return null;
-    if (!isFiniteNumber(object.x) || !isFiniteNumber(object.y) || !isFinitePositive(object.radius)) {
-        return null;
-    }
-    return { x: object.x, y: object.y, radius: object.radius };
+    return getGeometryCircleBoundary(object);
 }
 
 export function getObjectPointBoundary(object) {
@@ -160,15 +158,8 @@ function isMagneticFieldObject(object) {
 
 function objectBoundarySegments(object) {
     if (!object) return [];
-    if (object.type === 'electric-field-rect') {
-        return buildRectSegments(object);
-    }
-
-    if (object.type?.includes('magnetic-field')) {
-        const shape = object.shape || 'rect';
-        if (shape === 'rect') return buildRectSegments(object);
-        if (shape === 'triangle') return buildTriangleSegments(object);
-    }
+    const geometrySegments = getGeometryBoundarySegments(object);
+    if (geometrySegments.length) return geometrySegments;
 
     const zoneSegment = buildDisappearZoneSegment(object);
     if (zoneSegment) return [zoneSegment];
@@ -263,6 +254,7 @@ export class DragDropManager {
         this.appAdapter = options.appAdapter || null;
         this.cleanupListeners = [];
         this.contextMenuCloseHandler = null;
+        this.contextMenuEscapeHandler = null;
         this.contextMenuCloseTimer = null;
 
         this.draggingObject = null;
@@ -282,9 +274,10 @@ export class DragDropManager {
             window.matchMedia?.('(pointer: coarse)')?.matches ||
             (navigator.maxTouchPoints ?? 0) > 0;
 
-        this.dragMode = 'move'; // move | resize
+        this.dragMode = 'move'; // move | resize | vertex
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.vertexHandleIndex = null;
         this.isPanning = false;
         this.panStartScreen = null;
         this.panStartCamera = null;
@@ -324,6 +317,69 @@ export class DragDropManager {
         return this.scene?.settings?.interactionLocked === true || this.scene?.settings?.hostMode === 'view';
     }
 
+    isVertexEditModeEnabled() {
+        return this.scene?.settings?.vertexEditMode === true;
+    }
+
+    isVertexEditableObject(object) {
+        if (!object) return false;
+        if (this.isMagneticResizable(object)) {
+            return !getObjectCircleBoundary(object);
+        }
+        return object.type === 'electric-field-rect';
+    }
+
+    ensureVertexGeometry(object) {
+        if (!this.isVertexEditableObject(object)) return false;
+        if (hasLocalVertices(object)) return true;
+        const geometryVertices = getGeometryWorldVertices(object);
+        if (geometryVertices.length >= 3) {
+            return normalizeObjectVerticesFromWorld(object, geometryVertices);
+        }
+        const worldVertices = [];
+        const x = Number.isFinite(object.x) ? object.x : 0;
+        const y = Number.isFinite(object.y) ? object.y : 0;
+        const w = Number.isFinite(object.width) ? object.width : 0;
+        const h = Number.isFinite(object.height) ? object.height : 0;
+        worldVertices.push({ x, y });
+        worldVertices.push({ x: x + w, y });
+        worldVertices.push({ x: x + w, y: y + h });
+        worldVertices.push({ x, y: y + h });
+        return normalizeObjectVerticesFromWorld(object, worldVertices);
+    }
+
+    getObjectVertexHandles(object) {
+        if (!this.isVertexEditableObject(object)) return [];
+        if (!this.ensureVertexGeometry(object)) return [];
+        return getWorldVertices(object);
+    }
+
+    getVertexHandleIndex(object, pos) {
+        const handles = this.getObjectVertexHandles(object);
+        if (!handles.length) return null;
+        const tolerance = this.isCoarsePointer ? 16 : 10;
+        const tolSq = tolerance * tolerance;
+        for (let i = 0; i < handles.length; i += 1) {
+            const handle = handles[i];
+            const dx = pos.x - handle.x;
+            const dy = pos.y - handle.y;
+            if ((dx * dx + dy * dy) <= tolSq) {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    applyVertexDrag(object, index, pos) {
+        if (!this.isVertexEditableObject(object)) return;
+        if (!Number.isInteger(index) || index < 0) return;
+        const worldVertices = this.getObjectVertexHandles(object);
+        if (!worldVertices.length || index >= worldVertices.length) return;
+        const next = worldVertices.map((point) => ({ ...point }));
+        next[index] = { x: pos.x, y: pos.y };
+        normalizeObjectVerticesFromWorld(object, next);
+    }
+
     bindEvent(target, type, handler, options = undefined) {
         if (!target?.addEventListener || typeof handler !== 'function') return;
         target.addEventListener(type, handler, options);
@@ -338,6 +394,12 @@ export class DragDropManager {
         this.contextMenuCloseHandler = null;
     }
 
+    clearContextMenuEscapeHandler() {
+        if (!this.contextMenuEscapeHandler) return;
+        document.removeEventListener('keydown', this.contextMenuEscapeHandler);
+        this.contextMenuEscapeHandler = null;
+    }
+
     clearContextMenuCloseTimer() {
         if (this.contextMenuCloseTimer == null) return;
         clearTimeout(this.contextMenuCloseTimer);
@@ -348,6 +410,7 @@ export class DragDropManager {
         this.clearLongPressTimer();
         this.clearContextMenuCloseTimer();
         this.clearContextMenuCloseHandler();
+        this.clearContextMenuEscapeHandler();
         this.clearPointerInteractionState();
         this.clearTangencyHint();
         this.touchPoints?.clear?.();
@@ -361,6 +424,7 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.vertexHandleIndex = null;
         if (this.armedToolElement) {
             this.setToolArmedState(this.armedToolElement, false);
         }
@@ -434,6 +498,27 @@ export class DragDropManager {
 
         // 右键菜单
         this.bindEvent(this.canvas, 'contextmenu', (e) => this.onContextMenu(e));
+        this.bindEvent(document, 'contextmenu', (e) => {
+            const contextMenu = document.getElementById('context-menu');
+            if (!contextMenu) return;
+            const target = e.target;
+            const canvasContainsTarget =
+                !!this.canvas &&
+                typeof this.canvas.contains === 'function' &&
+                target != null &&
+                (() => {
+                    try {
+                        return this.canvas.contains(target);
+                    } catch {
+                        return false;
+                    }
+                })();
+            if (canvasContainsTarget) return; // Canvas lifecycle is managed by onContextMenu.
+            contextMenu.style.display = 'none';
+            this.clearContextMenuCloseTimer();
+            this.clearContextMenuCloseHandler();
+            this.clearContextMenuEscapeHandler();
+        });
         this.bindEvent(document, RESET_TAP_CHAIN_EVENT, () => this.resetTapChain());
     }
 
@@ -808,6 +893,7 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.vertexHandleIndex = null;
         this.isPanning = false;
         this.panStartScreen = null;
         this.panStartCamera = null;
@@ -920,37 +1006,18 @@ export class DragDropManager {
             this.dragMode = 'move';
             this.resizeHandle = null;
             this.resizeStart = null;
+            this.vertexHandleIndex = null;
 
-            if (this.isMagneticResizable(clickedObject)) {
-                const handle = this.getMagneticResizeHandle(clickedObject, this.pointerDownPos);
-                if (handle) {
-                    this.dragMode = 'resize';
-                    this.resizeHandle = handle;
-                    this.resizeStart = {
-                        x: clickedObject.x,
-                        y: clickedObject.y,
-                        width: clickedObject.width ?? 0,
-                        height: clickedObject.height ?? 0,
-                        radius: clickedObject.radius ?? 0,
-                        shape: clickedObject.shape || 'rect'
-                    };
+            if (this.isVertexEditModeEnabled() && this.isVertexEditableObject(clickedObject)) {
+                const vertexIndex = this.getVertexHandleIndex(clickedObject, this.pointerDownPos);
+                if (vertexIndex !== null) {
+                    this.dragMode = 'vertex';
+                    this.vertexHandleIndex = vertexIndex;
                 }
             }
 
-            if (this.dragMode === 'move' && this.isElectricResizable(clickedObject)) {
-                const handle = this.getElectricResizeHandle(clickedObject, this.pointerDownPos);
-                if (handle) {
-                    this.dragMode = 'resize';
-                    this.resizeHandle = handle;
-                    this.resizeStart = {
-                        x: clickedObject.x,
-                        y: clickedObject.y,
-                        width: clickedObject.width ?? 0,
-                        height: clickedObject.height ?? 0,
-                        radius: clickedObject.radius ?? 0,
-                        type: clickedObject.type
-                    };
-                }
+            if (this.dragMode === 'move' && !this.isVertexEditModeEnabled()) {
+                this.tryStartObjectResize(clickedObject, this.pointerDownPos);
             }
 
             if (clickedObject.type === 'particle') {
@@ -968,11 +1035,17 @@ export class DragDropManager {
             }
 
             if (e.pointerType === 'mouse') {
-                this.canvas.style.cursor = this.dragMode === 'resize' ? 'nwse-resize' : 'grabbing';
+                if (this.dragMode === 'resize') {
+                    this.canvas.style.cursor = 'nwse-resize';
+                } else if (this.dragMode === 'vertex') {
+                    this.canvas.style.cursor = 'crosshair';
+                } else {
+                    this.canvas.style.cursor = 'grabbing';
+                }
             }
 
             // 触屏长按打开属性面板
-            if (e.pointerType !== 'mouse') {
+            if (e.pointerType !== 'mouse' && this.dragMode !== 'vertex') {
                 this.clearLongPressTimer();
                 this.longPressTimer = setTimeout(() => {
                     if (this.pointerDownObject === clickedObject && !this.isDragging) {
@@ -993,6 +1066,7 @@ export class DragDropManager {
             this.dragMode = 'move';
             this.resizeHandle = null;
             this.resizeStart = null;
+            this.vertexHandleIndex = null;
             this.isPanning = true;
             this.panStartScreen = screenPos;
             this.panStartCamera = this.getCameraOffset();
@@ -1053,15 +1127,15 @@ export class DragDropManager {
             this.clearLongPressTimer();
         }
 
-        if (this.dragMode === 'resize') {
-            if (this.isMagneticResizable(this.draggingObject)) {
-                this.resizeMagneticField(this.draggingObject, pos);
-                const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
-                this.syncDisplayResizeScale(this.draggingObject, preferred);
-                this.updateGeometryOverlayHint(this.draggingObject, preferred);
+        if (this.dragMode === 'vertex') {
+            this.clearGeometryOverlayHint();
+            if (this.vertexHandleIndex !== null) {
+                this.applyVertexDrag(this.draggingObject, this.vertexHandleIndex, pos);
                 this.renderer.invalidateFields();
-            } else if (this.isElectricResizable(this.draggingObject)) {
-                this.resizeElectricField(this.draggingObject, pos);
+            }
+        } else if (this.dragMode === 'resize') {
+            if (this.isFieldResizable(this.draggingObject)) {
+                this.resizeObject(this.draggingObject, pos);
                 const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
                 this.syncDisplayResizeScale(this.draggingObject, preferred);
                 this.updateGeometryOverlayHint(this.draggingObject, preferred);
@@ -1090,7 +1164,9 @@ export class DragDropManager {
             this.renderer.invalidateFields();
         }
 
-        this.updateTangencyHintAndSnap(e);
+        if (this.dragMode !== 'vertex') {
+            this.updateTangencyHintAndSnap(e);
+        }
 
         if (this.scene.isPaused) {
             this.renderer.render(this.scene);
@@ -1137,6 +1213,7 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.vertexHandleIndex = null;
         this.isPanning = false;
         this.panStartScreen = null;
         this.panStartCamera = null;
@@ -1172,6 +1249,7 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.vertexHandleIndex = null;
         this.isPanning = false;
         this.panStartScreen = null;
         this.panStartCamera = null;
@@ -1207,37 +1285,18 @@ export class DragDropManager {
             this.dragMode = 'move';
             this.resizeHandle = null;
             this.resizeStart = null;
+            this.vertexHandleIndex = null;
 
-            if (this.isMagneticResizable(clickedObject)) {
-                const handle = this.getMagneticResizeHandle(clickedObject, pos);
-                if (handle) {
-                    this.dragMode = 'resize';
-                    this.resizeHandle = handle;
-                    this.resizeStart = {
-                        x: clickedObject.x,
-                        y: clickedObject.y,
-                        width: clickedObject.width ?? 0,
-                        height: clickedObject.height ?? 0,
-                        radius: clickedObject.radius ?? 0,
-                        shape: clickedObject.shape || 'rect'
-                    };
+            if (this.isVertexEditModeEnabled() && this.isVertexEditableObject(clickedObject)) {
+                const vertexIndex = this.getVertexHandleIndex(clickedObject, pos);
+                if (vertexIndex !== null) {
+                    this.dragMode = 'vertex';
+                    this.vertexHandleIndex = vertexIndex;
                 }
             }
 
-            if (this.dragMode === 'move' && this.isElectricResizable(clickedObject)) {
-                const handle = this.getElectricResizeHandle(clickedObject, pos);
-                if (handle) {
-                    this.dragMode = 'resize';
-                    this.resizeHandle = handle;
-                    this.resizeStart = {
-                        x: clickedObject.x,
-                        y: clickedObject.y,
-                        width: clickedObject.width ?? 0,
-                        height: clickedObject.height ?? 0,
-                        radius: clickedObject.radius ?? 0,
-                        type: clickedObject.type
-                    };
-                }
+            if (this.dragMode === 'move' && !this.isVertexEditModeEnabled()) {
+                this.tryStartObjectResize(clickedObject, pos);
             }
 
             if (clickedObject.type === 'particle') {
@@ -1255,7 +1314,13 @@ export class DragDropManager {
                 };
             }
 
-            this.canvas.style.cursor = this.dragMode === 'resize' ? 'nwse-resize' : 'grabbing';
+            if (this.dragMode === 'resize') {
+                this.canvas.style.cursor = 'nwse-resize';
+            } else if (this.dragMode === 'vertex') {
+                this.canvas.style.cursor = 'crosshair';
+            } else {
+                this.canvas.style.cursor = 'grabbing';
+            }
         } else {
             this.scene.selectedObject = null;
             this.draggingObject = null;
@@ -1263,6 +1328,7 @@ export class DragDropManager {
             this.dragMode = 'move';
             this.resizeHandle = null;
             this.resizeStart = null;
+            this.vertexHandleIndex = null;
             this.isPanning = true;
             this.panStartScreen = screenPos;
             this.panStartCamera = this.getCameraOffset();
@@ -1289,15 +1355,15 @@ export class DragDropManager {
 
         const pos = this.getMousePos(e);
 
-        if (this.dragMode === 'resize') {
-            if (this.isMagneticResizable(this.draggingObject)) {
-                this.resizeMagneticField(this.draggingObject, pos);
-                const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
-                this.syncDisplayResizeScale(this.draggingObject, preferred);
-                this.updateGeometryOverlayHint(this.draggingObject, preferred);
+        if (this.dragMode === 'vertex') {
+            this.clearGeometryOverlayHint();
+            if (this.vertexHandleIndex !== null) {
+                this.applyVertexDrag(this.draggingObject, this.vertexHandleIndex, pos);
                 this.renderer.invalidateFields();
-            } else if (this.isElectricResizable(this.draggingObject)) {
-                this.resizeElectricField(this.draggingObject, pos);
+            }
+        } else if (this.dragMode === 'resize') {
+            if (this.isFieldResizable(this.draggingObject)) {
+                this.resizeObject(this.draggingObject, pos);
                 const preferred = this.resizeHandle === 'radius' ? ['radius'] : ['width', 'height'];
                 this.syncDisplayResizeScale(this.draggingObject, preferred);
                 this.updateGeometryOverlayHint(this.draggingObject, preferred);
@@ -1324,7 +1390,9 @@ export class DragDropManager {
             this.renderer.invalidateFields();
         }
 
-        this.updateTangencyHintAndSnap(e);
+        if (this.dragMode !== 'vertex') {
+            this.updateTangencyHintAndSnap(e);
+        }
 
         // 🔧 FIX: 暂停时强制渲染，否则拖拽的对象会消失
         if (this.scene.isPaused) {
@@ -1340,139 +1408,11 @@ export class DragDropManager {
         this.dragMode = 'move';
         this.resizeHandle = null;
         this.resizeStart = null;
+        this.vertexHandleIndex = null;
         this.isPanning = false;
         this.panStartScreen = null;
         this.panStartCamera = null;
         this.canvas.style.cursor = 'default';
-    }
-
-    getMagneticResizeHandles(field) {
-        const shape = field.shape || 'rect';
-        if (shape === 'circle') {
-            const r = Math.max(0, field.radius ?? 0);
-            return [{ key: 'radius', x: field.x + r, y: field.y }];
-        }
-        if (shape === 'triangle') {
-            const x = field.x;
-            const y = field.y;
-            const w = field.width ?? 0;
-            const h = field.height ?? 0;
-            return [
-                { key: 'apex', x: x + w / 2, y },
-                { key: 'bl', x, y: y + h },
-                { key: 'br', x: x + w, y: y + h }
-            ];
-        }
-        const x = field.x;
-        const y = field.y;
-        const w = field.width ?? 0;
-        const h = field.height ?? 0;
-        return [
-            { key: 'nw', x, y },
-            { key: 'ne', x: x + w, y },
-            { key: 'sw', x, y: y + h },
-            { key: 'se', x: x + w, y: y + h }
-        ];
-    }
-
-    getMagneticResizeHandle(field, pos) {
-        const handles = this.getMagneticResizeHandles(field);
-        const tolerance = 10;
-        const tolSq = tolerance * tolerance;
-        for (const handle of handles) {
-            const dx = pos.x - handle.x;
-            const dy = pos.y - handle.y;
-            if ((dx * dx + dy * dy) <= tolSq) {
-                return handle.key;
-            }
-        }
-        return null;
-    }
-
-    resizeMagneticField(field, pos) {
-        if (!this.resizeHandle || !this.resizeStart) return;
-
-        const minSize = 30;
-        const minRadius = 15;
-        const start = this.resizeStart;
-        const shape = field.shape || start.shape || 'rect';
-
-        if (shape === 'circle') {
-            const cx = start.x;
-            const cy = start.y;
-            const r = Math.max(minRadius, Math.hypot(pos.x - cx, pos.y - cy));
-            field.x = cx;
-            field.y = cy;
-            field.radius = r;
-            field.width = r * 2;
-            field.height = r * 2;
-            return;
-        }
-
-        const startX = start.x;
-        const startY = start.y;
-        const startW = start.width;
-        const startH = start.height;
-        const startRight = startX + startW;
-        const startBottom = startY + startH;
-
-        const setRect = ({ x, y, width, height }) => {
-            field.x = x;
-            field.y = y;
-            field.width = width;
-            field.height = height;
-            field.radius = Math.min(width, height) / 2;
-        };
-
-        if (shape === 'triangle') {
-            if (this.resizeHandle === 'apex') {
-                const newY = Math.min(pos.y, startBottom - minSize);
-                const newH = Math.max(minSize, startBottom - newY);
-                setRect({ x: startX, y: newY, width: Math.max(minSize, startW), height: newH });
-                return;
-            }
-            if (this.resizeHandle === 'bl') {
-                const newX = Math.min(pos.x, startRight - minSize);
-                const newW = Math.max(minSize, startRight - newX);
-                const newH = Math.max(minSize, pos.y - startY);
-                setRect({ x: newX, y: startY, width: newW, height: newH });
-                return;
-            }
-            // br
-            const newW = Math.max(minSize, pos.x - startX);
-            const newH = Math.max(minSize, pos.y - startY);
-            setRect({ x: startX, y: startY, width: newW, height: newH });
-            return;
-        }
-
-        // rect
-        if (this.resizeHandle === 'nw') {
-            const newX = Math.min(pos.x, startRight - minSize);
-            const newY = Math.min(pos.y, startBottom - minSize);
-            const newW = Math.max(minSize, startRight - newX);
-            const newH = Math.max(minSize, startBottom - newY);
-            setRect({ x: newX, y: newY, width: newW, height: newH });
-            return;
-        }
-        if (this.resizeHandle === 'ne') {
-            const newY = Math.min(pos.y, startBottom - minSize);
-            const newW = Math.max(minSize, pos.x - startX);
-            const newH = Math.max(minSize, startBottom - newY);
-            setRect({ x: startX, y: newY, width: newW, height: newH });
-            return;
-        }
-        if (this.resizeHandle === 'sw') {
-            const newX = Math.min(pos.x, startRight - minSize);
-            const newW = Math.max(minSize, startRight - newX);
-            const newH = Math.max(minSize, pos.y - startY);
-            setRect({ x: newX, y: startY, width: newW, height: newH });
-            return;
-        }
-
-        // se (default)
-        const newW = Math.max(minSize, pos.x - startX);
-        const newH = Math.max(minSize, pos.y - startY);
-        setRect({ x: startX, y: startY, width: newW, height: newH });
     }
 
     getRegistryEntry(object) {
@@ -1499,29 +1439,50 @@ export class DragDropManager {
             object.type === 'semicircle-electric-field';
     }
 
-    getElectricResizeMode(field) {
-        const entry = this.getRegistryEntry(field);
-        if (entry?.interaction?.kind === 'electric-field' && entry?.interaction?.resizeMode) {
-            return entry.interaction.resizeMode;
-        }
-        if (!field) return 'rect';
-        if (field.type === 'electric-field-circle' || field.type === 'semicircle-electric-field') {
-            return 'radius';
-        }
+    isFieldResizable(object) {
+        if (!object) return false;
+        const kind = this.getInteractionKind(object);
+        if (kind) return kind === 'magnetic-field' || kind === 'electric-field';
+        return this.isMagneticResizable(object) || this.isElectricResizable(object);
+    }
+
+    getObjectResizeMode(object) {
+        if (!object) return 'rect';
+        if (object.type === 'semicircle-electric-field') return 'radius';
+        if (getObjectCircleBoundary(object)) return 'radius';
         return 'rect';
     }
 
-    getElectricResizeHandles(field) {
-        if (!field) return [];
-        if (this.getElectricResizeMode(field) === 'radius') {
-            const r = Math.max(0, field.radius ?? 0);
-            return [{ key: 'radius', x: field.x + r, y: field.y }];
+    getObjectResizeHandles(object) {
+        if (!this.isFieldResizable(object)) return [];
+        const mode = this.getObjectResizeMode(object);
+
+        if (mode === 'radius') {
+            const x = Number.isFinite(object?.x) ? object.x : 0;
+            const y = Number.isFinite(object?.y) ? object.y : 0;
+            const r = Math.max(0, Number(object?.radius) || 0);
+            return [{ key: 'radius', x: x + r, y }];
         }
-        // rect (默认)
-        const x = field.x;
-        const y = field.y;
-        const w = field.width ?? 0;
-        const h = field.height ?? 0;
+
+        const polygonVertices = hasLocalVertices(object)
+            ? getWorldVertices(object)
+            : getGeometryWorldVertices(object);
+        if (polygonVertices.length) {
+            const bounds = computeVertexBounds(polygonVertices);
+            if (!bounds) return [];
+            return [
+                { key: 'nw', x: bounds.minX, y: bounds.minY },
+                { key: 'ne', x: bounds.maxX, y: bounds.minY },
+                { key: 'sw', x: bounds.minX, y: bounds.maxY },
+                { key: 'se', x: bounds.maxX, y: bounds.maxY }
+            ];
+        }
+
+        const x = Number.isFinite(object?.x) ? object.x : 0;
+        const y = Number.isFinite(object?.y) ? object.y : 0;
+        const w = Number.isFinite(object?.width) ? object.width : 0;
+        const h = Number.isFinite(object?.height) ? object.height : 0;
+
         return [
             { key: 'nw', x, y },
             { key: 'ne', x: x + w, y },
@@ -1530,9 +1491,9 @@ export class DragDropManager {
         ];
     }
 
-    getElectricResizeHandle(field, pos) {
-        const handles = this.getElectricResizeHandles(field);
-        const tolerance = 10;
+    getObjectResizeHandle(object, pos) {
+        const handles = this.getObjectResizeHandles(object);
+        const tolerance = this.isCoarsePointer ? 18 : 10;
         const tolSq = tolerance * tolerance;
         for (const handle of handles) {
             const dx = pos.x - handle.x;
@@ -1544,24 +1505,71 @@ export class DragDropManager {
         return null;
     }
 
-    resizeElectricField(field, pos) {
+    captureResizeStart(object) {
+        const x = Number.isFinite(object?.x) ? object.x : 0;
+        const y = Number.isFinite(object?.y) ? object.y : 0;
+        const vertices = (() => {
+            if (hasLocalVertices(object)) {
+                return object.vertices.map((point) => ({ ...point }));
+            }
+            const worldVertices = getGeometryWorldVertices(object);
+            if (!worldVertices.length) return null;
+            return worldVertices.map((point) => ({
+                x: point.x - x,
+                y: point.y - y
+            }));
+        })();
+        return {
+            x,
+            y,
+            width: Number.isFinite(object?.width) ? object.width : 0,
+            height: Number.isFinite(object?.height) ? object.height : 0,
+            radius: Number.isFinite(object?.radius) ? object.radius : 0,
+            vertices
+        };
+    }
+
+    tryStartObjectResize(object, pointerPos) {
+        if (!this.isFieldResizable(object)) return false;
+        const handle = this.getObjectResizeHandle(object, pointerPos);
+        if (!handle) return false;
+        this.dragMode = 'resize';
+        this.resizeHandle = handle;
+        this.resizeStart = this.captureResizeStart(object);
+        return true;
+    }
+
+    resizeObject(field, pos) {
         if (!this.resizeHandle || !this.resizeStart) return;
 
         const minSize = 30;
         const minRadius = 15;
         const start = this.resizeStart;
+        const mode = this.getObjectResizeMode(field);
 
-        if (this.getElectricResizeMode(field) === 'radius') {
+        if (mode === 'radius') {
             const cx = start.x;
             const cy = start.y;
             const r = Math.max(minRadius, Math.hypot(pos.x - cx, pos.y - cy));
             field.x = cx;
             field.y = cy;
             field.radius = r;
+            if (this.isMagneticResizable(field)) {
+                field.width = r * 2;
+                field.height = r * 2;
+            }
             return;
         }
 
-        // rect
+        if (start.vertices && ['nw', 'ne', 'sw', 'se'].includes(this.resizeHandle)) {
+            const nextRect = computeRectFromHandle(this.resizeHandle, start, pos, minSize);
+            const worldVertices = scaleWorldVerticesToBounds(start, nextRect);
+            if (worldVertices) {
+                normalizeObjectVerticesFromWorld(field, worldVertices);
+                return;
+            }
+        }
+
         const startX = start.x;
         const startY = start.y;
         const startW = start.width;
@@ -1574,35 +1582,13 @@ export class DragDropManager {
             field.y = y;
             field.width = width;
             field.height = height;
+            if (this.isMagneticResizable(field)) {
+                field.radius = Math.min(width, height) / 2;
+            }
         };
 
-        if (this.resizeHandle === 'nw') {
-            const newX = Math.min(pos.x, startRight - minSize);
-            const newY = Math.min(pos.y, startBottom - minSize);
-            const newW = Math.max(minSize, startRight - newX);
-            const newH = Math.max(minSize, startBottom - newY);
-            setRect({ x: newX, y: newY, width: newW, height: newH });
-            return;
-        }
-        if (this.resizeHandle === 'ne') {
-            const newY = Math.min(pos.y, startBottom - minSize);
-            const newW = Math.max(minSize, pos.x - startX);
-            const newH = Math.max(minSize, startBottom - newY);
-            setRect({ x: startX, y: newY, width: newW, height: newH });
-            return;
-        }
-        if (this.resizeHandle === 'sw') {
-            const newX = Math.min(pos.x, startRight - minSize);
-            const newW = Math.max(minSize, startRight - newX);
-            const newH = Math.max(minSize, pos.y - startY);
-            setRect({ x: newX, y: startY, width: newW, height: newH });
-            return;
-        }
-
-        // se
-        const newW = Math.max(minSize, pos.x - startX);
-        const newH = Math.max(minSize, pos.y - startY);
-        setRect({ x: startX, y: startY, width: newW, height: newH });
+        const nextRect = computeRectFromHandle(this.resizeHandle, start, pos, minSize);
+        setRect(nextRect);
     }
 
     removeParticleIfInDisappearZone(particle) {
@@ -1670,33 +1656,52 @@ export class DragDropManager {
         const pos = this.getMousePos(e);
         const prevSelectedObject = this.scene.selectedObject;
         const clickedObject = this.scene.findObjectAt(pos.x, pos.y);
+        const contextMenu = document.getElementById('context-menu');
 
-        if (clickedObject) {
-            this.scene.selectedObject = clickedObject;
-
-            if (prevSelectedObject !== this.scene.selectedObject) {
-                this.requestSceneRender({ invalidateFields: true, updateUI: true });
+        if (!clickedObject) {
+            if (contextMenu) {
+                contextMenu.style.display = 'none';
             }
-
-            // 显示右键菜单
-            const contextMenu = document.getElementById('context-menu');
-            if (!contextMenu) return;
-            contextMenu.style.left = e.clientX + 'px';
-            contextMenu.style.top = e.clientY + 'px';
-            contextMenu.style.display = 'block';
             this.clearContextMenuCloseTimer();
             this.clearContextMenuCloseHandler();
-
-            // 点击外部关闭菜单
-            this.contextMenuCloseTimer = setTimeout(() => {
-                const closeMenu = () => {
-                    contextMenu.style.display = 'none';
-                    this.clearContextMenuCloseHandler();
-                };
-                this.contextMenuCloseTimer = null;
-                this.contextMenuCloseHandler = closeMenu;
-                document.addEventListener('click', closeMenu);
-            }, 0);
+            this.clearContextMenuEscapeHandler();
+            return;
         }
+
+        this.scene.selectedObject = clickedObject;
+
+        if (prevSelectedObject !== this.scene.selectedObject) {
+            this.requestSceneRender({ invalidateFields: true, updateUI: true });
+        }
+
+        // 显示右键菜单
+        if (!contextMenu) return;
+        contextMenu.style.left = e.clientX + 'px';
+        contextMenu.style.top = e.clientY + 'px';
+        contextMenu.style.display = 'block';
+        this.clearContextMenuCloseTimer();
+        this.clearContextMenuCloseHandler();
+        this.clearContextMenuEscapeHandler();
+
+        const closeMenu = () => {
+            contextMenu.style.display = 'none';
+            this.clearContextMenuCloseTimer();
+            this.clearContextMenuCloseHandler();
+            this.clearContextMenuEscapeHandler();
+        };
+        const closeMenuOnEscape = (event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            closeMenu();
+        };
+        this.contextMenuEscapeHandler = closeMenuOnEscape;
+        document.addEventListener('keydown', closeMenuOnEscape);
+
+        // 点击外部关闭菜单
+        this.contextMenuCloseTimer = setTimeout(() => {
+            this.contextMenuCloseTimer = null;
+            this.contextMenuCloseHandler = closeMenu;
+            document.addEventListener('click', closeMenu);
+        }, 0);
     }
 }

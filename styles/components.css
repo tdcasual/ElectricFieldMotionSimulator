@@ -152,6 +152,11 @@
     backdrop-filter: blur(2px);
 }
 
+#app.layout-desktop .modal-overlay,
+#app.layout-tablet .modal-overlay {
+    top: var(--header-height);
+}
+
 .modal {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);

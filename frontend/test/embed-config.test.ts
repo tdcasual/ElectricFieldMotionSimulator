@@ -36,11 +36,11 @@ describe('embed config parser', () => {
   });
 
   it('keeps only highest-priority scene source', () => {
-    const encoded = encodeURIComponent(JSON.stringify({ version: '1.0', settings: {}, objects: [] }));
+    const encoded = encodeURIComponent(JSON.stringify({ version: '2.0', settings: {}, objects: [] }));
     const config = parseEmbedConfigFromSearch(
       `?sceneData=${encoded}&sceneUrl=https%3A%2F%2Fexample.com%2Fscene.json&materialId=mat-1`
     );
-    expect(config.sceneData).toEqual({ version: '1.0', settings: {}, objects: [] });
+    expect(config.sceneData).toEqual({ version: '2.0', settings: {}, objects: [] });
     expect(config.sceneUrl).toBeNull();
     expect(config.materialId).toBeNull();
   });

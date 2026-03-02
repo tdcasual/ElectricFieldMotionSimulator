@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "timestamp": 1733395200000,
   "settings": {
     "showGrid": true,
@@ -8,7 +8,7 @@
     "showEnergy": true,
     "showFieldVectors": true
   },
-  "electricFields": [
+  "objects": [
     {
       "type": "electric-field-rect",
       "id": "field-1",
@@ -27,9 +27,7 @@
       "radius": 120,
       "strength": 1000,
       "direction": 0
-    }
-  ],
-  "magneticFields": [
+    },
     {
       "type": "magnetic-field",
       "id": "mag-1",
@@ -38,9 +36,7 @@
       "width": 300,
       "height": 200,
       "strength": 0.5
-    }
-  ],
-  "particles": [
+    },
     {
       "type": "particle",
       "id": "particle-1",

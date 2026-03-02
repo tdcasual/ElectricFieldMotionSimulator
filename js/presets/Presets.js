@@ -8,6 +8,7 @@ export class Presets {
             name: '匀加速运动',
             description: '带电粒子在匀强电场中的匀加速直线运动',
             data: {
+                version: '2.0',
                 objects: [
                     {
                         type: 'electric-field-rect',
@@ -36,6 +37,7 @@ export class Presets {
             name: '回旋运动',
             description: '带电粒子在磁场中的圆周运动',
             data: {
+                version: '2.0',
                 objects: [
                     {
                         type: 'magnetic-field',
@@ -63,6 +65,7 @@ export class Presets {
             name: '电容器偏转',
             description: '带电粒子在平行板电容器中的偏转运动',
             data: {
+                version: '2.0',
                 objects: [
                     {
                         type: 'electric-field-rect',

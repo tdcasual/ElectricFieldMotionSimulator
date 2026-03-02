@@ -43,12 +43,24 @@ test('getObjectCircleBoundary detects supported circle objects', () => {
 
   const magneticCircle = getObjectCircleBoundary({
     type: 'magnetic-field-circle',
-    shape: 'circle',
     x: 11,
     y: 22,
-    radius: 44
+    geometry: {
+      kind: 'circle',
+      radius: 44
+    }
   });
   assert.deepEqual(magneticCircle, { x: 11, y: 22, radius: 44 });
+
+  const geometryCircle = getObjectCircleBoundary({
+    x: 12,
+    y: 24,
+    geometry: {
+      kind: 'circle',
+      radius: 15
+    }
+  });
+  assert.deepEqual(geometryCircle, { x: 12, y: 24, radius: 15 });
 
   const nonCircle = getObjectCircleBoundary({
     type: 'electric-field-rect',
@@ -58,6 +70,39 @@ test('getObjectCircleBoundary detects supported circle objects', () => {
     height: 100
   });
   assert.equal(nonCircle, null);
+});
+
+test('buildTangencyCandidates supports unified polygon geometry objects', () => {
+  const active = {
+    id: 'active',
+    x: 0,
+    y: 0,
+    geometry: {
+      kind: 'circle',
+      radius: 20
+    }
+  };
+  const objects = [
+    active,
+    {
+      id: 'poly1',
+      x: 100,
+      y: 100,
+      geometry: {
+        kind: 'polygon',
+        vertices: [
+          { x: 0, y: 0 },
+          { x: 30, y: 0 },
+          { x: 0, y: 40 }
+        ]
+      }
+    }
+  ];
+
+  const candidates = buildTangencyCandidates(objects, active);
+  const segments = candidates.filter((item) => item.kind === 'segment');
+  assert.equal(segments.length, 3);
+  assert.equal(segments.every((item) => item.objectId === 'poly1'), true);
 });
 
 test('getObjectPointBoundary detects emitter center point objects', () => {
@@ -87,10 +132,29 @@ test('buildTangencyCandidates collects circles and boundary segments except acti
   const active = { id: 'active', type: 'electric-field-circle', x: 0, y: 0, radius: 20 };
   const objects = [
     active,
-    { id: 'c1', type: 'magnetic-field-circle', shape: 'circle', x: 100, y: 0, radius: 50 },
+    {
+      id: 'c1',
+      type: 'magnetic-field-circle',
+      x: 100,
+      y: 0,
+      geometry: { kind: 'circle', radius: 50 }
+    },
     { id: 'e1', type: 'programmable-emitter', x: 12, y: 34 },
     { id: 'r1', type: 'electric-field-rect', x: -20, y: -10, width: 40, height: 20 },
-    { id: 't1', type: 'magnetic-field-triangle', shape: 'triangle', x: 10, y: 20, width: 30, height: 20 },
+    {
+      id: 't1',
+      type: 'magnetic-field-triangle',
+      x: 10,
+      y: 20,
+      geometry: {
+        kind: 'polygon',
+        vertices: [
+          { x: 15, y: 0 },
+          { x: 0, y: 20 },
+          { x: 30, y: 20 }
+        ]
+      }
+    },
     { id: 'l1', type: 'disappear-zone', x: 0, y: 0, length: 100, angle: 0, lineWidth: 6 }
   ];
 

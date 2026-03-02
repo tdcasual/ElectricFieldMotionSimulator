@@ -84,6 +84,15 @@ describe('simulatorStore demo mode', () => {
     expect(store.showBoundaryMarginControl).toBe(true);
   });
 
+  it('toggles vertex edit mode state', () => {
+    const store = useSimulatorStore();
+    expect(store.vertexEditMode).toBe(false);
+    store.setVertexEditMode(true);
+    expect(store.vertexEditMode).toBe(true);
+    store.setVertexEditMode(false);
+    expect(store.vertexEditMode).toBe(false);
+  });
+
   it('opens variables panel and applies variables to scene', () => {
     const store = useSimulatorStore();
     store.openVariablesPanel();
@@ -137,6 +146,73 @@ describe('simulatorStore demo mode', () => {
     expect(store.propertyDrawerOpen).toBe(false);
     expect(store.variablesPanelOpen).toBe(false);
     expect(store.markdownBoardOpen).toBe(false);
+  });
+
+  it('closes variables drawer after successful loadScene to avoid stale drafts', () => {
+    const store = useSimulatorStore();
+    store.openVariablesPanel();
+    expect(store.variablesPanelOpen).toBe(true);
+
+    vi.spyOn(SimulatorRuntime.prototype, 'loadScene').mockReturnValue(true);
+    const loadOk = store.loadScene('drawer-load-close');
+    expect(loadOk).toBe(true);
+    expect(store.variablesPanelOpen).toBe(false);
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+  });
+
+  it('closes variables drawer after successful resetScene to avoid stale drafts', () => {
+    const store = useSimulatorStore();
+    store.openVariablesPanel();
+    expect(store.variablesPanelOpen).toBe(true);
+
+    vi.spyOn(SimulatorRuntime.prototype, 'resetScene').mockReturnValue(true);
+    store.resetScene();
+
+    expect(store.variablesPanelOpen).toBe(false);
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+  });
+
+  it('closes variables drawer when toggling demo mode to avoid stale drafts', () => {
+    const store = useSimulatorStore();
+    store.openVariablesPanel();
+    expect(store.variablesPanelOpen).toBe(true);
+
+    vi.spyOn(SimulatorRuntime.prototype, 'toggleDemoMode').mockReturnValue(true);
+    store.toggleDemoMode();
+
+    expect(store.variablesPanelOpen).toBe(false);
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+  });
+
+  it('keeps markdown board open after successful importScene to preserve notes', async () => {
+    const store = useSimulatorStore();
+    store.toggleMarkdownBoard();
+    expect(store.markdownBoardOpen).toBe(true);
+
+    vi.spyOn(SimulatorRuntime.prototype, 'importScene').mockResolvedValue(true);
+    const ok = await store.importScene({ name: 'valid-scene.json' } as File);
+
+    expect(ok).toBe(true);
+    expect(store.markdownBoardOpen).toBe(true);
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe('markdown');
+    expect(store.statusText).toBe('场景已导入');
+  });
+
+  it('keeps variables drawer open after failed importScene to avoid draft loss', async () => {
+    const store = useSimulatorStore();
+    store.openVariablesPanel();
+    expect(store.variablesPanelOpen).toBe(true);
+
+    (store as unknown as { variableDraft: Record<string, number> }).variableDraft = { draftVar: 7 };
+
+    vi.spyOn(SimulatorRuntime.prototype, 'importScene').mockResolvedValue(false);
+    const ok = await store.importScene({ name: 'invalid-scene.json' } as File);
+
+    expect(ok).toBe(false);
+    expect(store.variablesPanelOpen).toBe(true);
+    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe('variables');
+    expect(store.variableDraft).toEqual({ draftVar: 7 });
+    expect(store.statusText).toBe('导入失败');
   });
 
   it('dispatches tap-chain reset event when closing property panel', () => {

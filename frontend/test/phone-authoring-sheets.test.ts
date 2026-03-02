@@ -35,6 +35,7 @@ function mountSheets(overrides: Record<string, unknown> = {}) {
       boundaryMargin: 200,
       timeStep: 0.016,
       timeStepLabel: '16ms',
+      vertexEditMode: false,
       demoMode: false,
       ...overrides
     }
@@ -70,6 +71,7 @@ describe('PhoneAuthoringSheets', () => {
 
     wrapper.findComponent(PhoneSceneSheet).vm.$emit('set-show-energy', new Event('change'));
     wrapper.findComponent(PhoneSceneSheet).vm.$emit('set-time-step', new Event('input'));
+    wrapper.findComponent(PhoneSceneSheet).vm.$emit('set-vertex-edit-mode', new Event('change'));
 
     wrapper.findComponent(PhoneMoreSheet).vm.$emit('export-scene');
     wrapper.findComponent(PhoneMoreSheet).vm.$emit('open-import');
@@ -82,6 +84,7 @@ describe('PhoneAuthoringSheets', () => {
     expect(wrapper.emitted('update-phone-selected-value')).toEqual([[{ key: 'radius', value: '3' }]]);
     expect(wrapper.emitted('set-show-energy')).toHaveLength(1);
     expect(wrapper.emitted('set-time-step')).toHaveLength(1);
+    expect(wrapper.emitted('set-vertex-edit-mode')).toHaveLength(1);
     expect(wrapper.emitted('export-scene')).toHaveLength(1);
     expect(wrapper.emitted('open-import')).toHaveLength(1);
     expect(wrapper.emitted('toggle-markdown')).toHaveLength(1);

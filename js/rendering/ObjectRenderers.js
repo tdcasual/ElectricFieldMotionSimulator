@@ -1,4 +1,4 @@
-export const ObjectRenderers = {
+const ObjectRenderers = {
   electric(renderer, object, scene) {
     renderer.drawElectricField(object, scene);
   },

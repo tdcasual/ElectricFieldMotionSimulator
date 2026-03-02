@@ -72,7 +72,11 @@ describe('SimulatorRuntime demo mode', () => {
       y: 0,
       radius: 50,
       width: 100,
-      height: 100
+      height: 100,
+      geometry: {
+        kind: 'circle',
+        radius: 50
+      }
     });
     runtime.scene.addObject(field);
     runtime.scene.selectedObject = field as never;
@@ -97,7 +101,11 @@ describe('SimulatorRuntime demo mode', () => {
       y: 0,
       radius: 50,
       width: 100,
-      height: 100
+      height: 100,
+      geometry: {
+        kind: 'circle',
+        radius: 50
+      }
     });
     runtime.scene.addObject(field);
     runtime.scene.selectedObject = field as never;
@@ -118,7 +126,11 @@ describe('SimulatorRuntime demo mode', () => {
       y: 0,
       radius: 50,
       width: 100,
-      height: 100
+      height: 100,
+      geometry: {
+        kind: 'circle',
+        radius: 50
+      }
     });
     runtime.scene.addObject(field);
     runtime.scene.selectedObject = field as never;
@@ -129,5 +141,40 @@ describe('SimulatorRuntime demo mode', () => {
     expect(payload?.values.radius).toBe(2);
     expect(payload?.values.radius__display).toBe(100);
     expect(field.radius).toBe(100);
+  });
+
+  it('createObjectAtCenter syncs renderer viewport before computing center point', () => {
+    const runtime = new SimulatorRuntime() as unknown as {
+      renderer: { resize: () => void; width: number; height: number };
+      scene: {
+        setViewport: (width: number, height: number) => void;
+        getWorldViewportBounds: (padding: number) => { minX: number; maxX: number; minY: number; maxY: number };
+      };
+      dragDropManager: { createObject: (type: string, x: number, y: number) => void } | null;
+      createObjectAtCenter: (type: string) => void;
+    };
+
+    runtime.renderer.width = 0;
+    runtime.renderer.height = 0;
+    const resizeSpy = vi.spyOn(runtime.renderer, 'resize').mockImplementation(() => {
+      runtime.renderer.width = 744;
+      runtime.renderer.height = 390;
+    });
+    const setViewportSpy = vi.spyOn(runtime.scene, 'setViewport');
+    vi.spyOn(runtime.scene, 'getWorldViewportBounds').mockImplementation(() => ({
+      minX: 0,
+      maxX: 744,
+      minY: 0,
+      maxY: 390
+    }));
+
+    const createSpy = vi.fn();
+    runtime.dragDropManager = { createObject: createSpy };
+
+    runtime.createObjectAtCenter('particle');
+
+    expect(resizeSpy).toHaveBeenCalledTimes(1);
+    expect(setViewportSpy).toHaveBeenCalledWith(744, 390);
+    expect(createSpy).toHaveBeenCalledWith('particle', 372, 195);
   });
 });
