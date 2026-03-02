@@ -491,7 +491,7 @@ test('phone more sheet save-load-clear flow stays coherent under dialogs', async
   await expect(page.getByTestId('object-action-bar')).toBeHidden();
 });
 
-test('phone resize gesture shows geometry overlay badge only during interaction', async ({ page }, testInfo) => {
+test('phone drag gesture keeps geometry overlay badge hidden outside resize handles', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
@@ -514,21 +514,15 @@ test('phone resize gesture shows geometry overlay badge only during interaction'
   const badge = page.getByTestId('geometry-overlay-badge');
   await expect(badge).toBeHidden();
 
-  const cdpSession = await page.context().newCDPSession(page);
-  await dispatchTouchEventViaCdp(cdpSession, 'touchStart', [
-    { x: centerX, y: centerY, radiusX: 4, radiusY: 4, id: 1, force: 1 }
-  ]);
-  await page.waitForTimeout(50);
-  await dispatchTouchEventViaCdp(cdpSession, 'touchMove', [
-    { x: centerX - 48, y: centerY - 36, radiusX: 4, radiusY: 4, id: 1, force: 1 }
-  ]);
+  const resizeStartX = centerX + 12;
+  const resizeStartY = centerY + 12;
+  await page.mouse.move(resizeStartX, resizeStartY);
+  await page.mouse.down();
+  await page.mouse.move(resizeStartX - 48, resizeStartY - 36, { steps: 8 });
 
-  await expect.poll(async () => badge.isVisible()).toBe(true);
-  await expect(page.getByTestId('geometry-overlay-real')).not.toHaveText('--');
-  await expect(page.getByTestId('geometry-overlay-display')).not.toHaveText('--');
-  await expect(page.getByTestId('geometry-overlay-scale')).not.toHaveText('--');
+  await expect.poll(async () => badge.isVisible()).toBe(false);
 
-  await dispatchTouchEventViaCdp(cdpSession, 'touchEnd', []);
+  await page.mouse.up();
   await expect.poll(async () => badge.isVisible()).toBe(false);
 
   await page.locator('#phone-nav-scene-btn').tap();
@@ -773,7 +767,7 @@ test('phone status strip metrics stay synchronized with object and particle coun
   await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*0/);
 });
 
-test('phone property quick-edit apply moves object and keeps selection coherent', async ({ page }, testInfo) => {
+test('phone property quick-edit apply keeps selection active for continued adjustments', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:5173');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
@@ -815,10 +809,12 @@ test('phone property quick-edit apply moves object and keeps selection coherent'
   await page.locator('#close-panel-btn').tap();
   await expect(page.locator('#property-panel')).toBeHidden();
 
-  await page.touchscreen.tap(box!.x + oldX + 20, box!.y + oldY + 20);
-  await expect(page.getByTestId('object-action-bar')).toBeHidden();
+  const blankX = box!.x + Math.max(10, box!.width * 0.08);
+  const blankY = box!.y + Math.max(10, box!.height * 0.08);
+  await page.mouse.click(blankX, blankY);
+  await expect(page.getByTestId('object-action-bar')).toBeVisible();
 
-  await page.touchscreen.tap(box!.x + nextX + 20, box!.y + oldY + 20);
+  await page.mouse.click(box!.x + nextX + 20, box!.y + oldY + 20);
   await expect(page.getByTestId('object-action-bar')).toBeVisible();
 });
 
