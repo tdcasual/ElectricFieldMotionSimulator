@@ -8,6 +8,16 @@
 
 **Tech Stack:** Vanilla JS engine modules, Vue 3 + Pinia frontend, Node test runner, Vitest, Playwright.
 
+## Current Status
+
+- Task 1: Completed
+- Task 2: Completed
+- Task 3: Completed
+- Task 4: Completed
+- Task 5: Pending
+- Task 6: Completed
+- Task 7: In Progress
+
 ---
 
 ### Task 1: Lock V2 Scene Gate (Serializer + Scene loading)

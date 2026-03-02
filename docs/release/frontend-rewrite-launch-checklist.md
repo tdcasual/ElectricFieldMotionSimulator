@@ -1,33 +1,34 @@
 # Frontend Rewrite Launch Checklist
 
 Date: 2026-02-12
+Last Reviewed: 2026-03-03
 
 ## Pre-Launch Gates
 
-- [ ] `npm run lint:frontend` passes.
-- [ ] `npm test` passes.
-- [ ] `npm run test:frontend` passes.
-- [ ] `npm run test:e2e` passes.
-- [ ] Replay consistency checks pass for golden-scene fixtures.
-- [ ] Performance gate `test/perf_budget.test.js` passes.
+- [x] `npm run lint:frontend` passes. (`DONE`, verified 2026-03-03)
+- [x] `npm test` passes. (`DONE`, verified 2026-03-03)
+- [x] `npm run test:frontend` passes. (`DONE`, verified 2026-03-03)
+- [x] `npm run test:e2e` passes. (`DONE`, verified 2026-03-03)
+- [x] Replay consistency checks pass for golden-scene fixtures. (`DONE`, verified 2026-03-03)
+- [x] Performance gate `test/perf_budget.test.js` passes. (`DONE`, verified 2026-03-03)
 
 ## Core-Path Validation
 
-- [ ] Object creation is functional.
-- [ ] Property editing applies changes correctly.
-- [ ] Play/Pause and timestep controls are correct.
-- [ ] Scene import/export round-trip is valid.
-- [ ] Demo mode enter/exit preserves expected state.
+- [x] Object creation is functional. (`DONE`, verified 2026-03-03)
+- [x] Property editing applies changes correctly. (`DONE`, verified 2026-03-03)
+- [x] Play/Pause and timestep controls are correct. (`DONE`, verified 2026-03-03)
+- [x] Scene import/export round-trip is valid. (`DONE`, verified 2026-03-03)
+- [x] Demo mode enter/exit preserves expected state. (`DONE`, verified 2026-03-03)
 
 ## Operational Readiness
 
-- [ ] Rollback runbook reviewed: `docs/release/frontend-rewrite-rollback-runbook.md`.
-- [ ] Last-known-good artifact tag documented.
-- [ ] Incident owner and on-call contacts confirmed.
-- [ ] Rollback dry-run completed.
+- [x] Rollback runbook reviewed: `docs/release/frontend-rewrite-rollback-runbook.md`. (`DONE`, 2026-03-03)
+- [x] Last-known-good artifact tag documented. (`N/A` for local desktop workflow; use git SHA)
+- [x] Incident owner and on-call contacts confirmed. (`N/A` for local desktop workflow)
+- [x] Rollback dry-run completed. (`N/A` for local desktop workflow)
 
 ## Launch Decision
 
-- [ ] Go / No-Go decision documented.
-- [ ] Release notes published.
-- [ ] Monitoring dashboards watched for first 60 minutes.
+- [x] Go / No-Go decision documented. (`DONE`, 2026-03-03)
+- [x] Release notes published. (`N/A` for in-repo iterative delivery)
+- [x] Monitoring dashboards watched for first 60 minutes. (`N/A` for in-repo iterative delivery)

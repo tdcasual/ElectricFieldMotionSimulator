@@ -13,7 +13,8 @@ This document defines the host/viewer messaging contract for the phase-1 embed r
 - Viewer -> Host events:
   - `source: "electric-field-sim"`
   - `type: "<event-name>"`
-- Current implementation sends with `targetOrigin="*"`. For production hardening, restrict origin in host and viewer.
+- `targetOrigin="*"` is **dev-only** for local harness/debug usage.
+- Production integrations must pin target origin explicitly (for example `https://your-host.example`) and wildcard origin is forbidden in production.
 
 ## 2. Host -> Viewer Command Envelope
 
