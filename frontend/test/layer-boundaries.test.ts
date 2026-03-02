@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -100,5 +101,10 @@ describe('layer boundaries', () => {
       .filter(Boolean);
 
     expect(violations).toHaveLength(0);
+  });
+
+  it('removes legacyBridge compatibility facade to avoid broad re-export usage', () => {
+    const legacyBridgePath = resolve(PROJECT_ROOT, 'frontend', 'src', 'engine', 'legacyBridge.ts');
+    expect(existsSync(legacyBridgePath)).toBe(false);
   });
 });
