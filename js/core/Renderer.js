@@ -545,6 +545,7 @@ export class Renderer {
         const vertexModeEnabled = scene?.settings?.vertexEditMode === true;
         const circleBoundary = getGeometryCircleBoundary(field);
         const polygonVertices = circleBoundary ? [] : getGeometryWorldVertices(field);
+        const hasExplicitGeometry = field?.geometry && typeof field.geometry === 'object';
         const colorRgb = strength >= 0 ? [100, 150, 255] : [255, 100, 100];
         const borderColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.65)`;
         const fillColor = `rgba(${colorRgb[0]}, ${colorRgb[1]}, ${colorRgb[2]}, 0.08)`;
@@ -576,6 +577,9 @@ export class Renderer {
                 }
                 return { ...polygonBounds };
             }
+            if (hasExplicitGeometry) {
+                return null;
+            }
 
             const x = Number.isFinite(field?.x) ? field.x : 0;
             const y = Number.isFinite(field?.y) ? field.y : 0;
@@ -587,6 +591,10 @@ export class Renderer {
 
         // 绘制磁场边界与填充
         const bounds = beginShapePath();
+        if (!bounds) {
+            this.fieldCtx.restore();
+            return;
+        }
         this.fieldCtx.strokeStyle = borderColor;
         this.fieldCtx.lineWidth = 2;
         this.fieldCtx.stroke();

@@ -14,19 +14,26 @@ import {
     resolveGeometryContract
 } from '../geometry/ObjectGeometryUtils.js';
 
+const DEFAULT_RECT_WIDTH = 200;
+const DEFAULT_RECT_HEIGHT = 150;
+
+function buildDefaultRectVertices() {
+    return buildRectPolygon(DEFAULT_RECT_WIDTH, DEFAULT_RECT_HEIGHT);
+}
+
 function resolveRectVertices(source, fallbackVertices = null) {
     const geometry = resolveGeometryContract(
         source,
         {
             kind: 'polygon',
-            vertices: fallbackVertices || buildRectPolygon(200, 150)
+            vertices: fallbackVertices || buildDefaultRectVertices()
         },
         { allowCircle: false, allowPolygon: true }
     );
     if (geometry?.kind === 'polygon') {
         return geometry.vertices.map((point) => ({ ...point }));
     }
-    return buildRectPolygon(200, 150);
+    return buildDefaultRectVertices();
 }
 
 export class RectElectricField extends ElectricField {
@@ -37,7 +44,7 @@ export class RectElectricField extends ElectricField {
             y: 0,
             geometry: {
                 kind: 'polygon',
-                vertices: buildRectPolygon(200, 150)
+                vertices: buildDefaultRectVertices()
             },
             strength: 1000,
             direction: 90
@@ -63,9 +70,9 @@ export class RectElectricField extends ElectricField {
     constructor(config = {}) {
         super(config);
         this.type = 'electric-field-rect';
-        this.width = 200;
-        this.height = 150;
-        this.vertices = resolveRectVertices(config, buildRectPolygon(this.width, this.height));
+        this.width = DEFAULT_RECT_WIDTH;
+        this.height = DEFAULT_RECT_HEIGHT;
+        this.vertices = resolveRectVertices(config, buildDefaultRectVertices());
         const worldVertices = getWorldVertices(this);
         normalizeObjectVerticesFromWorld(this, worldVertices);
     }
@@ -111,7 +118,7 @@ export class RectElectricField extends ElectricField {
      */
     deserialize(data) {
         super.deserialize(data);
-        const fallbackVertices = hasLocalVertices(this) ? this.vertices : buildRectPolygon(this.width, this.height);
+        const fallbackVertices = hasLocalVertices(this) ? this.vertices : buildDefaultRectVertices();
         this.vertices = resolveRectVertices(data, fallbackVertices);
         const worldVertices = getWorldVertices(this);
         normalizeObjectVerticesFromWorld(this, worldVertices);
@@ -126,7 +133,7 @@ export class RectElectricField extends ElectricField {
         }
         return {
             kind: 'polygon',
-            vertices: buildRectPolygon(this.width, this.height)
+            vertices: buildDefaultRectVertices()
         };
     }
 }

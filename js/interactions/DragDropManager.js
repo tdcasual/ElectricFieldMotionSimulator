@@ -1290,6 +1290,7 @@ export class DragDropManager {
     getObjectResizeHandles(object) {
         if (!this.isFieldResizable(object)) return [];
         const mode = this.getObjectResizeMode(object);
+        const hasExplicitGeometry = object?.geometry && typeof object.geometry === 'object';
 
         if (mode === 'radius') {
             const circle = getObjectCircleBoundary(object);
@@ -1310,6 +1311,7 @@ export class DragDropManager {
                 { key: 'se', x: bounds.maxX, y: bounds.maxY }
             ];
         }
+        if (hasExplicitGeometry) return [];
 
         const x = Number.isFinite(object?.x) ? object.x : 0;
         const y = Number.isFinite(object?.y) ? object.y : 0;

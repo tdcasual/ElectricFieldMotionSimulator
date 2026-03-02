@@ -13,6 +13,10 @@ import {
     resolveGeometryContract
 } from '../geometry/ObjectGeometryUtils.js';
 
+const DEFAULT_WIDTH = 200;
+const DEFAULT_HEIGHT = 150;
+const DEFAULT_POLYGON = Object.freeze(buildRectPolygon(DEFAULT_WIDTH, DEFAULT_HEIGHT));
+
 function computeLocalBounds(vertices) {
     const normalized = normalizeLocalVertices(vertices);
     if (!normalized) return null;
@@ -36,15 +40,13 @@ function resolveMagneticGeometry(config = {}, fallbackGeometry = null) {
 
 export class MagneticField extends BaseObject {
     static defaults() {
-        const width = 200;
-        const height = 150;
         return {
             type: 'magnetic-field',
             x: 0,
             y: 0,
             geometry: {
                 kind: 'polygon',
-                vertices: buildRectPolygon(width, height)
+                vertices: DEFAULT_POLYGON.map((point) => ({ ...point }))
             },
             strength: 0.5
         };
@@ -69,13 +71,13 @@ export class MagneticField extends BaseObject {
     constructor(config = {}) {
         super(config);
         this.type = 'magnetic-field';
-        this.width = 200;
-        this.height = 150;
-        this.radius = 75;
+        this.width = DEFAULT_WIDTH;
+        this.height = DEFAULT_HEIGHT;
+        this.radius = DEFAULT_HEIGHT / 2;
         this.vertices = null;
         this.applyGeometry(config, {
             kind: 'polygon',
-            vertices: buildRectPolygon(this.width, this.height)
+            vertices: DEFAULT_POLYGON.map((point) => ({ ...point }))
         });
         this.strength = config.strength ?? 0.5; // T (特斯拉)
     }
@@ -91,10 +93,13 @@ export class MagneticField extends BaseObject {
             return;
         }
 
-        const vertices = normalizeLocalVertices(geometry.vertices) || buildRectPolygon(this.width, this.height);
+        const vertices = normalizeLocalVertices(geometry.vertices) || DEFAULT_POLYGON.map((point) => ({ ...point }));
         const bounds = computeLocalBounds(vertices);
         if (!bounds) {
-            this.vertices = buildRectPolygon(this.width, this.height);
+            this.vertices = DEFAULT_POLYGON.map((point) => ({ ...point }));
+            this.width = DEFAULT_WIDTH;
+            this.height = DEFAULT_HEIGHT;
+            this.radius = DEFAULT_HEIGHT / 2;
             return;
         }
 

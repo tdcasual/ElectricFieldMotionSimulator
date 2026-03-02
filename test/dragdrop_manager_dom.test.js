@@ -1410,3 +1410,61 @@ test('vertex edit mode lets electric rect drag one corner without collapsing to 
     cleanup();
   }
 });
+
+test('invalid polygon geometry does not fall back to width/height resize handles', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const field = {
+      id: 'obj-invalid-polygon',
+      type: 'magnetic-field',
+      x: 40,
+      y: 50,
+      width: 320,
+      height: 180,
+      geometry: {
+        kind: 'polygon',
+        vertices: []
+      }
+    };
+
+    const scene = {
+      settings: { mode: 'normal', pixelsPerMeter: 50, interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      interaction: { tangencyHint: null, geometryOverlay: null },
+      findObjectAt() {
+        return field;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [field];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    const handles = manager.getObjectResizeHandles(field);
+    assert.deepEqual(handles, []);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});

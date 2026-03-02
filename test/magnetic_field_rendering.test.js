@@ -121,3 +121,26 @@ test('circle magnetic field draws geometric center marker', () => {
   const centerDots = renderer.fieldCtx.arcCalls.filter((call) => Math.abs(call.radius - 2.5) < 1e-6);
   assert.ok(centerDots.some((call) => call.x === 120 && call.y === 90));
 });
+
+test('invalid polygon geometry does not fall back to width/height bounds', () => {
+  const renderer = Object.create(Renderer.prototype);
+  renderer.fieldCtx = createFakeContext();
+  renderer.drawTextBadge = Renderer.prototype.drawTextBadge;
+  renderer.formatNumber = Renderer.prototype.formatNumber;
+
+  renderer.drawMagneticField({
+    type: 'magnetic-field',
+    x: 20,
+    y: 30,
+    width: 800,
+    height: 600,
+    geometry: {
+      kind: 'polygon',
+      vertices: []
+    },
+    strength: 0
+  }, { selectedObject: null });
+
+  const centerDots = renderer.fieldCtx.arcCalls.filter((call) => Math.abs(call.radius - 2.5) < 1e-6);
+  assert.equal(centerDots.length, 0);
+});
