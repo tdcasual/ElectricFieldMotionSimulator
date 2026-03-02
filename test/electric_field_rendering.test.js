@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Renderer } from '../js/core/Renderer.js';
+import { buildUniformElectricGeometry } from '../js/rendering/fieldGeometryRenderer.js';
+import { buildSelectionHandles } from '../js/rendering/fieldSelectionOverlayRenderer.js';
 
 function createFakeContext() {
   return {
@@ -89,4 +91,46 @@ test('circle electric field uses circle geometry for shape and selected highligh
   const radii = renderer.fieldCtx.arcCalls.map((call) => call.radius);
   assert.ok(radii.includes(35));
   assert.ok(radii.includes(40));
+});
+
+test('buildUniformElectricGeometry resolves polygon bounds from geometry vertices', () => {
+  const field = {
+    type: 'electric-field-rect',
+    x: 40,
+    y: 50,
+    geometry: {
+      kind: 'polygon',
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 80, y: 0 },
+        { x: 80, y: 40 },
+        { x: 0, y: 40 }
+      ]
+    }
+  };
+
+  const result = buildUniformElectricGeometry(field);
+  assert.equal(result.kind, 'polygon');
+  assert.deepEqual(result.bounds, {
+    minX: 40,
+    minY: 50,
+    maxX: 120,
+    maxY: 90
+  });
+});
+
+test('buildSelectionHandles builds corner handles from polygon bounds', () => {
+  const handles = buildSelectionHandles({
+    vertexModeEnabled: false,
+    circleBoundary: null,
+    polygonVertices: [],
+    polygonBounds: { minX: 10, minY: 20, maxX: 50, maxY: 80 },
+    fallbackRect: { x: 0, y: 0, width: 0, height: 0 }
+  });
+  assert.deepEqual(handles, [
+    { x: 10, y: 20 },
+    { x: 50, y: 20 },
+    { x: 10, y: 80 },
+    { x: 50, y: 80 }
+  ]);
 });

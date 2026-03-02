@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Renderer } from '../js/core/Renderer.js';
+import { buildMagneticGeometryPath } from '../js/rendering/fieldGeometryRenderer.js';
 
 function createFakeContext() {
   return {
@@ -143,4 +144,19 @@ test('invalid polygon geometry does not fall back to width/height bounds', () =>
 
   const centerDots = renderer.fieldCtx.arcCalls.filter((call) => Math.abs(call.radius - 2.5) < 1e-6);
   assert.equal(centerDots.length, 0);
+});
+
+test('buildMagneticGeometryPath returns null for invalid explicit geometry', () => {
+  const ctx = createFakeContext();
+  const bounds = buildMagneticGeometryPath(ctx, {
+    x: 20,
+    y: 30,
+    width: 90,
+    height: 70,
+    geometry: {
+      kind: 'polygon',
+      vertices: []
+    }
+  });
+  assert.equal(bounds, null);
 });
