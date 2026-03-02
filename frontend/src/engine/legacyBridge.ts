@@ -1,13 +1,13 @@
-export { Scene } from '../../../js/core/Scene.js';
-export { Renderer } from '../../../js/core/Renderer.js';
-export { PhysicsEngine } from '../../../js/core/PhysicsEngine.js';
-export { DragDropManager } from '../../../js/interactions/DragDropManager.js';
-export { registry } from '../../../js/core/registerObjects.js';
-export { Serializer } from '../../../js/utils/Serializer.js';
-export { ThemeManager } from '../../../js/utils/ThemeManager.js';
-export { PerformanceMonitor } from '../../../js/utils/PerformanceMonitor.js';
-export { createResetBaselineController } from '../../../js/utils/ResetBaseline.js';
-export { isFieldEnabled, isFieldVisible, parseExpressionInput } from '../../../js/ui/SchemaForm.js';
+export { Scene } from './internal/legacyJsAdapter';
+export { Renderer } from './internal/legacyJsAdapter';
+export { PhysicsEngine } from './internal/legacyJsAdapter';
+export { DragDropManager } from './internal/legacyJsAdapter';
+export { registry } from './internal/legacyJsAdapter';
+export { Serializer } from './internal/legacyJsAdapter';
+export { ThemeManager } from './internal/legacyJsAdapter';
+export { PerformanceMonitor } from './internal/legacyJsAdapter';
+export { createResetBaselineController } from './internal/legacyJsAdapter';
+export { isFieldEnabled, isFieldVisible, parseExpressionInput } from './internal/legacyJsAdapter';
 export {
   DEMO_BASE_PIXELS_PER_UNIT,
   DEMO_MAX_ZOOM,
@@ -15,7 +15,7 @@ export {
   DEMO_ZOOM_STEP,
   applyDemoZoomToScene,
   getNextDemoZoom
-} from '../../../js/modes/DemoMode.js';
+} from './internal/legacyJsAdapter';
 export {
   getObjectGeometryScale,
   getObjectRealDimension,
@@ -23,5 +23,5 @@ export {
   setObjectDisplayDimension,
   setObjectRealDimension,
   syncObjectDisplayGeometry
-} from '../../../js/modes/GeometryScaling.js';
-export { Presets } from '../../../js/presets/Presets.js';
+} from './internal/legacyJsAdapter';
+export { Presets } from './internal/legacyJsAdapter';

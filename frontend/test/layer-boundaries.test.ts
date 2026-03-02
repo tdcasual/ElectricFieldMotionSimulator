@@ -15,7 +15,7 @@ describe('layer boundaries', () => {
     expect(result.status).toBe(0);
   }, 20000);
 
-  it('prevents direct legacy js imports outside legacyBridge', () => {
+  it('prevents direct legacy js imports outside engine internal adapters', () => {
     const result = spawnSync(
       'rg',
       [
@@ -47,7 +47,7 @@ describe('layer boundaries', () => {
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean)
-      .filter((line) => !line.startsWith('frontend/src/engine/legacyBridge.ts:'));
+      .filter((line) => !line.startsWith('frontend/src/engine/internal/legacyJsAdapter.ts:'));
 
     expect(violations).toHaveLength(0);
   });
