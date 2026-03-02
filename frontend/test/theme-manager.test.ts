@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ThemeManager } from '../src/engine/legacyBridge';
+import { ThemeManager } from '../src/engine/runtimeEngineBridge';
 
 function installLocalStorageMock() {
   const storage = new Map<string, string>();

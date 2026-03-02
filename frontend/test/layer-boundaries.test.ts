@@ -76,4 +76,29 @@ describe('layer boundaries', () => {
 
     expect(violations).toHaveLength(0);
   });
+
+  it('prevents frontend tests from importing legacyBridge directly', () => {
+    const result = spawnSync(
+      'rg',
+      ['-n', '-e', "from ['\"][^'\"]*engine/legacyBridge['\"]", 'frontend/test', '-g', '*.ts'],
+      {
+        cwd: PROJECT_ROOT,
+        stdio: 'pipe',
+        encoding: 'utf8'
+      }
+    );
+
+    if (result.status === 1) {
+      expect(true).toBe(true);
+      return;
+    }
+
+    expect(result.status).toBe(0);
+    const violations = result.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    expect(violations).toHaveLength(0);
+  });
 });
