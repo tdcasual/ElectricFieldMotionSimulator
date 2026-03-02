@@ -26,7 +26,7 @@
   - `const app2 = new ElectricFieldApp({ mode: 'view', materialId: 'mock-particle' });`
   - `app.inject('#sim-container');`
   - `await app.play(); await app.pause(); await app.reset();`
-  - `await app.loadScene({ version: '1.0', settings: {}, objects: [] });`
+  - `await app.loadScene({ version: '2.0', settings: {}, objects: [] });`
 - 一键导出部署包：
   - `npm run package:embed`
   - 默认读取 `example-scene.json`，输出到 `output/embed-packages/<package-name>/`

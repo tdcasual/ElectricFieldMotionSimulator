@@ -13,6 +13,7 @@ function mountSceneSheet() {
       boundaryMargin: 200,
       timeStep: 0.016,
       timeStepLabel: '16ms',
+      vertexEditMode: false,
       demoMode: false
     }
   });
@@ -36,6 +37,7 @@ describe('PhoneSceneSheet', () => {
     await wrapper.get('#boundary-mode-select').trigger('change');
     await wrapper.get('#boundary-margin-input').trigger('change');
     await wrapper.get('#timestep-slider').trigger('input');
+    await wrapper.get('#toggle-vertex-edit-mode').trigger('change');
 
     expect(wrapper.emitted('set-show-energy')).toHaveLength(1);
     expect(wrapper.emitted('set-pixels-per-meter')).toHaveLength(1);
@@ -43,6 +45,7 @@ describe('PhoneSceneSheet', () => {
     expect(wrapper.emitted('set-boundary-mode')).toHaveLength(1);
     expect(wrapper.emitted('set-boundary-margin')).toHaveLength(1);
     expect(wrapper.emitted('set-time-step')).toHaveLength(1);
+    expect(wrapper.emitted('set-vertex-edit-mode')).toHaveLength(1);
   });
 
   it('emits close from button and swipe-down gesture', async () => {

@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "timestamp": 1733395200000,
   "settings": {
     "showGrid": true,
@@ -8,7 +8,7 @@
     "showEnergy": true,
     "showFieldVectors": true
   },
-  "electricFields": [
+  "objects": [
     {
       "type": "electric-field-rect",
       "id": "field-1",
@@ -16,6 +16,15 @@
       "y": 150,
       "width": 400,
       "height": 300,
+      "geometry": {
+        "kind": "polygon",
+        "vertices": [
+          { "x": 0, "y": 0 },
+          { "x": 400, "y": 0 },
+          { "x": 400, "y": 300 },
+          { "x": 0, "y": 300 }
+        ]
+      },
       "strength": 1500,
       "direction": 90
     },
@@ -27,9 +36,7 @@
       "radius": 120,
       "strength": 1000,
       "direction": 0
-    }
-  ],
-  "magneticFields": [
+    },
     {
       "type": "magnetic-field",
       "id": "mag-1",
@@ -37,10 +44,17 @@
       "y": 500,
       "width": 300,
       "height": 200,
+      "geometry": {
+        "kind": "polygon",
+        "vertices": [
+          { "x": 0, "y": 0 },
+          { "x": 300, "y": 0 },
+          { "x": 300, "y": 200 },
+          { "x": 0, "y": 200 }
+        ]
+      },
       "strength": 0.5
-    }
-  ],
-  "particles": [
+    },
     {
       "type": "particle",
       "id": "particle-1",

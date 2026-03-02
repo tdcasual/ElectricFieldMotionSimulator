@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const SceneSchema = z.object({
-  version: z.string().min(1),
+  version: z.literal('2.0'),
   settings: z.record(z.string(), z.unknown()).default({}),
   objects: z.array(z.record(z.string(), z.unknown()))
 }).passthrough();

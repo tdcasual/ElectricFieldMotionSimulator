@@ -98,7 +98,7 @@ describe('App shell', () => {
     expect(wrapper.get('[data-testid="markdown-board"]').isVisible()).toBe(true);
   });
 
-  it('opens variables panel from header button', async () => {
+  it('toggles variables panel from header button', async () => {
     const wrapper = mount(App, {
       global: {
         plugins: [createPinia()]
@@ -114,6 +114,12 @@ describe('App shell', () => {
 
     expect(variablesBtn.attributes('aria-pressed')).toBe('true');
     expect(wrapper.get('[data-testid="variables-panel"]').isVisible()).toBe(true);
+
+    await variablesBtn.trigger('click');
+    await nextTick();
+
+    expect(variablesBtn.attributes('aria-pressed')).toBe('false');
+    expect(wrapper.find('[data-testid="variables-panel"]').exists()).toBe(false);
   });
 
   it('hides authoring controls in view mode', () => {

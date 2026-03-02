@@ -44,7 +44,7 @@ function closestPointOnSegment(px, py, x1, y1, x2, y2) {
   return { x: cx, y: cy, distance: Math.hypot(px - cx, py - cy), t };
 }
 
-export function distancePointToSegment(px, py, x1, y1, x2, y2) {
+function distancePointToSegment(px, py, x1, y1, x2, y2) {
   return closestPointOnSegment(px, py, x1, y1, x2, y2).distance;
 }
 

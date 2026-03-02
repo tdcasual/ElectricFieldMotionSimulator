@@ -1,6 +1,8 @@
 (function (global) {
   'use strict';
   var commandSequence = 0;
+  var COMMAND_RESPONSE_TIMEOUT_MS = 5000;
+  var COMMAND_QUEUE_TIMEOUT_MS = 6000;
 
   function normalizeTarget(target) {
     if (typeof target === 'string') {
@@ -77,8 +79,109 @@
     this.iframe = null;
     this.messageHandler = null;
     this.pendingCommands = {};
+    this.commandQueue = [];
+    this.ready = false;
     this.targetOrigin = ensureString(this.options.targetOrigin) || '*';
   }
+
+  ElectricFieldApp.prototype.removeQueuedCommand = function (id) {
+    for (var i = 0; i < this.commandQueue.length; i += 1) {
+      if (this.commandQueue[i] === id) {
+        this.commandQueue.splice(i, 1);
+        return;
+      }
+    }
+  };
+
+  ElectricFieldApp.prototype.startCommandTimeout = function (id, command) {
+    var self = this;
+    return setTimeout(function () {
+      var pending = self.pendingCommands[id];
+      if (!pending) return;
+      delete self.pendingCommands[id];
+      self.removeQueuedCommand(id);
+      pending.timeoutId = null;
+      pending.reject({ code: 'timeout', message: 'Command response timeout', id: id, command: command });
+    }, COMMAND_RESPONSE_TIMEOUT_MS);
+  };
+
+  ElectricFieldApp.prototype.startQueueTimeout = function (id, command) {
+    var self = this;
+    return setTimeout(function () {
+      var pending = self.pendingCommands[id];
+      if (!pending || pending.dispatched) return;
+      delete self.pendingCommands[id];
+      self.removeQueuedCommand(id);
+      pending.queueTimeoutId = null;
+      pending.reject({ code: 'timeout', message: 'Command readiness timeout', id: id, command: command });
+    }, COMMAND_QUEUE_TIMEOUT_MS);
+  };
+
+  ElectricFieldApp.prototype.dispatchPendingCommand = function (id) {
+    var pending = this.pendingCommands[id];
+    if (!pending || pending.dispatched) return;
+    if (!this.iframe || !this.iframe.contentWindow) return;
+
+    if (pending.queueTimeoutId != null) {
+      clearTimeout(pending.queueTimeoutId);
+      pending.queueTimeoutId = null;
+    }
+    pending.dispatched = true;
+    try {
+      this.iframe.contentWindow.postMessage(pending.message, this.targetOrigin);
+      pending.timeoutId = this.startCommandTimeout(id, pending.command);
+    } catch (error) {
+      delete this.pendingCommands[id];
+      this.removeQueuedCommand(id);
+      pending.dispatched = false;
+      pending.reject({
+        code: 'post-message-failed',
+        message: error && error.message ? String(error.message) : 'Failed to send command message',
+        id: id,
+        command: pending.command
+      });
+    }
+  };
+
+  ElectricFieldApp.prototype.flushCommandQueue = function () {
+    if (!this.ready || !this.iframe || !this.iframe.contentWindow) return;
+    if (!Array.isArray(this.commandQueue) || this.commandQueue.length === 0) return;
+
+    var queued = this.commandQueue.slice();
+    this.commandQueue = [];
+    for (var i = 0; i < queued.length; i += 1) {
+      var commandId = queued[i];
+      if (typeof commandId !== 'string' || !this.pendingCommands[commandId]) continue;
+      this.dispatchPendingCommand(commandId);
+    }
+  };
+
+  ElectricFieldApp.prototype.rejectPendingCommands = function (code, message) {
+    var pendingIds = Object.keys(this.pendingCommands);
+    for (var i = 0; i < pendingIds.length; i += 1) {
+      var pendingId = pendingIds[i];
+      var pending = this.pendingCommands[pendingId];
+      if (!pending) continue;
+      if (pending.queueTimeoutId != null) {
+        clearTimeout(pending.queueTimeoutId);
+        pending.queueTimeoutId = null;
+      }
+      if (pending.timeoutId != null) {
+        clearTimeout(pending.timeoutId);
+        pending.timeoutId = null;
+      }
+      if (typeof pending.reject === 'function') {
+        pending.reject({
+          code: code,
+          message: message,
+          id: pendingId,
+          command: pending.command
+        });
+      }
+    }
+    this.pendingCommands = {};
+    this.commandQueue = [];
+  };
 
   ElectricFieldApp.prototype.inject = function (target) {
     var container = normalizeTarget(target);
@@ -86,19 +189,27 @@
       throw new Error('ElectricFieldApp.inject target not found');
     }
 
+    if (this.iframe) {
+      this.rejectPendingCommands('replaced', 'ElectricFieldApp iframe replaced before command completed');
+    }
+
     if (this.iframe && this.iframe.parentNode) {
       this.iframe.parentNode.removeChild(this.iframe);
     }
+
+    this.ready = false;
+    this.commandQueue = [];
 
     var iframe = document.createElement('iframe');
     var viewerPath = ensureString(this.options.viewerPath) || 'viewer.html';
     var query = buildQuery(this.options);
     iframe.src = query ? viewerPath + '?' + query : viewerPath;
-    if (this.targetOrigin === '*') {
+    var explicitTargetOrigin = ensureString(this.options.targetOrigin);
+    if (explicitTargetOrigin) {
+      this.targetOrigin = explicitTargetOrigin;
+    } else {
       var detectedOrigin = resolveOrigin(iframe.src);
-      if (detectedOrigin) {
-        this.targetOrigin = detectedOrigin;
-      }
+      this.targetOrigin = detectedOrigin || '*';
     }
     iframe.style.width = ensureString(this.options.width) || '100%';
     iframe.style.height = ensureString(this.options.height) || '480px';
@@ -120,8 +231,12 @@
       var data = event.data || {};
       if (data.source !== 'electric-field-sim') return;
 
-      if (data.type === 'ready' && typeof self.options.onReady === 'function') {
-        self.options.onReady(data.payload || {});
+      if (data.type === 'ready') {
+        self.ready = true;
+        self.flushCommandQueue();
+        if (typeof self.options.onReady === 'function') {
+          self.options.onReady(data.payload || {});
+        }
       }
       if (data.type === 'error' && typeof self.options.onError === 'function') {
         self.options.onError(data.payload || {});
@@ -135,6 +250,14 @@
         if (id && self.pendingCommands[id]) {
           var pending = self.pendingCommands[id];
           delete self.pendingCommands[id];
+          if (pending && pending.timeoutId != null) {
+            clearTimeout(pending.timeoutId);
+            pending.timeoutId = null;
+          }
+          if (pending && pending.queueTimeoutId != null) {
+            clearTimeout(pending.queueTimeoutId);
+            pending.queueTimeoutId = null;
+          }
           if (payload.ok) {
             pending.resolve(payload);
           } else {
@@ -167,13 +290,21 @@
 
     var self = this;
     return new Promise(function (resolve, reject) {
-      self.pendingCommands[id] = { resolve: resolve, reject: reject };
-      self.iframe.contentWindow.postMessage(message, self.targetOrigin);
-      setTimeout(function () {
-        if (!self.pendingCommands[id]) return;
-        delete self.pendingCommands[id];
-        reject({ code: 'timeout', message: 'Command response timeout', id: id, command: command });
-      }, 5000);
+      self.pendingCommands[id] = {
+        resolve: resolve,
+        reject: reject,
+        timeoutId: null,
+        queueTimeoutId: null,
+        command: command,
+        message: message,
+        dispatched: false
+      };
+      if (self.ready) {
+        self.dispatchPendingCommand(id);
+      } else {
+        self.commandQueue.push(id);
+        self.pendingCommands[id].queueTimeoutId = self.startQueueTimeout(id, command);
+      }
     });
   };
 
@@ -208,7 +339,9 @@
     }
 
     this.iframe = null;
-    this.pendingCommands = {};
+    this.ready = false;
+    this.commandQueue = [];
+    this.rejectPendingCommands('destroyed', 'ElectricFieldApp destroyed before command completed');
   };
 
   global.ElectricFieldApp = ElectricFieldApp;

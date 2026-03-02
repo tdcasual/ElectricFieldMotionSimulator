@@ -38,6 +38,15 @@ const appActions = useAppActions({
   closePhoneSheets,
   importFileInput
 });
+
+function toggleVariablesPanelFromHeader() {
+  if (simulatorStore.variablesPanelOpen) {
+    simulatorStore.closeVariablesPanel();
+    return;
+  }
+  appActions.openVariablesPanel();
+}
+
 const { appShellClass } = useAppShellClass({
   simulatorStore,
   phoneAddSheetOpen,
@@ -87,7 +96,7 @@ onBeforeUnmount(() => {
           @export-scene="appActions.exportScene"
           @open-import="appActions.openImportDialog"
           @toggle-theme="appActions.toggleTheme"
-          @open-variables="appActions.openVariablesPanel"
+          @open-variables="toggleVariablesPanelFromHeader"
           @toggle-markdown="appActions.toggleMarkdownBoard"
           @toggle-demo="appActions.toggleDemoMode"
         />
@@ -113,6 +122,7 @@ onBeforeUnmount(() => {
           :boundary-margin="simulatorStore.boundaryMargin"
           :time-step="simulatorStore.timeStep"
           :time-step-label="simulatorStore.timeStepLabel"
+          :vertex-edit-mode="simulatorStore.vertexEditMode"
           :demo-mode="simulatorStore.demoMode"
           @set-show-energy="appActions.setShowEnergy"
           @set-pixels-per-meter="appActions.setPixelsPerMeter"
@@ -120,6 +130,7 @@ onBeforeUnmount(() => {
           @set-boundary-mode="appActions.setBoundaryMode"
           @set-boundary-margin="appActions.setBoundaryMargin"
           @set-time-step="appActions.setTimeStep"
+          @set-vertex-edit-mode="appActions.setVertexEditMode"
         />
       </div>
     </header>
@@ -151,6 +162,7 @@ onBeforeUnmount(() => {
       :boundary-margin="simulatorStore.boundaryMargin"
       :time-step="simulatorStore.timeStep"
       :time-step-label="simulatorStore.timeStepLabel"
+      :vertex-edit-mode="simulatorStore.vertexEditMode"
       :demo-mode="simulatorStore.demoMode"
       @close="closePhoneSheets"
       @create-object="appActions.createObjectFromToolbar"
@@ -165,6 +177,7 @@ onBeforeUnmount(() => {
       @set-boundary-mode="appActions.setBoundaryMode"
       @set-boundary-margin="appActions.setBoundaryMargin"
       @set-time-step="appActions.setTimeStep"
+      @set-vertex-edit-mode="appActions.setVertexEditMode"
       @export-scene="appActions.exportSceneFromPhoneMore"
       @open-import="appActions.openImportDialogFromPhoneMore"
       @toggle-theme="appActions.toggleThemeFromPhoneMore"

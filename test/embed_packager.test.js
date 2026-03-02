@@ -37,7 +37,7 @@ test('createDeployPackage creates deployable bundle structure', () => {
   writeText(path.join(distDir, 'viewer.html'), '<html><body><div id="root"></div></body></html>');
   writeText(path.join(distDir, 'embed.js'), 'window.ElectricFieldApp = function(){};');
   writeText(path.join(distDir, 'assets', 'app.js'), 'console.log("ok");');
-  writeText(scenePath, JSON.stringify({ version: '1.0', settings: {}, objects: [] }));
+  writeText(scenePath, JSON.stringify({ version: '2.0', settings: {}, objects: [] }));
 
   const result = createDeployPackage({
     distDir,
@@ -63,7 +63,7 @@ test('createDeployPackage throws when dist files are missing', () => {
   const outputDir = path.join(tempRoot, 'output');
 
   fs.mkdirSync(distDir, { recursive: true });
-  writeText(scenePath, JSON.stringify({ version: '1.0', settings: {}, objects: [] }));
+  writeText(scenePath, JSON.stringify({ version: '2.0', settings: {}, objects: [] }));
 
   assert.throws(
     () =>

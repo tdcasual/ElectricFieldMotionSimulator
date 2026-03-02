@@ -14,6 +14,7 @@ const props = defineProps<{
   boundaryMargin: number;
   timeStep: number;
   timeStepLabel: string;
+  vertexEditMode: boolean;
   demoMode: boolean;
 }>();
 
@@ -25,6 +26,7 @@ const emit = defineEmits<{
   (event: 'set-boundary-mode', payload: Event): void;
   (event: 'set-boundary-margin', payload: Event): void;
   (event: 'set-time-step', payload: Event): void;
+  (event: 'set-vertex-edit-mode', payload: Event): void;
 }>();
 
 const swipeGesture = createSwipeCloseGesture(() => {
@@ -57,6 +59,7 @@ onBeforeUnmount(() => {
         :boundary-margin="props.boundaryMargin"
         :time-step="props.timeStep"
         :time-step-label="props.timeStepLabel"
+        :vertex-edit-mode="props.vertexEditMode"
         :demo-mode="props.demoMode"
         @set-show-energy="(event) => emit('set-show-energy', event)"
         @set-pixels-per-meter="(event) => emit('set-pixels-per-meter', event)"
@@ -64,6 +67,7 @@ onBeforeUnmount(() => {
         @set-boundary-mode="(event) => emit('set-boundary-mode', event)"
         @set-boundary-margin="(event) => emit('set-boundary-margin', event)"
         @set-time-step="(event) => emit('set-time-step', event)"
+        @set-vertex-edit-mode="(event) => emit('set-vertex-edit-mode', event)"
       />
     </div>
   </section>

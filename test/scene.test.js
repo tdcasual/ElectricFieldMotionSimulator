@@ -190,7 +190,7 @@ test('Scene.loadFromData clears stale selection that is no longer in scene', () 
   scene.selectedObject = original;
 
   scene.loadFromData({
-    version: '1.0',
+    version: '2.0',
     objects: [
       {
         type: 'electric-field-rect',
@@ -209,17 +209,35 @@ test('Scene.loadFromData clears stale selection that is no longer in scene', () 
   assert.equal(original.scene, null);
 });
 
-test('Serializer.validateSceneData fills missing objects array', () => {
-  const data = { version: '1.0' };
+test('Scene.loadFromData rejects scene payload with non-v2 version', () => {
+  const scene = new Scene();
+  assert.throws(
+    () => scene.loadFromData({ version: '1.0', objects: [] }),
+    /2\.0/
+  );
+});
+
+test('Serializer.validateSceneData rejects scene payload with non-v2 version', () => {
+  const data = { version: '1.0', objects: [] };
   const result = Serializer.validateSceneData(data);
 
-  assert.equal(result.valid, true);
-  assert.deepEqual(data.objects, []);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, '仅支持 2.0 版本场景');
+});
+
+test('Serializer.validateSceneData rejects missing objects array', () => {
+  const data = {
+    version: '2.0'
+  };
+
+  const result = Serializer.validateSceneData(data);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, '对象数据格式无效');
 });
 
 test('Serializer.validateSceneData rejects invalid objects array', () => {
   const data = {
-    version: '1.0',
+    version: '2.0',
     objects: {}
   };
 
@@ -237,7 +255,7 @@ test('Serializer.saveSceneData returns false when storage write throws', () => {
         }
       },
       () => {
-        const ok = Serializer.saveSceneData({ version: '1.0', objects: [] }, 'demo');
+        const ok = Serializer.saveSceneData({ version: '2.0', objects: [] }, 'demo');
         assert.equal(ok, false);
       }
     );
@@ -348,7 +366,7 @@ test('Scene.loadFromData loads programmable emitters', () => {
   };
 
   scene.loadFromData({
-    version: '1.0',
+    version: '2.0',
     objects: [emitterData]
   });
 

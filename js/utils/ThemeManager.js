@@ -65,7 +65,6 @@ export class ThemeManager {
     applyTheme(theme) {
         const html = document.documentElement;
         const body = document.body;
-        const themeToggleBtn = document.getElementById('theme-toggle-btn');
         
         if (theme === 'auto') {
             // 自动根据系统设置
@@ -77,12 +76,10 @@ export class ThemeManager {
             body.classList.remove('light-theme');
             body.classList.add('dark-theme');
             html.setAttribute('data-theme', 'dark');
-            if (themeToggleBtn) themeToggleBtn.textContent = '☀️';
         } else {
             body.classList.remove('dark-theme');
             body.classList.add('light-theme');
             html.setAttribute('data-theme', 'light');
-            if (themeToggleBtn) themeToggleBtn.textContent = '🌙';
         }
         
         this.currentTheme = theme;

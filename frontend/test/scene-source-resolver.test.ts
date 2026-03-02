@@ -13,13 +13,13 @@ describe('scene source resolver', () => {
   });
 
   it('resolves inline scene data', async () => {
-    const encoded = encodeURIComponent(JSON.stringify({ version: '1.0', settings: {}, objects: [] }));
+    const encoded = encodeURIComponent(JSON.stringify({ version: '2.0', settings: {}, objects: [] }));
     const config = parseEmbedConfigFromSearch(`?sceneData=${encoded}`);
     const result = await resolveSceneSource(config);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.source).toBe('sceneData');
-    expect(result.data?.version).toBe('1.0');
+    expect(result.data?.version).toBe('2.0');
   });
 
   it('resolves scene from remote url', async () => {
@@ -27,7 +27,7 @@ describe('scene source resolver', () => {
     const fetchFn = async () => ({
       ok: true,
       status: 200,
-      json: async () => ({ version: '1.0', settings: {}, objects: [] })
+      json: async () => ({ version: '2.0', settings: {}, objects: [] })
     });
     const result = await resolveSceneSource(config, { fetchFn });
     expect(result.ok).toBe(true);
@@ -57,7 +57,7 @@ describe('scene source resolver', () => {
 
   it('preserves camera and variables fields from inline payload', async () => {
     const encoded = encodeURIComponent(JSON.stringify({
-      version: '1.0',
+      version: '2.0',
       settings: {},
       camera: { offsetX: 120, offsetY: -32 },
       variables: { alpha: 2 },
@@ -78,7 +78,7 @@ describe('scene source resolver', () => {
         if (materialId !== 'mock-particle') return null;
         return {
           sceneData: {
-            version: '1.0',
+            version: '2.0',
             settings: {},
             objects: [{ type: 'particle', x: 240, y: 180 }]
           }

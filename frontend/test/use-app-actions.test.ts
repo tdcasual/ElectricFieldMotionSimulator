@@ -20,6 +20,7 @@ function createStore() {
     setBoundaryMode: vi.fn(),
     setBoundaryMargin: vi.fn(),
     setTimeStep: vi.fn(),
+    setVertexEditMode: vi.fn(),
     loadPreset: vi.fn(),
     openPropertyPanel: vi.fn(),
     duplicateSelected: vi.fn(),
@@ -229,6 +230,19 @@ describe('useAppActions', () => {
 
     expect(simulatorStore.applyPropertyValues).toHaveBeenCalledWith({ radius__display: '120' });
     expect(simulatorStore.rememberPhoneGeometryEdit).toHaveBeenCalledWith('radius__display');
+  });
+
+  it('maps vertex edit checkbox event to store setter', () => {
+    const simulatorStore = createStore();
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets: vi.fn(),
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    actions.setVertexEditMode({ target: { checked: true } } as unknown as Event);
+    expect(simulatorStore.setVertexEditMode).toHaveBeenCalledWith(true);
   });
 
   it('does not record recent geometry key when quick edit apply fails', () => {

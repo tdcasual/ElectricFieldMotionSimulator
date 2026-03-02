@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-export type ToolbarEntry = {
+type ToolbarEntry = {
   type: string;
   label: string;
   icon?: string | null;
 };
 
-export type ToolbarGroup = {
+type ToolbarGroup = {
   key: string;
   label: string;
   entries: ToolbarEntry[];

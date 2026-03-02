@@ -31,7 +31,8 @@ export class Scene {
             pixelsPerMeter: 1, // 比例尺：1m = pixelsPerMeter px
             gravity: 10, // m/s^2
             boundaryMode: 'margin', // remove | bounce | wrap | margin
-            boundaryMargin: 200 // px（仅 margin 模式使用）
+            boundaryMargin: 200, // px（仅 margin 模式使用）
+            vertexEditMode: false
         };
 
         // 场景变量（用于表达式引用）
@@ -245,7 +246,7 @@ export class Scene {
      */
     serialize() {
         return {
-            version: '1.0',
+            version: '2.0',
             timestamp: Date.now(),
             settings: { ...this.settings },
             camera: { ...this.getCameraOffset() },
@@ -258,6 +259,10 @@ export class Scene {
      * 从数据加载场景
      */
     loadFromData(data) {
+        if (!data || typeof data !== 'object' || data.version !== '2.0' || !Array.isArray(data.objects)) {
+            throw new Error('仅支持 2.0 版本场景，且 objects 必须是数组');
+        }
+
         // 变量：默认重置，避免加载旧场景时“继承”上一次的变量表
         this.variables = {};
         this.selectedObject = null;
@@ -277,13 +282,11 @@ export class Scene {
         this.emitters = [];
         this.particles = [];
 
-        if (Array.isArray(data.objects)) {
-            for (const objData of data.objects) {
-                const entry = registry.get(objData?.type);
-                if (!entry) continue;
-                const instance = registry.create(objData.type, objData);
-                this.addObject(instance);
-            }
+        for (const objData of data.objects) {
+            const entry = registry.get(objData?.type);
+            if (!entry) continue;
+            const instance = registry.create(objData.type, objData);
+            this.addObject(instance);
         }
 
         // 加载设置

@@ -62,7 +62,7 @@ describe('host bridge', () => {
       source: 'electric-field-host',
       type: 'command',
       command: 'loadScene',
-      payload: { version: '1.0', settings: {}, objects: [] }
+      payload: { version: '2.0', settings: {}, objects: [] }
     });
 
     expect(result.ok).toBe(false);

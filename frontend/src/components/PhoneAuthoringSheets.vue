@@ -40,6 +40,7 @@ const props = defineProps<{
   boundaryMargin: number;
   timeStep: number;
   timeStepLabel: string;
+  vertexEditMode: boolean;
   demoMode: boolean;
 }>();
 
@@ -57,6 +58,7 @@ const emit = defineEmits<{
   (event: 'set-boundary-mode', payload: Event): void;
   (event: 'set-boundary-margin', payload: Event): void;
   (event: 'set-time-step', payload: Event): void;
+  (event: 'set-vertex-edit-mode', payload: Event): void;
   (event: 'export-scene'): void;
   (event: 'open-import'): void;
   (event: 'toggle-theme'): void;
@@ -98,6 +100,7 @@ const emit = defineEmits<{
     :boundary-margin="props.boundaryMargin"
     :time-step="props.timeStep"
     :time-step-label="props.timeStepLabel"
+    :vertex-edit-mode="props.vertexEditMode"
     :demo-mode="props.demoMode"
     @close="emit('close')"
     @set-show-energy="(event) => emit('set-show-energy', event)"
@@ -106,6 +109,7 @@ const emit = defineEmits<{
     @set-boundary-mode="(event) => emit('set-boundary-mode', event)"
     @set-boundary-margin="(event) => emit('set-boundary-margin', event)"
     @set-time-step="(event) => emit('set-time-step', event)"
+    @set-vertex-edit-mode="(event) => emit('set-vertex-edit-mode', event)"
   />
   <PhoneMoreSheet
     v-if="props.showAuthoringControls && props.isPhoneLayout && props.phoneMoreSheetOpen"

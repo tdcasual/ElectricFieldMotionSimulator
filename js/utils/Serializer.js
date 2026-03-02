@@ -3,6 +3,8 @@
  */
 
 export class Serializer {
+    static SCENE_VERSION = '2.0';
+
     /**
      * 保存任意场景数据到localStorage（可包含 UI 扩展字段）
      */
@@ -111,20 +113,15 @@ export class Serializer {
         if (!data || typeof data !== 'object') {
             return { valid: false, error: '数据格式无效' };
         }
-        
-        if (!data.version) {
-            return { valid: false, error: '缺少版本信息' };
-        }
 
-        if (data.objects == null) {
-            data.objects = [];
-            return { valid: true };
+        if (data.version !== Serializer.SCENE_VERSION) {
+            return { valid: false, error: `仅支持 ${Serializer.SCENE_VERSION} 版本场景` };
         }
 
         if (!Array.isArray(data.objects)) {
             return { valid: false, error: '对象数据格式无效' };
         }
-        
+
         return { valid: true };
     }
 }

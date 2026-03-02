@@ -1,14 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 describe('layer boundaries', () => {
   it('lint:frontend passes with boundary rules', () => {
     const result = spawnSync('npm', ['run', 'lint:frontend'], {
+      cwd: PROJECT_ROOT,
       stdio: 'pipe',
       encoding: 'utf8'
     });
     expect(result.status).toBe(0);
-  });
+  }, 20000);
 
   it('prevents direct legacy js imports outside legacyBridge', () => {
     const result = spawnSync(
@@ -25,6 +30,7 @@ describe('layer boundaries', () => {
         '*.ts'
       ],
       {
+        cwd: PROJECT_ROOT,
         stdio: 'pipe',
         encoding: 'utf8'
       }

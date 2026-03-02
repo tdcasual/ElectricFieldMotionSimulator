@@ -118,12 +118,15 @@ function focusFirstFocusable() {
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (!hasBackdrop.value || !props.modelValue) return;
+  if (!props.modelValue) return;
   if (event.key === 'Escape') {
     if (!props.closeOnBackdrop) return;
+    event.preventDefault();
+    event.stopPropagation();
     close();
     return;
   }
+  if (!hasBackdrop.value) return;
   if (event.key !== 'Tab') return;
 
   const elements = getFocusableElements();
@@ -151,6 +154,35 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
+function handleDocumentKeydown(event: KeyboardEvent) {
+  if (!props.modelValue) return;
+  const target = event.target as Node | null;
+  const targetInsideHost = !!target && !!hostRef.value?.contains(target);
+
+  if (event.key === 'Escape') {
+    if (!props.closeOnBackdrop || targetInsideHost) return;
+    event.preventDefault();
+    close();
+    return;
+  }
+
+  if (!hasBackdrop.value) return;
+  if (event.key !== 'Tab') return;
+  if (targetInsideHost) return;
+
+  event.preventDefault();
+  const elements = getFocusableElements();
+  if (elements.length === 0) {
+    hostRef.value?.focus();
+    return;
+  }
+  if (event.shiftKey) {
+    elements[elements.length - 1].focus();
+    return;
+  }
+  elements[0].focus();
+}
+
 watch(
   () => [props.modelValue, hasBackdrop.value] as const,
   async ([open, backdrop]) => {
@@ -159,6 +191,18 @@ watch(
     const active = document.activeElement as HTMLElement | null;
     if (active && hostRef.value?.contains(active)) return;
     focusFirstFocusable();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => [props.modelValue, hasBackdrop.value, props.closeOnBackdrop] as const,
+  ([open, backdrop, closeOnBackdrop], _prev, onCleanup) => {
+    if (!open || (!backdrop && !closeOnBackdrop)) return;
+    document.addEventListener('keydown', handleDocumentKeydown);
+    onCleanup(() => {
+      document.removeEventListener('keydown', handleDocumentKeydown);
+    });
   },
   { immediate: true }
 );
