@@ -383,6 +383,136 @@ test('embed sdk re-inject honors updated explicit targetOrigin option', async ({
   expect((result as { ok?: unknown }).ok).toBe(true);
 });
 
+test('embed sdk rejects wildcard targetOrigin without explicit dev override', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+
+  const result = await page.evaluate(() => {
+    const AppCtor = (window as unknown as {
+      ElectricFieldApp: new (options: Record<string, unknown>) => {
+        inject: (target: HTMLElement) => HTMLIFrameElement;
+      };
+    }).ElectricFieldApp;
+
+    const app = new AppCtor({
+      mode: 'view',
+      toolbar: false,
+      targetOrigin: '*'
+    });
+
+    const mount = document.createElement('div');
+    mount.id = 'embed-wildcard-target-origin-disallowed';
+    document.body.appendChild(mount);
+
+    try {
+      app.inject(mount);
+      return { ok: true as const };
+    } catch (error) {
+      return {
+        ok: false as const,
+        message: String((error as { message?: unknown })?.message ?? '')
+      };
+    }
+  });
+
+  expect((result as { ok?: unknown }).ok).toBe(false);
+  expect(String((result as { message?: unknown }).message ?? '')).toContain('allowDevWildcardTargetOrigin');
+});
+
+test('embed sdk allows wildcard targetOrigin only with explicit dev override', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+
+  const result = await page.evaluate(async () => {
+    const AppCtor = (window as unknown as {
+      ElectricFieldApp: new (options: Record<string, unknown>) => {
+        inject: (target: HTMLElement) => HTMLIFrameElement;
+        play: () => Promise<unknown>;
+        destroy: () => void;
+      };
+    }).ElectricFieldApp;
+
+    let readyCount = 0;
+    const app = new AppCtor({
+      mode: 'view',
+      toolbar: false,
+      targetOrigin: '*',
+      allowDevWildcardTargetOrigin: true,
+      onReady: () => {
+        readyCount += 1;
+      }
+    });
+
+    const mount = document.createElement('div');
+    mount.id = 'embed-wildcard-target-origin-allowed';
+    document.body.appendChild(mount);
+    app.inject(mount);
+
+    const waitForReady = async () => {
+      const started = Date.now();
+      while (Date.now() - started < 4000) {
+        if (readyCount > 0) return true;
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      }
+      return false;
+    };
+
+    try {
+      const ready = await waitForReady();
+      if (!ready) {
+        app.destroy();
+        return { ok: false as const, code: 'not-ready' };
+      }
+      await app.play();
+      app.destroy();
+      return { ok: true as const };
+    } catch (error) {
+      const payload = error as { code?: unknown; message?: unknown };
+      app.destroy();
+      return {
+        ok: false as const,
+        code: String(payload?.code ?? ''),
+        message: String(payload?.message ?? '')
+      };
+    }
+  });
+
+  expect((result as { ok?: unknown }).ok).toBe(true);
+});
+
+test('embed sdk rejects inject when viewer origin cannot be resolved and targetOrigin is missing', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+
+  const result = await page.evaluate(() => {
+    const AppCtor = (window as unknown as {
+      ElectricFieldApp: new (options: Record<string, unknown>) => {
+        inject: (target: HTMLElement) => HTMLIFrameElement;
+      };
+    }).ElectricFieldApp;
+
+    const app = new AppCtor({
+      mode: 'view',
+      toolbar: false,
+      viewerPath: 'http://[::1'
+    });
+
+    const mount = document.createElement('div');
+    mount.id = 'embed-unresolved-origin';
+    document.body.appendChild(mount);
+
+    try {
+      app.inject(mount);
+      return { ok: true as const };
+    } catch (error) {
+      return {
+        ok: false as const,
+        message: String((error as { message?: unknown })?.message ?? '')
+      };
+    }
+  });
+
+  expect((result as { ok?: unknown }).ok).toBe(false);
+  expect(String((result as { message?: unknown }).message ?? '')).toContain('targetOrigin');
+});
+
 test('embed sdk queues commands issued before ready and settles without timeout', async ({ page }) => {
   await page.goto('http://127.0.0.1:5173/embed-host-test.html');
 

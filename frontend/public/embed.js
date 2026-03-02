@@ -74,6 +74,28 @@
     }
   }
 
+  function resolveStrictTargetOrigin(options, iframeSrc) {
+    var explicitTargetOrigin = ensureString(options && options.targetOrigin);
+    var allowDevWildcardTargetOrigin = !!(options && options.allowDevWildcardTargetOrigin === true);
+
+    if (explicitTargetOrigin === '*') {
+      if (!allowDevWildcardTargetOrigin) {
+        throw new Error('ElectricFieldApp targetOrigin "*" is disabled by default; set allowDevWildcardTargetOrigin=true for local debug only.');
+      }
+      return '*';
+    }
+
+    if (explicitTargetOrigin) {
+      return explicitTargetOrigin;
+    }
+
+    var detectedOrigin = resolveOrigin(iframeSrc);
+    if (!detectedOrigin) {
+      throw new Error('ElectricFieldApp could not resolve viewer origin; set targetOrigin explicitly.');
+    }
+    return detectedOrigin;
+  }
+
   function ElectricFieldApp(options) {
     this.options = options || {};
     this.iframe = null;
@@ -81,7 +103,7 @@
     this.pendingCommands = {};
     this.commandQueue = [];
     this.ready = false;
-    this.targetOrigin = ensureString(this.options.targetOrigin) || '*';
+    this.targetOrigin = null;
   }
 
   ElectricFieldApp.prototype.removeQueuedCommand = function (id) {
@@ -204,13 +226,7 @@
     var viewerPath = ensureString(this.options.viewerPath) || 'viewer.html';
     var query = buildQuery(this.options);
     iframe.src = query ? viewerPath + '?' + query : viewerPath;
-    var explicitTargetOrigin = ensureString(this.options.targetOrigin);
-    if (explicitTargetOrigin) {
-      this.targetOrigin = explicitTargetOrigin;
-    } else {
-      var detectedOrigin = resolveOrigin(iframe.src);
-      this.targetOrigin = detectedOrigin || '*';
-    }
+    this.targetOrigin = resolveStrictTargetOrigin(this.options, iframe.src);
     iframe.style.width = ensureString(this.options.width) || '100%';
     iframe.style.height = ensureString(this.options.height) || '480px';
     iframe.style.border = '0';

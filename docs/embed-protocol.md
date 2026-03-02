@@ -15,6 +15,8 @@ This document defines the host/viewer messaging contract for the phase-1 embed r
   - `type: "<event-name>"`
 - `targetOrigin="*"` is **dev-only** for local harness/debug usage.
 - Production integrations must pin target origin explicitly (for example `https://your-host.example`) and wildcard origin is forbidden in production.
+- `embed.js` enforces this policy by default: `targetOrigin="*"` is rejected unless `allowDevWildcardTargetOrigin=true` is explicitly set.
+- If `targetOrigin` is omitted, `embed.js` derives it from iframe `viewerPath`; when derivation fails, `inject()` throws and requires an explicit `targetOrigin`.
 
 ## 2. Host -> Viewer Command Envelope
 
@@ -132,6 +134,10 @@ Callbacks:
 - `onReady(payload)`
 - `onError(payload)`
 - `onCommandResult(payload)`
+
+Security-related options:
+- `targetOrigin`: explicit `postMessage` target origin (recommended in production).
+- `allowDevWildcardTargetOrigin`: default `false`; when `true`, allows `targetOrigin="*"` for local debugging only.
 
 ## 6. Host Usage Example
 
