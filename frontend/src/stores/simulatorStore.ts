@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
-import { Presets, registry } from '../engine/legacyBridge';
+import { Presets, registry } from '../engine/storeEngineBridge';
 import {
   type GeometryInteractionSnapshot,
   SimulatorRuntime,

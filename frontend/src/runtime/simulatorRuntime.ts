@@ -23,7 +23,7 @@ import {
   setObjectDisplayDimension,
   setObjectRealDimension,
   syncObjectDisplayGeometry
-} from '../engine/legacyBridge';
+} from '../engine/runtimeEngineBridge';
 
 type AnyRecord = Record<string, unknown>;
 
