@@ -3,13 +3,16 @@ import assert from 'node:assert/strict';
 import {
   resolveToolEntry,
   getCreationOverrides,
-  getObjectCircleBoundary,
-  getObjectPointBoundary,
-  buildTangencyCandidates,
   clearTangencyHintState,
   computePinchDistance,
   computeDemoPinchZoom
 } from '../js/interactions/DragDropManager.js';
+import {
+  getObjectCircleBoundary,
+  getObjectPointBoundary,
+  buildTangencyCandidates
+} from '../js/interactions/tangencyCandidates.js';
+import { computeRectFromHandle } from '../js/interactions/geometryResize.js';
 
 test('resolveToolEntry maps toolbar aliases', () => {
   const cap = resolveToolEntry('capacitor');
@@ -221,4 +224,20 @@ test('computeDemoPinchZoom scales from pinch ratio and clamps to limits', () => 
 test('computeDemoPinchZoom falls back to current zoom when pinch baseline is invalid', () => {
   const unchanged = computeDemoPinchZoom(1.25, 0, 140, { min: 0.5, max: 4 });
   assert.equal(unchanged, 1.25);
+});
+
+test('computeRectFromHandle computes constrained rect for nw handle drag', () => {
+  const next = computeRectFromHandle(
+    'nw',
+    { x: 10, y: 20, width: 100, height: 80 },
+    { x: -5, y: 0 },
+    30
+  );
+
+  assert.deepEqual(next, {
+    x: -5,
+    y: 0,
+    width: 115,
+    height: 100
+  });
 });

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { DragDropManager } from '../js/interactions/DragDropManager.js';
 import { getObjectRealDimension } from '../js/modes/GeometryScaling.js';
+import { closeContextMenuUi } from '../js/interactions/contextMenuLifecycle.js';
 
 function installDom(markup) {
   const dom = new JSDOM(
@@ -159,6 +160,24 @@ test('onContextMenu ignores missing context menu container', () => {
       });
     });
     manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('closeContextMenuUi hides menu and runs cleanup callback once', () => {
+  const cleanup = installDom('<div id="context-menu" style="display:block"></div>');
+  try {
+    const contextMenu = document.getElementById('context-menu');
+    assert.ok(contextMenu);
+    let cleanupCalls = 0;
+
+    closeContextMenuUi(contextMenu, () => {
+      cleanupCalls += 1;
+    });
+
+    assert.equal(contextMenu.style.display, 'none');
+    assert.equal(cleanupCalls, 1);
   } finally {
     cleanup();
   }

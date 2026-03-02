@@ -26,11 +26,18 @@ import {
     scaleWorldVerticesToBounds
 } from '../geometry/VertexGeometry.js';
 import {
-    getGeometryBoundarySegments,
-    getGeometryCircleBoundary,
     getGeometryWorldVertices,
     getObjectGeometryKind
 } from '../geometry/GeometryKernel.js';
+import { computeRectFromHandle } from './geometryResize.js';
+import {
+    buildTangencyCandidates,
+    getObjectCircleBoundary,
+    getObjectPointBoundary
+} from './tangencyCandidates.js';
+import { closeContextMenuUi } from './contextMenuLifecycle.js';
+
+export { buildTangencyCandidates, getObjectCircleBoundary, getObjectPointBoundary };
 
 const TOOL_ALIASES = {
     'electric-field-semicircle': { type: 'semicircle-electric-field' },
@@ -88,10 +95,6 @@ function isFiniteNumber(value) {
     return Number.isFinite(value);
 }
 
-function isFinitePositive(value) {
-    return Number.isFinite(value) && value > 0;
-}
-
 function getRegistryInteractionKind(object) {
     if (!object || typeof object !== 'object') return null;
     const type = typeof object.type === 'string' ? object.type : '';
@@ -99,126 +102,8 @@ function getRegistryInteractionKind(object) {
     return registry.get(type)?.interaction?.kind || null;
 }
 
-function computeRectFromHandle(handle, start, pos, minSize) {
-    const startX = start.x;
-    const startY = start.y;
-    const startW = start.width;
-    const startH = start.height;
-    const startRight = startX + startW;
-    const startBottom = startY + startH;
-
-    if (handle === 'nw') {
-        const newX = Math.min(pos.x, startRight - minSize);
-        const newY = Math.min(pos.y, startBottom - minSize);
-        const newW = Math.max(minSize, startRight - newX);
-        const newH = Math.max(minSize, startBottom - newY);
-        return { x: newX, y: newY, width: newW, height: newH };
-    }
-    if (handle === 'ne') {
-        const newY = Math.min(pos.y, startBottom - minSize);
-        const newW = Math.max(minSize, pos.x - startX);
-        const newH = Math.max(minSize, startBottom - newY);
-        return { x: startX, y: newY, width: newW, height: newH };
-    }
-    if (handle === 'sw') {
-        const newX = Math.min(pos.x, startRight - minSize);
-        const newW = Math.max(minSize, startRight - newX);
-        const newH = Math.max(minSize, pos.y - startY);
-        return { x: newX, y: startY, width: newW, height: newH };
-    }
-    const newW = Math.max(minSize, pos.x - startX);
-    const newH = Math.max(minSize, pos.y - startY);
-    return { x: startX, y: startY, width: newW, height: newH };
-}
-
-function buildDisappearZoneSegment(object) {
-    if (object?.type !== 'disappear-zone') return null;
-    const length = object.length;
-    const angle = object.angle;
-    if (!isFinitePositive(length) || !isFiniteNumber(angle) || !isFiniteNumber(object.x) || !isFiniteNumber(object.y)) {
-        return null;
-    }
-
-    const rad = angle * Math.PI / 180;
-    const half = length / 2;
-    const dx = Math.cos(rad) * half;
-    const dy = Math.sin(rad) * half;
-    return { x1: object.x - dx, y1: object.y - dy, x2: object.x + dx, y2: object.y + dy };
-}
-
-export function getObjectCircleBoundary(object) {
-    return getGeometryCircleBoundary(object);
-}
-
-export function getObjectPointBoundary(object) {
-    if (!object) return null;
-    const isEmitter = object.type === 'electron-gun' || object.type === 'programmable-emitter';
-    if (!isEmitter) return null;
-    if (!isFiniteNumber(object.x) || !isFiniteNumber(object.y)) return null;
-    return { x: object.x, y: object.y };
-}
-
 function isMagneticFieldObject(object) {
     return getRegistryInteractionKind(object) === 'magnetic-field';
-}
-
-function objectBoundarySegments(object) {
-    if (!object) return [];
-    const geometrySegments = getGeometryBoundarySegments(object);
-    if (geometrySegments.length) return geometrySegments;
-
-    const zoneSegment = buildDisappearZoneSegment(object);
-    if (zoneSegment) return [zoneSegment];
-    return [];
-}
-
-export function buildTangencyCandidates(objects, activeObject) {
-    if (!Array.isArray(objects)) return [];
-    const candidates = [];
-    for (const object of objects) {
-        if (!object) continue;
-        if (object === activeObject) continue;
-        if (activeObject?.id && object?.id && object.id === activeObject.id) continue;
-
-        const circle = getObjectCircleBoundary(object);
-        if (circle) {
-            candidates.push({
-                kind: 'circle',
-                x: circle.x,
-                y: circle.y,
-                radius: circle.radius,
-                objectId: object.id ?? null,
-                objectRef: object
-            });
-            continue;
-        }
-
-        const point = getObjectPointBoundary(object);
-        if (point) {
-            candidates.push({
-                kind: 'point',
-                x: point.x,
-                y: point.y,
-                objectId: object.id ?? null,
-                objectRef: object
-            });
-            continue;
-        }
-
-        const segments = objectBoundarySegments(object);
-        for (const segment of segments) {
-            candidates.push({
-                kind: 'segment',
-                x1: segment.x1,
-                y1: segment.y1,
-                x2: segment.x2,
-                y2: segment.y2,
-                objectId: object.id ?? null,
-                objectRef: object
-            });
-        }
-    }
-    return candidates;
 }
 
 export function clearTangencyHintState(scene) {
@@ -1494,12 +1379,11 @@ export class DragDropManager {
         const contextMenu = document.getElementById('context-menu');
 
         if (!clickedObject) {
-            if (contextMenu) {
-                contextMenu.style.display = 'none';
-            }
-            this.clearContextMenuCloseTimer();
-            this.clearContextMenuCloseHandler();
-            this.clearContextMenuEscapeHandler();
+            closeContextMenuUi(contextMenu, () => {
+                this.clearContextMenuCloseTimer();
+                this.clearContextMenuCloseHandler();
+                this.clearContextMenuEscapeHandler();
+            });
             return;
         }
 
@@ -1519,10 +1403,11 @@ export class DragDropManager {
         this.clearContextMenuEscapeHandler();
 
         const closeMenu = () => {
-            contextMenu.style.display = 'none';
-            this.clearContextMenuCloseTimer();
-            this.clearContextMenuCloseHandler();
-            this.clearContextMenuEscapeHandler();
+            closeContextMenuUi(contextMenu, () => {
+                this.clearContextMenuCloseTimer();
+                this.clearContextMenuCloseHandler();
+                this.clearContextMenuEscapeHandler();
+            });
         };
         const closeMenuOnEscape = (event) => {
             if (event.key !== 'Escape') return;
