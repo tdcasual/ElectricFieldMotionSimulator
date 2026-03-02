@@ -3,17 +3,49 @@
  */
 
 import { BaseObject } from './BaseObject.js';
+import {
+    hasLocalVertices,
+    normalizeLocalVertices
+} from '../geometry/VertexGeometry.js';
+import { geometryContainsPoint } from '../geometry/GeometryKernel.js';
+import {
+    buildRectPolygon,
+    resolveGeometryContract
+} from '../geometry/ObjectGeometryUtils.js';
+
+function computeLocalBounds(vertices) {
+    const normalized = normalizeLocalVertices(vertices);
+    if (!normalized) return null;
+    let minX = normalized[0].x;
+    let maxX = normalized[0].x;
+    let minY = normalized[0].y;
+    let maxY = normalized[0].y;
+    for (let i = 1; i < normalized.length; i += 1) {
+        const point = normalized[i];
+        if (point.x < minX) minX = point.x;
+        if (point.x > maxX) maxX = point.x;
+        if (point.y < minY) minY = point.y;
+        if (point.y > maxY) maxY = point.y;
+    }
+    return { minX, maxX, minY, maxY };
+}
+
+function resolveMagneticGeometry(config = {}, fallbackGeometry = null) {
+    return resolveGeometryContract(config, fallbackGeometry);
+}
 
 export class MagneticField extends BaseObject {
     static defaults() {
+        const width = 200;
+        const height = 150;
         return {
             type: 'magnetic-field',
             x: 0,
             y: 0,
-            shape: 'rect',
-            width: 200,
-            height: 150,
-            radius: 90,
+            geometry: {
+                kind: 'polygon',
+                vertices: buildRectPolygon(width, height)
+            },
             strength: 0.5
         };
     }
@@ -25,20 +57,9 @@ export class MagneticField extends BaseObject {
                 fields: [
                     { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
-                    { key: 'shape', label: '形状', type: 'select', options: [
-                        { value: 'rect', label: '矩形' },
-                        { value: 'circle', label: '圆形' },
-                        { value: 'triangle', label: '三角形' }
-                    ] },
-                    { key: 'width', label: '宽度', type: 'number', min: 1, step: 10,
-                        visibleWhen: (obj) => obj.shape !== 'circle'
-                    },
-                    { key: 'height', label: '高度', type: 'number', min: 1, step: 10,
-                        visibleWhen: (obj) => obj.shape !== 'circle'
-                    },
-                    { key: 'radius', label: '半径', type: 'number', min: 1, step: 10,
-                        visibleWhen: (obj) => obj.shape === 'circle'
-                    },
+                    { key: 'width', sourceKey: 'width', label: '宽度', type: 'number', min: 1, step: 10 },
+                    { key: 'height', sourceKey: 'height', label: '高度', type: 'number', min: 1, step: 10 },
+                    { key: 'radius', sourceKey: 'radius', label: '半径', type: 'number', min: 1, step: 10 },
                     { key: 'strength', label: '磁感应强度 (T)', type: 'number', step: 0.1 }
                 ]
             }
@@ -47,12 +68,47 @@ export class MagneticField extends BaseObject {
 
     constructor(config = {}) {
         super(config);
-        this.type = config.type || 'magnetic-field';
-        this.shape = config.shape || 'rect'; // rect | circle | triangle
-        this.width = config.width ?? (config.radius ? config.radius * 2 : 200);
-        this.height = config.height ?? (config.radius ? config.radius * 2 : 150);
-        this.radius = config.radius ?? Math.min(this.width, this.height) / 2;
+        this.type = 'magnetic-field';
+        this.width = 200;
+        this.height = 150;
+        this.radius = 75;
+        this.vertices = null;
+        this.applyGeometry(config, {
+            kind: 'polygon',
+            vertices: buildRectPolygon(this.width, this.height)
+        });
         this.strength = config.strength ?? 0.5; // T (特斯拉)
+    }
+
+    applyGeometry(source = {}, fallbackGeometry = null) {
+        const geometry = resolveMagneticGeometry(source, fallbackGeometry);
+        if (!geometry) return;
+        if (geometry.kind === 'circle') {
+            this.vertices = null;
+            this.radius = geometry.radius;
+            this.width = geometry.radius * 2;
+            this.height = geometry.radius * 2;
+            return;
+        }
+
+        const vertices = normalizeLocalVertices(geometry.vertices) || buildRectPolygon(this.width, this.height);
+        const bounds = computeLocalBounds(vertices);
+        if (!bounds) {
+            this.vertices = buildRectPolygon(this.width, this.height);
+            return;
+        }
+
+        const baseX = Number.isFinite(this.x) ? this.x : 0;
+        const baseY = Number.isFinite(this.y) ? this.y : 0;
+        this.x = baseX + bounds.minX;
+        this.y = baseY + bounds.minY;
+        this.vertices = vertices.map((point) => ({
+            x: point.x - bounds.minX,
+            y: point.y - bounds.minY
+        }));
+        this.width = Math.max(1, bounds.maxX - bounds.minX);
+        this.height = Math.max(1, bounds.maxY - bounds.minY);
+        this.radius = Math.min(this.width, this.height) / 2;
     }
     
     /**
@@ -66,44 +122,7 @@ export class MagneticField extends BaseObject {
      * 判断点是否在对象内
      */
     containsPoint(x, y) {
-        if (this.shape === 'circle') {
-            const dx = x - this.x;
-            const dy = y - this.y;
-            return dx * dx + dy * dy <= this.radius * this.radius;
-        }
-
-        if (this.shape === 'triangle') {
-            const ax = this.x + this.width / 2;
-            const ay = this.y;
-            const bx = this.x;
-            const by = this.y + this.height;
-            const cx = this.x + this.width;
-            const cy = this.y + this.height;
-
-            const v0x = cx - ax;
-            const v0y = cy - ay;
-            const v1x = bx - ax;
-            const v1y = by - ay;
-            const v2x = x - ax;
-            const v2y = y - ay;
-
-            const dot00 = v0x * v0x + v0y * v0y;
-            const dot01 = v0x * v1x + v0y * v1y;
-            const dot02 = v0x * v2x + v0y * v2y;
-            const dot11 = v1x * v1x + v1y * v1y;
-            const dot12 = v1x * v2x + v1y * v2y;
-
-            const denom = dot00 * dot11 - dot01 * dot01;
-            if (denom === 0) return false;
-            const invDenom = 1 / denom;
-            const u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-            const v = (dot00 * dot12 - dot01 * dot02) * invDenom;
-            return u >= 0 && v >= 0 && (u + v) <= 1;
-        }
-
-        // rect (默认)
-        return x >= this.x && x <= this.x + this.width &&
-               y >= this.y && y <= this.y + this.height;
+        return geometryContainsPoint(this, x, y);
     }
     
     /**
@@ -112,10 +131,7 @@ export class MagneticField extends BaseObject {
     serialize() {
         return {
             ...super.serialize(),
-            shape: this.shape,
-            width: this.width,
-            height: this.height,
-            radius: this.radius,
+            geometry: this.getGeometry(),
             strength: this.strength
         };
     }
@@ -125,10 +141,22 @@ export class MagneticField extends BaseObject {
      */
     deserialize(data) {
         super.deserialize(data);
-        this.shape = data.shape || 'rect';
-        this.width = data.width ?? this.width;
-        this.height = data.height ?? this.height;
-        this.radius = data.radius ?? Math.min(this.width, this.height) / 2;
+        this.type = 'magnetic-field';
+        this.applyGeometry(data || {}, this.getGeometry());
         this.strength = data.strength ?? this.strength;
+    }
+
+    getGeometry() {
+        if (!hasLocalVertices(this)) {
+            return {
+                kind: 'circle',
+                radius: this.radius
+            };
+        }
+
+        return {
+            kind: 'polygon',
+            vertices: this.vertices.map((point) => ({ ...point }))
+        };
     }
 }

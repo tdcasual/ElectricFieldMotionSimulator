@@ -1,4 +1,6 @@
-export const GEOMETRY_DIMENSION_KEYS = [
+import { getGeometryDisplayDimensions } from '../geometry/GeometryKernel.js';
+
+const GEOMETRY_DIMENSION_KEYS = [
   'width',
   'height',
   'radius',
@@ -12,6 +14,7 @@ export const GEOMETRY_DIMENSION_KEYS = [
 ];
 
 const GEOMETRY_DIMENSION_KEY_SET = new Set(GEOMETRY_DIMENSION_KEYS);
+const GEOMETRY_DERIVED_DIMENSION_KEYS = new Set(['width', 'height', 'radius']);
 export const REAL_STORE_KEY = '__geometryReal';
 export const OBJECT_SCALE_KEY = '__geometryObjectScale';
 const REAL_DECIMALS = 2;
@@ -45,11 +48,20 @@ function normalizeObjectScale(object) {
   return normalized;
 }
 
+function readDisplayDimension(object, key) {
+  const direct = Number(object?.[key]);
+  if (Number.isFinite(direct)) return direct;
+  if (!GEOMETRY_DERIVED_DIMENSION_KEYS.has(key)) return null;
+  const geometryDimensions = getGeometryDisplayDimensions(object);
+  const derived = Number(geometryDimensions?.[key]);
+  return Number.isFinite(derived) ? derived : null;
+}
+
 export function isGeometryDimensionKey(key) {
   return GEOMETRY_DIMENSION_KEY_SET.has(String(key ?? ''));
 }
 
-export function getSceneGeometryScale(scene) {
+function getSceneGeometryScale(scene) {
   const value = Number(scene?.settings?.pixelsPerMeter);
   return isFinitePositive(value) ? value : 1;
 }
@@ -71,7 +83,7 @@ export function ensureObjectGeometryState(object, scene) {
 
   for (const key of GEOMETRY_DIMENSION_KEYS) {
     if (Number.isFinite(store[key])) continue;
-    const displayValue = Number(object[key]);
+    const displayValue = readDisplayDimension(object, key);
     if (!Number.isFinite(displayValue)) continue;
     store[key] = roundTo(displayValue / divisor);
   }
@@ -91,7 +103,7 @@ export function captureObjectRealGeometry(object, scene) {
 
   let changed = false;
   for (const key of GEOMETRY_DIMENSION_KEYS) {
-    const displayValue = Number(object[key]);
+    const displayValue = readDisplayDimension(object, key);
     if (!Number.isFinite(displayValue)) continue;
     const nextReal = roundTo(displayValue / divisor);
     if (!Number.isFinite(nextReal)) continue;

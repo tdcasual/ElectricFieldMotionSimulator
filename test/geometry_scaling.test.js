@@ -18,12 +18,16 @@ test('ensureObjectGeometryState derives real geometry from scene scale', () => {
   scene.settings.pixelsPerMeter = 50;
 
   const field = new MagneticField({
-    shape: 'circle',
+    type: 'magnetic-field',
     x: 0,
     y: 0,
     radius: 50,
     width: 100,
-    height: 100
+    height: 100,
+    geometry: {
+      kind: 'circle',
+      radius: 50
+    }
   });
 
   ensureObjectGeometryState(field, scene);
@@ -33,17 +37,41 @@ test('ensureObjectGeometryState derives real geometry from scene scale', () => {
   assert.equal(getObjectGeometryScale(field), 1);
 });
 
+test('ensureObjectGeometryState falls back to geometry contract dimensions when display fields are missing', () => {
+  const scene = new Scene();
+  scene.settings.pixelsPerMeter = 50;
+
+  const object = {
+    x: 10,
+    y: 20,
+    geometry: {
+      kind: 'circle',
+      radius: 75
+    }
+  };
+
+  ensureObjectGeometryState(object, scene);
+
+  assert.equal(getObjectRealDimension(object, 'radius', scene), 1.5);
+  assert.equal(getObjectRealDimension(object, 'width', scene), 3);
+  assert.equal(getObjectRealDimension(object, 'height', scene), 3);
+});
+
 test('setObjectRealDimension updates display geometry using scene scale', () => {
   const scene = new Scene();
   scene.settings.pixelsPerMeter = 50;
 
   const field = new MagneticField({
-    shape: 'circle',
+    type: 'magnetic-field',
     x: 0,
     y: 0,
     radius: 50,
     width: 100,
-    height: 100
+    height: 100,
+    geometry: {
+      kind: 'circle',
+      radius: 50
+    }
   });
 
   ensureObjectGeometryState(field, scene);
@@ -58,12 +86,20 @@ test('setObjectDisplayDimension updates only object scale and keeps real geometr
   scene.settings.pixelsPerMeter = 50;
 
   const field = new MagneticField({
-    shape: 'rect',
     x: 0,
     y: 0,
     width: 100,
     height: 150,
-    radius: 50
+    radius: 50,
+    geometry: {
+      kind: 'polygon',
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 150 },
+        { x: 0, y: 150 }
+      ]
+    }
   });
 
   ensureObjectGeometryState(field, scene);
@@ -80,11 +116,19 @@ test('captureObjectRealGeometry syncs real dimensions after direct display-space
   scene.settings.pixelsPerMeter = 50;
 
   const field = new MagneticField({
-    shape: 'rect',
     x: 0,
     y: 0,
     width: 100,
-    height: 150
+    height: 150,
+    geometry: {
+      kind: 'polygon',
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 150 },
+        { x: 0, y: 150 }
+      ]
+    }
   });
 
   ensureObjectGeometryState(field, scene);
@@ -101,12 +145,16 @@ test('applyDemoZoomToScene changes display dimensions without mutating real geom
   scene.settings.pixelsPerMeter = 50;
 
   const field = new MagneticField({
-    shape: 'circle',
+    type: 'magnetic-field',
     x: 20,
     y: 30,
     radius: 50,
     width: 100,
-    height: 100
+    height: 100,
+    geometry: {
+      kind: 'circle',
+      radius: 50
+    }
   });
 
   scene.addObject(field);

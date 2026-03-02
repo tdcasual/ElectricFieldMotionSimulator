@@ -123,6 +123,29 @@ const ICONS = Object.fromEntries(
   Object.entries(RAW_ICONS).map(([key, markup]) => [key, normalizeIconMarkup(markup)])
 );
 
+function buildRectGeometry(width, height) {
+  return {
+    kind: 'polygon',
+    vertices: [
+      { x: 0, y: 0 },
+      { x: width, y: 0 },
+      { x: width, y: height },
+      { x: 0, y: height }
+    ]
+  };
+}
+
+function buildTriangleGeometry(width, height) {
+  return {
+    kind: 'polygon',
+    vertices: [
+      { x: width / 2, y: 0 },
+      { x: 0, y: height },
+      { x: width, y: height }
+    ]
+  };
+}
+
 export const registry = new ObjectRegistry();
 
 registry.register('electric-field-rect', {
@@ -133,7 +156,7 @@ registry.register('electric-field-rect', {
   defaults: RectElectricField.defaults,
   schema: RectElectricField.schema,
   rendererKey: 'electric',
-  interaction: { kind: 'electric-field', resizeMode: 'rect' }
+  interaction: { kind: 'electric-field' }
 });
 
 registry.register('electric-field-circle', {
@@ -144,7 +167,7 @@ registry.register('electric-field-circle', {
   defaults: CircleElectricField.defaults,
   schema: CircleElectricField.schema,
   rendererKey: 'electric',
-  interaction: { kind: 'electric-field', resizeMode: 'radius' }
+  interaction: { kind: 'electric-field' }
 });
 
 registry.register('semicircle-electric-field', {
@@ -155,7 +178,7 @@ registry.register('semicircle-electric-field', {
   defaults: SemiCircleElectricField.defaults,
   schema: SemiCircleElectricField.schema,
   rendererKey: 'electric',
-  interaction: { kind: 'electric-field', resizeMode: 'radius' }
+  interaction: { kind: 'electric-field' }
 });
 
 registry.register('parallel-plate-capacitor', {
@@ -201,11 +224,10 @@ registry.register('magnetic-field-long', {
   label: '匀强磁场（长条）',
   icon: ICONS.magneticLong,
   category: 'magnetic',
+  runtimeType: 'magnetic-field',
   defaults: () => ({
     ...MagneticField.defaults(),
-    shape: 'rect',
-    width: 320,
-    height: 90
+    geometry: buildRectGeometry(320, 90)
   }),
   schema: MagneticField.schema,
   rendererKey: 'magnetic',
@@ -217,12 +239,13 @@ registry.register('magnetic-field-circle', {
   label: '匀强磁场（圆形）',
   icon: ICONS.magneticCircle,
   category: 'magnetic',
+  runtimeType: 'magnetic-field',
   defaults: () => ({
     ...MagneticField.defaults(),
-    shape: 'circle',
-    radius: 90,
-    width: 180,
-    height: 180
+    geometry: {
+      kind: 'circle',
+      radius: 90
+    }
   }),
   schema: MagneticField.schema,
   rendererKey: 'magnetic',
@@ -234,11 +257,10 @@ registry.register('magnetic-field-triangle', {
   label: '匀强磁场（三角形）',
   icon: ICONS.magneticTriangle,
   category: 'magnetic',
+  runtimeType: 'magnetic-field',
   defaults: () => ({
     ...MagneticField.defaults(),
-    shape: 'triangle',
-    width: 240,
-    height: 180
+    geometry: buildTriangleGeometry(240, 180)
   }),
   schema: MagneticField.schema,
   rendererKey: 'magnetic',

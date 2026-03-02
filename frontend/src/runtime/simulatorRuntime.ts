@@ -117,17 +117,27 @@ function normalizeFieldType(field: SchemaField): string {
   return 'text';
 }
 
-function isGeometryEditableSchemaField(field: SchemaField): boolean {
-  if (!field || field.type !== 'number') return false;
-  if (!field.key || !isGeometryDimensionKey(field.key)) return false;
+function getGeometrySourceKey(field: SchemaField): string | null {
+  if (!field || field.type !== 'number') return null;
+  if (!field.key) return null;
   if (field.bind && (typeof field.bind.get === 'function' || typeof field.bind.set === 'function')) {
-    return false;
+    return null;
   }
-  return true;
+
+  const explicit = typeof field.sourceKey === 'string' ? field.sourceKey.trim() : '';
+  if (explicit && isGeometryDimensionKey(explicit)) {
+    return explicit;
+  }
+
+  if (isGeometryDimensionKey(field.key)) {
+    return field.key;
+  }
+
+  return null;
 }
 
-function displayFieldKeyFor(sourceKey: string): string {
-  return `${sourceKey}${DISPLAY_FIELD_SUFFIX}`;
+function displayFieldKeyFor(realFieldKey: string): string {
+  return `${realFieldKey}${DISPLAY_FIELD_SUFFIX}`;
 }
 
 export class SimulatorRuntime {
@@ -159,7 +169,6 @@ export class SimulatorRuntime {
   private mounted = false;
   private rafId: number | null = null;
   private readonly handleResizeBound: () => void;
-  private readonly handleShowPropertiesBound: (event: Event) => void;
   private readonly handleDemoWheelBound: (event: WheelEvent) => void;
 
   constructor(callbacks: RuntimeCallbacks = {}) {
@@ -172,7 +181,6 @@ export class SimulatorRuntime {
     this.themeManager = new ThemeManager();
 
     this.handleResizeBound = () => this.handleResize();
-    this.handleShowPropertiesBound = (event) => this.handleShowProperties(event);
     this.handleDemoWheelBound = (event) => this.handleDemoWheel(event);
 
     this.appAdapter = {
@@ -180,6 +188,7 @@ export class SimulatorRuntime {
       requestRender: (options: RenderRequest = {}) => this.requestRender(options),
       updateUI: () => this.emitSnapshot(),
       setStatusText: (text: string) => this.setStatusText(text),
+      onPropertyRequest: (object: unknown) => this.handlePropertyRequest(object),
       propertyPanel: {
         hide: () => {
           this.callbacks.onPropertyHide?.();
@@ -207,7 +216,6 @@ export class SimulatorRuntime {
       particleCanvas.addEventListener('wheel', this.handleDemoWheelBound, { passive: false });
     }
 
-    document.addEventListener('show-properties', this.handleShowPropertiesBound);
     window.addEventListener('resize', this.handleResizeBound);
 
     this.setRunning(false);
@@ -226,7 +234,6 @@ export class SimulatorRuntime {
       particleCanvas.removeEventListener('wheel', this.handleDemoWheelBound);
     }
     window.removeEventListener('resize', this.handleResizeBound);
-    document.removeEventListener('show-properties', this.handleShowPropertiesBound);
   }
 
   getSnapshot(): RuntimeSnapshot {
@@ -387,6 +394,9 @@ export class SimulatorRuntime {
 
   createObjectAtCenter(type: string) {
     if (!type) return;
+    // Ensure center placement uses the latest viewport after orientation/layout changes.
+    this.renderer.resize();
+    this.syncViewportFromRenderer();
     const bounds = this.scene.getWorldViewportBounds(0);
     const x = (bounds.minX + bounds.maxX) / 2;
     const y = (bounds.minY + bounds.maxY) / 2;
@@ -662,9 +672,7 @@ export class SimulatorRuntime {
     this.scene.setViewport(width, height);
   }
 
-  private handleShowProperties(event: Event) {
-    const customEvent = event as CustomEvent<{ object?: unknown }>;
-    const object = customEvent.detail?.object;
+  private handlePropertyRequest(object: unknown) {
     if (!isRecord(object)) return;
     this.scene.selectedObject = object as never;
     this.callbacks.onPropertyRequest?.(object);
@@ -744,7 +752,8 @@ export class SimulatorRuntime {
       const mappedFields: SchemaField[] = [];
       for (const field of fields) {
         if (!field || !field.key) continue;
-        if (!isGeometryEditableSchemaField(field)) {
+        const geometrySourceKey = getGeometrySourceKey(field);
+        if (!geometrySourceKey) {
           mappedFields.push(field);
           continue;
         }
@@ -753,7 +762,7 @@ export class SimulatorRuntime {
         mappedFields.push({
           ...field,
           label: `${baseLabel}（真实）`,
-          sourceKey: field.key,
+          sourceKey: geometrySourceKey,
           geometryRole: 'real'
         });
         mappedFields.push({
@@ -764,7 +773,7 @@ export class SimulatorRuntime {
           max: undefined,
           bind: undefined,
           validator: undefined,
-          sourceKey: field.key,
+          sourceKey: geometrySourceKey,
           geometryRole: 'display'
         });
       }

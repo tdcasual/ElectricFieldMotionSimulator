@@ -33,11 +33,19 @@ function renderMagneticSymbol(strength) {
 
   const field = {
     type: 'magnetic-field',
-    shape: 'rect',
     x: 0,
     y: 0,
     width: 80,
     height: 80,
+    geometry: {
+      kind: 'polygon',
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 80, y: 0 },
+        { x: 80, y: 80 },
+        { x: 0, y: 80 }
+      ]
+    },
     strength
   };
   const scene = { selectedObject: null };
@@ -72,11 +80,19 @@ test('rect magnetic field draws geometric center marker', () => {
 
   renderer.drawMagneticField({
     type: 'magnetic-field',
-    shape: 'rect',
     x: 20,
     y: 30,
     width: 80,
     height: 40,
+    geometry: {
+      kind: 'polygon',
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 80, y: 0 },
+        { x: 80, y: 40 },
+        { x: 0, y: 40 }
+      ]
+    },
     strength: 0
   }, { selectedObject: null });
 
@@ -92,10 +108,13 @@ test('circle magnetic field draws geometric center marker', () => {
 
   renderer.drawMagneticField({
     type: 'magnetic-field',
-    shape: 'circle',
     x: 120,
     y: 90,
     radius: 35,
+    geometry: {
+      kind: 'circle',
+      radius: 35
+    },
     strength: 0
   }, { selectedObject: null });
 

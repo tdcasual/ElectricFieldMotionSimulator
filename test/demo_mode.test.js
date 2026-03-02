@@ -121,7 +121,19 @@ test('applyDemoZoomToScene rescales objects around anchor and updates scene scal
   particle.trajectory = [{ x: 10, y: 20, t: 0 }];
   scene.addObject(particle);
 
-  const field = new RectElectricField({ x: 30, y: 40, width: 20, height: 10 });
+  const field = new RectElectricField({
+    x: 30,
+    y: 40,
+    geometry: {
+      kind: 'polygon',
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 20, y: 0 },
+        { x: 20, y: 10 },
+        { x: 0, y: 10 }
+      ]
+    }
+  });
   scene.addObject(field);
 
   const changed = applyDemoZoomToScene(scene, {

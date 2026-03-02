@@ -20,7 +20,10 @@ export class ObjectRegistry {
       throw new Error(`Unknown type: ${type}`);
     }
     const defaults = typeof entry.defaults === 'function' ? entry.defaults() : {};
-    const data = { ...defaults, ...overrides, type };
+    const runtimeType = typeof entry.runtimeType === 'string' && entry.runtimeType
+      ? entry.runtimeType
+      : type;
+    const data = { ...defaults, ...overrides, type: runtimeType };
     const instance = new entry.class(data);
     if (typeof instance.deserialize === 'function') {
       instance.deserialize(data);

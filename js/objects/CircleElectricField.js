@@ -3,6 +3,7 @@
  */
 
 import { ElectricField } from './ElectricField.js';
+import { resolveCircleRadius } from '../geometry/ObjectGeometryUtils.js';
 
 export class CircleElectricField extends ElectricField {
     static defaults() {
@@ -10,7 +11,10 @@ export class CircleElectricField extends ElectricField {
             type: 'electric-field-circle',
             x: 0,
             y: 0,
-            radius: 100,
+            geometry: {
+                kind: 'circle',
+                radius: 100
+            },
             strength: 1000,
             direction: 90
         };
@@ -23,7 +27,7 @@ export class CircleElectricField extends ElectricField {
                 fields: [
                     { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
-                    { key: 'radius', label: '半径', type: 'number', min: 1, step: 10 },
+                    { key: 'radius', sourceKey: 'radius', label: '半径', type: 'number', min: 1, step: 10 },
                     { key: 'strength', label: '场强 (N/C)', type: 'number', step: 100 },
                     { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 }
                 ]
@@ -34,7 +38,7 @@ export class CircleElectricField extends ElectricField {
     constructor(config = {}) {
         super(config);
         this.type = 'electric-field-circle';
-        this.radius = config.radius || 100;
+        this.radius = resolveCircleRadius(config, 100);
     }
     
     /**
@@ -73,7 +77,7 @@ export class CircleElectricField extends ElectricField {
     serialize() {
         return {
             ...super.serialize(),
-            radius: this.radius
+            geometry: this.getGeometry()
         };
     }
     
@@ -82,6 +86,13 @@ export class CircleElectricField extends ElectricField {
      */
     deserialize(data) {
         super.deserialize(data);
-        this.radius = data.radius;
+        this.radius = resolveCircleRadius(data, this.radius);
+    }
+
+    getGeometry() {
+        return {
+            kind: 'circle',
+            radius: this.radius
+        };
     }
 }

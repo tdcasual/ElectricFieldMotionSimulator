@@ -14,8 +14,16 @@
       "y": 120,
       "width": 320,
       "height": 240,
-      "strength": 0.8,
-      "shape": "rect"
+      "geometry": {
+        "kind": "polygon",
+        "vertices": [
+          { "x": 0, "y": 0 },
+          { "x": 320, "y": 0 },
+          { "x": 320, "y": 240 },
+          { "x": 0, "y": 240 }
+        ]
+      },
+      "strength": 0.8
     },
     {
       "type": "particle",

@@ -3,6 +3,31 @@
  */
 
 import { ElectricField } from './ElectricField.js';
+import {
+    getWorldVertices,
+    hasLocalVertices,
+    normalizeObjectVerticesFromWorld,
+    pointInPolygon
+} from '../geometry/VertexGeometry.js';
+import {
+    buildRectPolygon,
+    resolveGeometryContract
+} from '../geometry/ObjectGeometryUtils.js';
+
+function resolveRectVertices(source, fallbackVertices = null) {
+    const geometry = resolveGeometryContract(
+        source,
+        {
+            kind: 'polygon',
+            vertices: fallbackVertices || buildRectPolygon(200, 150)
+        },
+        { allowCircle: false, allowPolygon: true }
+    );
+    if (geometry?.kind === 'polygon') {
+        return geometry.vertices.map((point) => ({ ...point }));
+    }
+    return buildRectPolygon(200, 150);
+}
 
 export class RectElectricField extends ElectricField {
     static defaults() {
@@ -10,8 +35,10 @@ export class RectElectricField extends ElectricField {
             type: 'electric-field-rect',
             x: 0,
             y: 0,
-            width: 200,
-            height: 150,
+            geometry: {
+                kind: 'polygon',
+                vertices: buildRectPolygon(200, 150)
+            },
             strength: 1000,
             direction: 90
         };
@@ -24,8 +51,8 @@ export class RectElectricField extends ElectricField {
                 fields: [
                     { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
-                    { key: 'width', label: '宽度', type: 'number', min: 1, step: 10 },
-                    { key: 'height', label: '高度', type: 'number', min: 1, step: 10 },
+                    { key: 'width', sourceKey: 'width', label: '宽度', type: 'number', min: 1, step: 10 },
+                    { key: 'height', sourceKey: 'height', label: '高度', type: 'number', min: 1, step: 10 },
                     { key: 'strength', label: '场强 (N/C)', type: 'number', step: 100 },
                     { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 }
                 ]
@@ -36,17 +63,18 @@ export class RectElectricField extends ElectricField {
     constructor(config = {}) {
         super(config);
         this.type = 'electric-field-rect';
-        this.width = config.width || 200;
-        this.height = config.height || 150;
+        this.width = 200;
+        this.height = 150;
+        this.vertices = resolveRectVertices(config, buildRectPolygon(this.width, this.height));
+        const worldVertices = getWorldVertices(this);
+        normalizeObjectVerticesFromWorld(this, worldVertices);
     }
     
     /**
      * 获取指定位置的电场强度
      */
     getFieldAt(x, y) {
-        // 检查点是否在矩形内
-        if (x < this.x || x > this.x + this.width ||
-            y < this.y || y > this.y + this.height) {
+        if (!this.containsPoint(x, y)) {
             return { x: 0, y: 0 };
         }
         
@@ -62,8 +90,10 @@ export class RectElectricField extends ElectricField {
      * 判断点是否在对象内
      */
     containsPoint(x, y) {
-        return x >= this.x && x <= this.x + this.width &&
-               y >= this.y && y <= this.y + this.height;
+        if (hasLocalVertices(this)) {
+            return pointInPolygon(x, y, getWorldVertices(this));
+        }
+        return false;
     }
     
     /**
@@ -72,8 +102,7 @@ export class RectElectricField extends ElectricField {
     serialize() {
         return {
             ...super.serialize(),
-            width: this.width,
-            height: this.height
+            geometry: this.getGeometry()
         };
     }
     
@@ -82,7 +111,22 @@ export class RectElectricField extends ElectricField {
      */
     deserialize(data) {
         super.deserialize(data);
-        this.width = data.width;
-        this.height = data.height;
+        const fallbackVertices = hasLocalVertices(this) ? this.vertices : buildRectPolygon(this.width, this.height);
+        this.vertices = resolveRectVertices(data, fallbackVertices);
+        const worldVertices = getWorldVertices(this);
+        normalizeObjectVerticesFromWorld(this, worldVertices);
+    }
+
+    getGeometry() {
+        if (hasLocalVertices(this)) {
+            return {
+                kind: 'polygon',
+                vertices: this.vertices.map((point) => ({ ...point }))
+            };
+        }
+        return {
+            kind: 'polygon',
+            vertices: buildRectPolygon(this.width, this.height)
+        };
     }
 }

@@ -82,6 +82,34 @@ function stubCanvasRect(canvas) {
   });
 }
 
+const MOUSE_POINTER_ID = 1;
+
+function pointerDownAsMouse(manager, x, y, pointerId = MOUSE_POINTER_ID) {
+  manager.onPointerDown({
+    pointerId,
+    pointerType: 'mouse',
+    button: 0,
+    clientX: x,
+    clientY: y
+  });
+}
+
+function pointerMoveAsMouse(manager, x, y, pointerId = MOUSE_POINTER_ID) {
+  manager.onPointerMove({
+    pointerId,
+    pointerType: 'mouse',
+    clientX: x,
+    clientY: y
+  });
+}
+
+function pointerUpAsMouse(manager, pointerId = MOUSE_POINTER_ID) {
+  manager.onPointerUp({
+    pointerId,
+    pointerType: 'mouse'
+  });
+}
+
 test('onContextMenu ignores missing context menu container', () => {
   const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
   try {
@@ -130,6 +158,203 @@ test('onContextMenu ignores missing context menu container', () => {
         clientY: 10
       });
     });
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('context menu closes on Escape key', async () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas><div id="context-menu" style="display:none"></div>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    const contextMenu = document.getElementById('context-menu');
+    assert.ok(canvas);
+    assert.ok(contextMenu);
+    stubCanvasRect(canvas);
+
+    const clickedObject = { id: 'obj-esc', containsPoint: () => true };
+    const scene = {
+      settings: { mode: 'normal' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onContextMenu({
+      preventDefault() {},
+      sourceCapabilities: { firesTouchEvents: false },
+      button: 2,
+      which: 3,
+      ctrlKey: false,
+      clientX: 10,
+      clientY: 10
+    });
+    assert.equal(contextMenu.style.display, 'block');
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(contextMenu.style.display, 'none');
+
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('right-clicking blank area closes an already open context menu', async () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas><div id="context-menu" style="display:none"></div>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    const contextMenu = document.getElementById('context-menu');
+    assert.ok(canvas);
+    assert.ok(contextMenu);
+    stubCanvasRect(canvas);
+
+    const clickedObject = { id: 'obj-blank-close', containsPoint: () => true };
+    let hitObject = true;
+    const scene = {
+      settings: { mode: 'normal' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return hitObject ? clickedObject : null;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onContextMenu({
+      preventDefault() {},
+      sourceCapabilities: { firesTouchEvents: false },
+      button: 2,
+      which: 3,
+      ctrlKey: false,
+      clientX: 24,
+      clientY: 24
+    });
+    assert.equal(contextMenu.style.display, 'block');
+
+    hitObject = false;
+    manager.onContextMenu({
+      preventDefault() {},
+      sourceCapabilities: { firesTouchEvents: false },
+      button: 2,
+      which: 3,
+      ctrlKey: false,
+      clientX: 8,
+      clientY: 8
+    });
+
+    assert.equal(contextMenu.style.display, 'none');
+
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('right-clicking non-canvas area closes an already open context menu', async () => {
+  const cleanup = installDom(`
+    <header id="header"></header>
+    <canvas id="particle-canvas"></canvas>
+    <div id="context-menu" style="display:none"></div>
+  `);
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    const header = document.getElementById('header');
+    const contextMenu = document.getElementById('context-menu');
+    assert.ok(canvas);
+    assert.ok(header);
+    assert.ok(contextMenu);
+    stubCanvasRect(canvas);
+
+    const clickedObject = { id: 'obj-header-close', containsPoint: () => true };
+    const scene = {
+      settings: { mode: 'normal' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onContextMenu({
+      preventDefault() {},
+      sourceCapabilities: { firesTouchEvents: false },
+      button: 2,
+      which: 3,
+      ctrlKey: false,
+      clientX: 24,
+      clientY: 24
+    });
+    assert.equal(contextMenu.style.display, 'block');
+
+    header.dispatchEvent(new window.MouseEvent('contextmenu', {
+      bubbles: true,
+      button: 2,
+      clientX: 12,
+      clientY: 12
+    }));
+    assert.equal(contextMenu.style.display, 'none');
+
     manager.dispose();
   } finally {
     cleanup();
@@ -247,11 +472,7 @@ test('selection change requests UI sync so store state updates immediately', () 
       }
     });
 
-    manager.onMouseDown({
-      button: 0,
-      clientX: 50,
-      clientY: 50
-    });
+    pointerDownAsMouse(manager, 50, 50);
 
     assert.equal(renderCalls.length, 1);
     assert.equal(renderCalls[0]?.updateUI, true);
@@ -307,16 +528,9 @@ test('read-only interaction lock prevents object dragging', () => {
       }
     });
 
-    manager.onMouseDown({
-      button: 0,
-      clientX: 40,
-      clientY: 50
-    });
-    manager.onMouseMove({
-      clientX: 220,
-      clientY: 180
-    });
-    manager.onMouseUp({});
+    pointerDownAsMouse(manager, 40, 50);
+    pointerMoveAsMouse(manager, 220, 180);
+    pointerUpAsMouse(manager);
 
     assert.equal(clickedObject.x, 30);
     assert.equal(clickedObject.y, 40);
@@ -361,20 +575,18 @@ test('touch micro-jitter should not cancel long-press property open', async () =
       render() {}
     };
 
+    let propertyRequestCount = 0;
     const manager = new DragDropManager(scene, renderer, {
       canvas,
       appAdapter: {
         scene,
         requestRender() {},
-        updateUI() {}
+        updateUI() {},
+        onPropertyRequest() {
+          propertyRequestCount += 1;
+        }
       }
     });
-
-    let propertyRequestCount = 0;
-    const onShowProperties = () => {
-      propertyRequestCount += 1;
-    };
-    document.addEventListener('show-properties', onShowProperties);
 
     manager.onPointerDown({
       pointerId: 11,
@@ -399,7 +611,6 @@ test('touch micro-jitter should not cancel long-press property open', async () =
     });
 
     assert.equal(propertyRequestCount, 1);
-    document.removeEventListener('show-properties', onShowProperties);
     manager.dispose();
   } finally {
     cleanup();
@@ -441,20 +652,18 @@ test('touch drag beyond jitter threshold should still cancel long-press', async 
       render() {}
     };
 
+    let propertyRequestCount = 0;
     const manager = new DragDropManager(scene, renderer, {
       canvas,
       appAdapter: {
         scene,
         requestRender() {},
-        updateUI() {}
+        updateUI() {},
+        onPropertyRequest() {
+          propertyRequestCount += 1;
+        }
       }
     });
-
-    let propertyRequestCount = 0;
-    const onShowProperties = () => {
-      propertyRequestCount += 1;
-    };
-    document.addEventListener('show-properties', onShowProperties);
 
     manager.onPointerDown({
       pointerId: 12,
@@ -479,7 +688,6 @@ test('touch drag beyond jitter threshold should still cancel long-press', async 
     });
 
     assert.equal(propertyRequestCount, 0);
-    document.removeEventListener('show-properties', onShowProperties);
     manager.dispose();
   } finally {
     cleanup();
@@ -785,20 +993,18 @@ test('reset tap-chain event clears stale single-tap history before next tap', ()
       render() {}
     };
 
+    let propertyRequestCount = 0;
     const manager = new DragDropManager(scene, renderer, {
       canvas,
       appAdapter: {
         scene,
         requestRender() {},
-        updateUI() {}
+        updateUI() {},
+        onPropertyRequest() {
+          propertyRequestCount += 1;
+        }
       }
     });
-
-    let propertyRequestCount = 0;
-    const onShowProperties = () => {
-      propertyRequestCount += 1;
-    };
-    document.addEventListener('show-properties', onShowProperties);
 
     manager.onPointerDown({
       pointerId: 41,
@@ -833,7 +1039,6 @@ test('reset tap-chain event clears stale single-tap history before next tap', ()
     });
 
     assert.equal(propertyRequestCount, 0);
-    document.removeEventListener('show-properties', onShowProperties);
     manager.dispose();
   } finally {
     cleanup();
@@ -850,12 +1055,15 @@ test('resize handle drag updates display scale without mutating real geometry', 
     const field = {
       id: 'obj-magnetic-circle',
       type: 'magnetic-field',
-      shape: 'circle',
       x: 100,
       y: 100,
       radius: 50,
       width: 100,
-      height: 100
+      height: 100,
+      geometry: {
+        kind: 'circle',
+        radius: 50
+      }
     };
 
     const scene = {
@@ -887,16 +1095,9 @@ test('resize handle drag updates display scale without mutating real geometry', 
       }
     });
 
-    manager.onMouseDown({
-      button: 0,
-      clientX: 150,
-      clientY: 100
-    });
-    manager.onMouseMove({
-      clientX: 200,
-      clientY: 100
-    });
-    manager.onMouseUp({});
+    pointerDownAsMouse(manager, 150, 100);
+    pointerMoveAsMouse(manager, 200, 100);
+    pointerUpAsMouse(manager);
 
     assert.equal(field.radius, 100);
     assert.equal(getObjectRealDimension(field, 'radius', scene), 1);
@@ -916,12 +1117,15 @@ test('geometry overlay payload appears during resize drag and clears on pointer 
     const field = {
       id: 'obj-overlay-circle',
       type: 'magnetic-field',
-      shape: 'circle',
       x: 100,
       y: 100,
       radius: 50,
       width: 100,
-      height: 100
+      height: 100,
+      geometry: {
+        kind: 'circle',
+        radius: 50
+      }
     };
 
     const scene = {
@@ -981,6 +1185,226 @@ test('geometry overlay payload appears during resize drag and clears on pointer 
     });
 
     assert.equal(scene.interaction.geometryOverlay, null);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('vertex edit mode lets geometry-defined magnetic triangle drag apex horizontally to become non-isosceles', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const field = {
+      id: 'obj-vertex-triangle',
+      type: 'magnetic-field',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 80,
+      geometry: {
+        kind: 'polygon',
+        vertices: [
+          { x: 50, y: 0 },
+          { x: 0, y: 80 },
+          { x: 100, y: 80 }
+        ]
+      },
+      containsPoint() {
+        return true;
+      }
+    };
+
+    const scene = {
+      settings: {
+        mode: 'normal',
+        pixelsPerMeter: 50,
+        interactionLocked: false,
+        hostMode: 'edit',
+        vertexEditMode: true
+      },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return field;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [field];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    pointerDownAsMouse(manager, 150, 100);
+    pointerMoveAsMouse(manager, 170, 100);
+    pointerUpAsMouse(manager);
+
+    assert.equal(Array.isArray(field.vertices), true);
+    assert.equal(field.vertices.length, 3);
+    assert.notEqual(field.vertices[0].x, field.width / 2);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('vertex edit mode off resizes geometry-defined magnetic triangle from bounding-box corner handles', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const field = {
+      id: 'obj-legacy-triangle',
+      type: 'magnetic-field',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 80,
+      geometry: {
+        kind: 'polygon',
+        vertices: [
+          { x: 50, y: 0 },
+          { x: 0, y: 80 },
+          { x: 100, y: 80 }
+        ]
+      },
+      containsPoint() {
+        return true;
+      }
+    };
+
+    const scene = {
+      settings: {
+        mode: 'normal',
+        pixelsPerMeter: 50,
+        interactionLocked: false,
+        hostMode: 'edit',
+        vertexEditMode: false
+      },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return field;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [field];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    pointerDownAsMouse(manager, 100, 100);
+    pointerMoveAsMouse(manager, 90, 90);
+    pointerUpAsMouse(manager);
+
+    assert.equal(field.x, 90);
+    assert.equal(field.y, 90);
+    assert.equal(field.width, 110);
+    assert.equal(field.height, 88);
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('vertex edit mode lets electric rect drag one corner without collapsing to axis-aligned resize', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const field = {
+      id: 'obj-vertex-electric-rect',
+      type: 'electric-field-rect',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 60,
+      direction: 90,
+      strength: 1000,
+      containsPoint() {
+        return true;
+      }
+    };
+
+    const scene = {
+      settings: {
+        mode: 'normal',
+        pixelsPerMeter: 50,
+        interactionLocked: false,
+        hostMode: 'edit',
+        vertexEditMode: true
+      },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return field;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [field];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    pointerDownAsMouse(manager, 100, 100);
+    pointerMoveAsMouse(manager, 120, 110);
+    pointerUpAsMouse(manager);
+
+    assert.equal(Array.isArray(field.vertices), true);
+    assert.equal(field.vertices.length, 4);
+    assert.notDeepEqual(field.vertices[0], { x: 0, y: 0 });
     manager.dispose();
   } finally {
     cleanup();

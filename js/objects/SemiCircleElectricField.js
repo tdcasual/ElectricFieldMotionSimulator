@@ -4,6 +4,7 @@
 
 import { ElectricField } from './ElectricField.js';
 import { Vector } from '../physics/VectorMath.js';
+import { resolveCircleRadius } from '../geometry/ObjectGeometryUtils.js';
 
 export class SemiCircleElectricField extends ElectricField {
     static defaults() {
@@ -11,7 +12,10 @@ export class SemiCircleElectricField extends ElectricField {
             type: 'semicircle-electric-field',
             x: 0,
             y: 0,
-            radius: 100,
+            geometry: {
+                kind: 'circle',
+                radius: 100
+            },
             strength: 1000,
             direction: 90,
             orientation: 0
@@ -25,7 +29,7 @@ export class SemiCircleElectricField extends ElectricField {
                 fields: [
                     { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
-                    { key: 'radius', label: '半径', type: 'number', min: 1, step: 10 },
+                    { key: 'radius', sourceKey: 'radius', label: '半径', type: 'number', min: 1, step: 10 },
                     { key: 'strength', label: '场强 (N/C)', type: 'number', step: 100 },
                     { key: 'direction', label: '方向 (度)', type: 'number', min: 0, max: 360 },
                     { key: 'orientation', label: '朝向 (度)', type: 'number', min: 0, max: 360 }
@@ -38,7 +42,7 @@ export class SemiCircleElectricField extends ElectricField {
         super(config);
         
         this.type = 'semicircle-electric-field';
-        this.radius = config.radius || 100;
+        this.radius = resolveCircleRadius(config, 100);
         this.orientation = config.orientation || 0; // 0=上半圆, 90=右半圆, 180=下半圆, 270=左半圆
     }
     
@@ -115,7 +119,7 @@ export class SemiCircleElectricField extends ElectricField {
     serialize() {
         return {
             ...super.serialize(),
-            radius: this.radius,
+            geometry: this.getGeometry(),
             orientation: this.orientation,
             color: this.color
         };
@@ -126,8 +130,15 @@ export class SemiCircleElectricField extends ElectricField {
      */
     deserialize(data) {
         super.deserialize(data);
-        this.radius = data.radius;
+        this.radius = resolveCircleRadius(data, this.radius);
         this.orientation = data.orientation || 0;
         this.color = data.color;
+    }
+
+    getGeometry() {
+        return {
+            kind: 'circle',
+            radius: this.radius
+        };
     }
 }
