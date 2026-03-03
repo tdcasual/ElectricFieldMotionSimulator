@@ -36,12 +36,10 @@ describe('v3 infrastructure adapters', () => {
     expect(loaded).toBeNull();
   });
 
-  it('in-memory render adapter stores latest published snapshot', () => {
+  it('in-memory render adapter accepts publish calls without exposing readback state', () => {
     const adapter = createInMemoryRenderAdapter();
 
-    expect(adapter.getLatest()).toBeNull();
-
-    adapter.publish({
+    expect(() => adapter.publish({
       revision: 2,
       running: true,
       timeStep: 0.02,
@@ -50,17 +48,6 @@ describe('v3 infrastructure adapters', () => {
       objectCount: 3,
       selectedObjectId: null,
       objects: []
-    });
-
-    expect(adapter.getLatest()).toEqual({
-      revision: 2,
-      running: true,
-      timeStep: 0.02,
-      timeStepLabel: '20ms',
-      viewport: { width: 800, height: 600 },
-      objectCount: 3,
-      selectedObjectId: null,
-      objects: []
-    });
+    })).not.toThrow();
   });
 });

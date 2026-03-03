@@ -8,27 +8,6 @@ type CreateInteractionModuleContext = InteractionStateRefs & {
   stopRunning: () => void;
 };
 
-function normalizeCreateType(type: string) {
-  const value = String(type ?? '').trim();
-  if (
-    value === 'electric-field' ||
-    value === 'electric-field-rect' ||
-    value === 'electric-field-circle' ||
-    value === 'semicircle-electric-field'
-  ) {
-    return 'electric-field';
-  }
-  if (
-    value === 'magnetic-field' ||
-    value === 'magnetic-field-circle' ||
-    value === 'magnetic-field-long' ||
-    value === 'magnetic-field-triangle'
-  ) {
-    return 'magnetic-field';
-  }
-  return 'particle';
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -40,7 +19,7 @@ export function createInteractionModule(ctx: CreateInteractionModuleContext) {
       return false;
     }
 
-    const normalizedType = normalizeCreateType(type);
+    const normalizedType = String(type ?? '').trim();
     const x = ctx.viewport.value.width / 2;
     const y = ctx.viewport.value.height / 2;
 

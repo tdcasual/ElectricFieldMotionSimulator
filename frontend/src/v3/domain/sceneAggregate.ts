@@ -42,16 +42,7 @@ function normalizeObjectType(type: string): SceneObjectType {
   if (raw === 'particle' || raw === 'electric-field' || raw === 'magnetic-field') {
     return raw;
   }
-  if (raw === 'electric-field-rect' || raw === 'electric-field-circle' || raw === 'semicircle-electric-field') {
-    return 'electric-field';
-  }
-  if (raw === 'magnetic-field-circle' || raw === 'magnetic-field-triangle' || raw === 'magnetic-field-long') {
-    return 'magnetic-field';
-  }
-  if (!raw) {
-    throw new Error('object type is required');
-  }
-  return 'particle';
+  throw new Error(`unsupported object type: ${raw || '<empty>'}`);
 }
 
 function normalizeFinite(value: unknown, fallback: number) {
@@ -406,21 +397,39 @@ export function coerceSceneAggregateState(input: unknown): SceneAggregateState {
       const positionRecord = position && typeof position === 'object'
         ? (position as Record<string, unknown>)
         : null;
+      if (!positionRecord) {
+        throw new Error('object position is required');
+      }
       const velocity = item.velocity;
       const velocityRecord = velocity && typeof velocity === 'object'
         ? (velocity as Record<string, unknown>)
         : null;
+      if (!velocityRecord) {
+        throw new Error('object velocity is required');
+      }
+
+      const x = normalizeCoordinate(Number(positionRecord.x), 'x');
+      const y = normalizeCoordinate(Number(positionRecord.y), 'y');
+      const vx = normalizeCoordinate(Number(velocityRecord.x), 'x');
+      const vy = normalizeCoordinate(Number(velocityRecord.y), 'y');
+      const propsRecord = item.props && typeof item.props === 'object'
+        ? (item.props as Record<string, unknown>)
+        : {};
 
       return createObjectRecord(
         {
           id: typeof item.id === 'string' ? item.id : undefined,
-          type: String(item.type ?? 'particle'),
-          x: normalizeFinite(item.x ?? positionRecord?.x, 0),
-          y: normalizeFinite(item.y ?? positionRecord?.y, 0),
+          type: String(item.type ?? ''),
+          x,
+          y,
           props: {
-            ...item,
-            velocityX: item.velocityX ?? velocityRecord?.x,
-            velocityY: item.velocityY ?? velocityRecord?.y
+            ...propsRecord,
+            radius: item.radius,
+            width: item.width,
+            height: item.height,
+            color: item.color,
+            velocityX: vx,
+            velocityY: vy
           }
         },
         Number(record.revision) || 0

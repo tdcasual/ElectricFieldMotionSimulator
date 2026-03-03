@@ -3,8 +3,6 @@ import type { SceneAggregateState } from '../domain/types';
 type LocalSceneStorageAdapter = {
   save: (key: string, state: SceneAggregateState) => Promise<void>;
   load: (key: string) => Promise<SceneAggregateState | null>;
-  list: () => Promise<string[]>;
-  remove: (key: string) => Promise<void>;
 };
 
 const STORAGE_PREFIX = 'sim.v3.scene.';
@@ -52,24 +50,6 @@ export function createLocalSceneStorageAdapter(): LocalSceneStorageAdapter {
       } catch {
         return null;
       }
-    },
-    async list() {
-      const storage = resolveStorage();
-      if (!storage) return [];
-      const keys: string[] = [];
-      for (let i = 0; i < storage.length; i += 1) {
-        const key = storage.key(i);
-        if (!key || !key.startsWith(STORAGE_PREFIX)) continue;
-        keys.push(key.slice(STORAGE_PREFIX.length));
-      }
-      keys.sort((a, b) => a.localeCompare(b));
-      return keys;
-    },
-    async remove(key) {
-      const normalized = normalizeKey(key);
-      const storage = resolveStorage();
-      if (!storage) return;
-      storage.removeItem(`${STORAGE_PREFIX}${normalized}`);
     }
   };
 }

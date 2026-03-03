@@ -2,15 +2,10 @@ export type EmbedMode = 'edit' | 'view';
 
 export type EmbedConfig = {
   mode: EmbedMode;
-  toolbar: boolean;
   autoplay: boolean;
   sceneUrl: string | null;
   sceneData: unknown | null;
   materialId: string | null;
-  theme: string | null;
-  locale: string | null;
-  width: number | null;
-  height: number | null;
 };
 
 function firstNonEmpty(params: URLSearchParams, keys: string[]): string | null {
@@ -35,12 +30,6 @@ function parseBoolean(raw: string | null, fallback: boolean): boolean {
   return fallback;
 }
 
-function parseOptionalNumber(raw: string | null): number | null {
-  if (raw == null) return null;
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : null;
-}
-
 function parseSceneData(raw: string | null): unknown | null {
   if (raw == null) return null;
   try {
@@ -57,10 +46,10 @@ function stripLeadingQuestionMark(search: string) {
 export function parseEmbedConfigFromSearch(search: string): EmbedConfig {
   const params = new URLSearchParams(stripLeadingQuestionMark(String(search || '')));
 
-  const mode = parseMode(firstNonEmpty(params, ['mode', 'm']));
-  const sceneData = parseSceneData(firstNonEmpty(params, ['sceneData', 'scene_data', 'ggbBase64']));
-  let sceneUrl = firstNonEmpty(params, ['sceneUrl', 'scene', 'filename']);
-  let materialId = firstNonEmpty(params, ['materialId', 'material_id', 'mid', 'id']);
+  const mode = parseMode(firstNonEmpty(params, ['mode']));
+  const sceneData = parseSceneData(firstNonEmpty(params, ['sceneData']));
+  let sceneUrl = firstNonEmpty(params, ['sceneUrl']);
+  let materialId = firstNonEmpty(params, ['materialId']);
 
   if (sceneData != null) {
     sceneUrl = null;
@@ -71,14 +60,9 @@ export function parseEmbedConfigFromSearch(search: string): EmbedConfig {
 
   return {
     mode,
-    toolbar: parseBoolean(firstNonEmpty(params, ['toolbar']), mode !== 'view'),
     autoplay: parseBoolean(firstNonEmpty(params, ['autoplay']), false),
     sceneUrl,
     sceneData,
-    materialId,
-    theme: firstNonEmpty(params, ['theme']),
-    locale: firstNonEmpty(params, ['locale', 'lang']),
-    width: parseOptionalNumber(firstNonEmpty(params, ['width'])),
-    height: parseOptionalNumber(firstNonEmpty(params, ['height']))
+    materialId
   };
 }

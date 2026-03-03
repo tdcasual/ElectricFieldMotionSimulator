@@ -1,7 +1,6 @@
 import type { EmbedConfig, EmbedMode } from '../../embed/embedConfig';
 import { resolveSceneSource } from '../../embed/sceneSourceResolver';
 import { validateSceneData } from '../../io/sceneIO';
-import { getSceneCompatibilityError } from '../../io/sceneSchema';
 import type {
   SceneIoStateRefs,
   SceneStorageAdapter,
@@ -18,7 +17,6 @@ type CreateSceneIoModuleContext = SceneIoStateRefs & {
   stopRunning: () => void;
   startRunning: () => void;
   setHostMode: (mode: EmbedMode) => void;
-  refreshSceneNames: () => Promise<void>;
 };
 
 export function createSceneIoModule(ctx: CreateSceneIoModuleContext) {
@@ -27,12 +25,6 @@ export function createSceneIoModule(ctx: CreateSceneIoModuleContext) {
   }
 
   function loadSceneData(data: Record<string, unknown>) {
-    const compatibilityError = getSceneCompatibilityError(data);
-    if (compatibilityError) {
-      ctx.setStatusText(compatibilityError);
-      return false;
-    }
-
     const validated = validateSceneData(data);
     if (!validated.ok) {
       ctx.setStatusText(validated.error);
@@ -92,7 +84,6 @@ export function createSceneIoModule(ctx: CreateSceneIoModuleContext) {
 
     try {
       await ctx.storageAdapter.save(sceneName, serializeScene());
-      await ctx.refreshSceneNames();
       ctx.setStatusText(`场景 "${sceneName}" 已保存`);
       return true;
     } catch (error) {

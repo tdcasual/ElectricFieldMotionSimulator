@@ -1,8 +1,8 @@
 import { ref } from 'vue';
 import type { EmbedMode } from '../../embed/embedConfig';
-import type { LayoutMode, ToolbarGroup, UiShellStateRefs } from './types';
+import type { ToolbarGroup, UiShellStateRefs } from './types';
 
-export const DEFAULT_STATUS = 'V3 Runtime Ready';
+const DEFAULT_STATUS = 'V3 Runtime Ready';
 
 const TOOLBAR_GROUPS: ToolbarGroup[] = [
   {
@@ -29,7 +29,6 @@ type CreateUiShellModuleOptions = {
 
 export function createUiShellModule(options: CreateUiShellModuleOptions = {}) {
   const hostMode = ref<EmbedMode>('edit');
-  const layoutMode = ref<LayoutMode>('desktop');
   const toolbarGroups = ref<ToolbarGroup[]>(TOOLBAR_GROUPS);
   const statusText = ref(options.defaultStatus ?? DEFAULT_STATUS);
 
@@ -44,14 +43,8 @@ export function createUiShellModule(options: CreateUiShellModuleOptions = {}) {
     }
   }
 
-  function setLayoutMode(next: LayoutMode) {
-    if (next !== 'desktop' && next !== 'tablet' && next !== 'phone') return;
-    layoutMode.value = next;
-  }
-
   const state: UiShellStateRefs = {
     hostMode,
-    layoutMode,
     toolbarGroups,
     statusText
   };
@@ -59,7 +52,6 @@ export function createUiShellModule(options: CreateUiShellModuleOptions = {}) {
   return {
     ...state,
     setStatusText,
-    setHostMode,
-    setLayoutMode
+    setHostMode
   };
 }

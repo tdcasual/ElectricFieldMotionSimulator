@@ -17,7 +17,3 @@ export function resolveMockMaterial(materialId: string): MaterialSceneSource | n
   if (!key) return null;
   return MATERIAL_SCENE_MOCKS[key] ?? null;
 }
-
-export function listMockMaterials() {
-  return Object.keys(MATERIAL_SCENE_MOCKS);
-}

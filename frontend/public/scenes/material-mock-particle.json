@@ -12,10 +12,8 @@
     {
       "id": "obj-material-1",
       "type": "particle",
-      "x": 320,
-      "y": 240,
-      "velocityX": 90,
-      "velocityY": 0,
+      "position": { "x": 320, "y": 240 },
+      "velocity": { "x": 90, "y": 0 },
       "radius": 10,
       "width": 20,
       "height": 20,

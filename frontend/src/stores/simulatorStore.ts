@@ -10,11 +10,8 @@ import { createSceneIoModule } from './modules/sceneIoStore';
 import { createUiShellModule } from './modules/uiShellStore';
 import type {
   DragState,
-  LayoutMode as StoreLayoutMode,
   SceneObjectView
 } from './modules/types';
-
-export type LayoutMode = StoreLayoutMode;
 
 export const useSimulatorStore = defineStore('simulator', () => {
   const renderAdapter = createInMemoryRenderAdapter();
@@ -33,12 +30,10 @@ export const useSimulatorStore = defineStore('simulator', () => {
   });
 
   const hostMode = uiShell.hostMode;
-  const layoutMode = uiShell.layoutMode;
   const toolbarGroups = uiShell.toolbarGroups;
   const statusText = uiShell.statusText;
   const setStatusText = uiShell.setStatusText;
   const setHostMode = uiShell.setHostMode;
-  const setLayoutMode = uiShell.setLayoutMode;
 
   const fps = ref(0);
   const timeStep = ref(0.016);
@@ -47,16 +42,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const selectedObjectId = ref<string | null>(null);
   const viewport = ref({ width: 1280, height: 720 });
   const objects = ref<SceneObjectView[]>([]);
-  const sceneNames = ref<string[]>([]);
   const resetBaseline = ref<SceneAggregateState>(application.exportScene());
 
   const viewMode = computed(() => hostMode.value === 'view');
   const timeStepLabel = computed(() => `${Math.round(timeStep.value * 1000)}ms`);
   const selectedObject = computed(() => objects.value.find((item) => item.id === selectedObjectId.value) ?? null);
-
-  async function refreshSceneNames() {
-    sceneNames.value = await storageAdapter.list();
-  }
 
   const runtime = createRuntimeModule({
     application,
@@ -70,10 +60,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     frameHandle,
     lastFrameAt,
     runtimeMounted,
-    setStatusText,
-    onMount: () => {
-      void refreshSceneNames();
-    }
+    setStatusText
   });
 
   const interaction = createInteractionModule({
@@ -98,15 +85,13 @@ export const useSimulatorStore = defineStore('simulator', () => {
     stopRunning: runtime.stopRunning,
     startRunning: runtime.startRunning,
     setHostMode,
-    resetBaseline,
-    refreshSceneNames
+    resetBaseline
   });
 
   runtime.syncFromReadModel();
 
   return {
     hostMode,
-    layoutMode,
     toolbarGroups,
     running,
     timeStep,
@@ -117,14 +102,12 @@ export const useSimulatorStore = defineStore('simulator', () => {
     selectedObject,
     viewport,
     objects,
-    sceneNames,
     statusText,
     viewMode,
     setStatusText,
     mountRuntime: runtime.mountRuntime,
     unmountRuntime: runtime.unmountRuntime,
     setHostMode,
-    setLayoutMode,
     setViewportSize: runtime.setViewportSize,
     startRunning: runtime.startRunning,
     stopRunning: runtime.stopRunning,

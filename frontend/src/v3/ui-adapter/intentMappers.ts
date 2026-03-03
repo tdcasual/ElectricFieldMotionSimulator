@@ -5,10 +5,15 @@ type ToolbarCreateInput = {
   props?: Record<string, unknown>;
 };
 
+const ALLOWED_TYPES = new Set(['particle', 'electric-field', 'magnetic-field']);
+
 export function mapToolbarCreateIntent(input: ToolbarCreateInput): ToolbarCreateInput {
   const type = String(input.type ?? '').trim();
   if (!type) {
     throw new Error('type is required');
+  }
+  if (!ALLOWED_TYPES.has(type)) {
+    throw new Error(`unsupported object type: ${type}`);
   }
   if (!Number.isFinite(input.x) || !Number.isFinite(input.y)) {
     throw new Error('coordinates must be finite');
@@ -48,21 +53,4 @@ export function mapViewportIntent(input: {
     width,
     height
   };
-}
-
-export function mapDragIntent(input: {
-  id: unknown;
-  x: unknown;
-  y: unknown;
-}) {
-  const id = String(input.id ?? '').trim();
-  if (!id) {
-    throw new Error('object id is required');
-  }
-  const x = Number(input.x);
-  const y = Number(input.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) {
-    throw new Error('drag coordinates must be finite');
-  }
-  return { id, x, y };
 }

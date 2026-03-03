@@ -22,8 +22,6 @@ export type SimulatorApplication = ReturnType<typeof createV3SimulatorApplicatio
 export type SceneStorageAdapter = {
   save: (key: string, state: SceneAggregateState) => Promise<void>;
   load: (key: string) => Promise<SceneAggregateState | null>;
-  list: () => Promise<string[]>;
-  remove: (key: string) => Promise<void>;
 };
 
 export type ToolbarEntry = {
@@ -42,8 +40,6 @@ export type DragState = {
   offsetX: number;
   offsetY: number;
 } | null;
-
-export type LayoutMode = 'desktop' | 'tablet' | 'phone';
 
 export type SetStatusText = (text: string) => void;
 
@@ -75,7 +71,6 @@ export type SceneIoStateRefs = {
 
 export type UiShellStateRefs = {
   hostMode: Ref<EmbedMode>;
-  layoutMode: Ref<LayoutMode>;
   toolbarGroups: Ref<ToolbarGroup[]>;
   statusText: Ref<string>;
 };

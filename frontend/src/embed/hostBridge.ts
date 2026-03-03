@@ -36,7 +36,7 @@ function isCommandName(value: unknown): value is HostCommandName {
   );
 }
 
-export function parseHostCommandMessage(input: unknown): HostCommandMessage | null {
+function parseHostCommandMessage(input: unknown): HostCommandMessage | null {
   if (!isRecord(input)) return null;
   if (input.source !== 'electric-field-host') return null;
   if (input.type !== 'command') return null;
@@ -59,7 +59,7 @@ function extractScenePayload(payload: unknown): Record<string, unknown> | null {
   return null;
 }
 
-export function executeHostCommand(store: HostCommandStore, message: HostCommandMessage): HostCommandResult {
+function executeHostCommand(store: HostCommandStore, message: HostCommandMessage): HostCommandResult {
   if (message.command === 'play') {
     store.startRunning();
     return { ok: true };

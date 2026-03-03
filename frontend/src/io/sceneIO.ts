@@ -1,4 +1,4 @@
-import { SceneSchema, type SceneData } from './sceneSchema';
+import { SCENE_VERSION, SceneSchema, type SceneData } from './sceneSchema';
 
 type SceneValidationResult =
   | { ok: true; data: SceneData }
@@ -7,10 +7,11 @@ type SceneValidationResult =
 export function validateSceneData(input: unknown): SceneValidationResult {
   const result = SceneSchema.safeParse(input);
   if (!result.success) {
+    const hasVersionIssue = result.error.issues.some((issue) => issue.path[0] === 'version');
     const issueMessages = result.error.issues.map((issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`);
     return {
       ok: false,
-      error: issueMessages[0] || 'Invalid scene payload',
+      error: hasVersionIssue ? `仅支持 ${SCENE_VERSION} 版本场景。` : (issueMessages[0] || 'Invalid scene payload'),
       issues: issueMessages
     };
   }
