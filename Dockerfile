@@ -1,7 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM nginx:alpine
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY . .
+RUN npm ci
+RUN npm run build:frontend
 
-COPY . /usr/share/nginx/html
+FROM nginx:alpine
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
 EXPOSE 80

@@ -9,6 +9,7 @@
 
 > 注意：开发态不能直接用 `http-server` 打开项目根目录；`.vue` 和 `main.ts` 需要 Vite 编译。
 > 如果一定要用静态服务器，请先构建：`npm run build:frontend`，再启动 `http-server frontend/dist`。
+> 部署时请使用构建产物目录：`frontend/dist`。
 
 ## 容器页与嵌入（Phase 1）
 

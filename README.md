@@ -6,6 +6,7 @@
 如果你想快速体验：
 - 🚀 运行 `npm install && npm run dev:frontend`，然后访问终端提示地址
 - ℹ️ 开发态请使用 Vite；直接 `http-server` 打开根目录不会编译 `.vue` 文件
+- 📦 部署产物目录是 `frontend/dist`（请先执行 `npm run build:frontend`）
 - 🚀 或者看更详细的启动说明：[`QUICKSTART.md`](QUICKSTART.md)
 
 ## ✨ 你可以做什么
