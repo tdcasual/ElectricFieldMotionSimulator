@@ -198,14 +198,149 @@ git commit -m "feat(v3): add initial domain, command bus, and pointer fsm founda
 
 ---
 
-### Task 6: Next Vertical Slice (Follow-up)
+### Task 6A: Add failing tests for use-case pipeline and read model
 
-**Files (next iteration):**
-- Create: `frontend/src/v3/application/useCases/*.ts`
-- Create: `frontend/src/v3/infrastructure/*.ts`
-- Create: `frontend/src/v3/ui-adapter/*.ts`
+**Files:**
+- Create: `frontend/test/v3-simulator-application.test.ts`
+- Create: `frontend/test/v3-read-model.test.ts`
 
-**Scope:**
-- Build create/edit/play pipeline using command bus + read model projection.
-- Add adapter contract tests.
+**Step 1: Write failing tests**
+- `createV3SimulatorApplication` returns initial read model from aggregate state.
+- `createObjectAt` updates state through command bus and updates read model (`objectCount`).
+- `setObjectProps` updates object props (edit path).
+- `toggleRunning` updates running state (play/pause path).
+- Invalid time step edit returns typed error and keeps previous state.
+- Read-model projection derives counts and labels from domain state.
 
+**Step 2: Run tests to verify RED**
+
+Run:
+```bash
+npm run test:frontend -- frontend/test/v3-simulator-application.test.ts frontend/test/v3-read-model.test.ts
+```
+
+Expected:
+- FAIL (missing modules/functions).
+
+---
+
+### Task 6B: Implement minimal use-case and read-model modules
+
+**Files:**
+- Create: `frontend/src/v3/application/useCases/simulatorApplication.ts`
+- Create: `frontend/src/v3/application/readModel/projectSceneReadModel.ts`
+- Modify: `frontend/src/v3/domain/sceneAggregate.ts`
+
+**Step 1: Implement minimal read-model projector**
+- Input: `SceneAggregateState`
+- Output includes:
+  - `revision`
+  - `running`
+  - `timeStep`
+  - `timeStepLabel`
+  - `objectCount`
+
+**Step 2: Implement minimal use-case orchestrator**
+- Compose:
+  - aggregate state holder
+  - transactional command bus
+  - command handlers for:
+    - `create_object`
+    - `set_object_props`
+    - `toggle_running`
+    - `set_time_step`
+- Expose methods:
+  - `getState()`
+  - `getReadModel()`
+  - `createObjectAt(...)`
+  - `setObjectProps(...)`
+  - `toggleRunning()`
+  - `setTimeStep(...)`
+
+**Step 3: Add domain helper for edit path**
+- Add `applySetObjectProps` to aggregate reducer set.
+
+**Step 4: Run tests to verify GREEN**
+
+Run:
+```bash
+npm run test:frontend -- frontend/test/v3-simulator-application.test.ts frontend/test/v3-read-model.test.ts
+```
+
+Expected:
+- PASS.
+
+---
+
+### Task 6C: Add failing adapter contract tests
+
+**Files:**
+- Create: `frontend/test/v3-infrastructure-adapters.test.ts`
+
+**Step 1: Write failing tests**
+- Memory scene storage adapter:
+  - `save` then `load` returns deep-cloned state.
+  - loading unknown key returns `null`.
+- In-memory render adapter:
+  - accepts render snapshot payload.
+  - stores last snapshot for inspection.
+
+**Step 2: Run tests to verify RED**
+
+Run:
+```bash
+npm run test:frontend -- frontend/test/v3-infrastructure-adapters.test.ts
+```
+
+Expected:
+- FAIL (missing adapters).
+
+---
+
+### Task 6D: Implement minimal adapters and verify all
+
+**Files:**
+- Create: `frontend/src/v3/infrastructure/memorySceneStorageAdapter.ts`
+- Create: `frontend/src/v3/infrastructure/inMemoryRenderAdapter.ts`
+- Create: `frontend/src/v3/ui-adapter/intentMappers.ts`
+- Modify: `frontend/src/v3/application/useCases/simulatorApplication.ts`
+
+**Step 1: Implement adapters**
+- Storage adapter: in-memory map with clone-on-save/load.
+- Render adapter: capture latest snapshot and expose getter.
+
+**Step 2: Wire optional render adapter into simulator application**
+- On successful commands, publish projected read model snapshot.
+
+**Step 3: Add simple UI-intent mapper helper**
+- Keep minimal mapper for command payload normalization.
+
+**Step 4: Run adapter tests (GREEN)**
+
+Run:
+```bash
+npm run test:frontend -- frontend/test/v3-infrastructure-adapters.test.ts
+```
+
+Expected:
+- PASS.
+
+**Step 5: Run V3 suite and full frontend suite**
+
+Run:
+```bash
+npm run test:frontend -- frontend/test/v3-*.test.ts
+npm run test:frontend
+npm run lint:frontend
+npm run typecheck:frontend
+```
+
+Expected:
+- PASS with no regressions.
+
+**Step 6: Commit**
+
+```bash
+git add frontend/src/v3 frontend/test/v3-*.test.ts docs/plans/2026-03-03-v3-hard-reset-implementation-plan.md
+git commit -m "feat(v3): add simulator use-case pipeline and infrastructure adapters"
+```

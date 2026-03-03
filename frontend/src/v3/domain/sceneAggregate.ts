@@ -8,6 +8,11 @@ type CreateObjectInput = {
   props?: Record<string, unknown>;
 };
 
+type SetObjectPropsInput = {
+  id: string;
+  props: Record<string, unknown>;
+};
+
 const DEFAULT_TIME_STEP = 0.016;
 let objectSequence = 0;
 
@@ -71,6 +76,34 @@ export function applyToggleRunning(state: SceneAggregateState): SceneAggregateSt
   };
 }
 
+export function applySetObjectProps(
+  state: SceneAggregateState,
+  input: SetObjectPropsInput
+): SceneAggregateState {
+  const targetId = String(input.id ?? '').trim();
+  if (!targetId) {
+    throw new Error('object id is required');
+  }
+  const index = state.objects.findIndex((item) => item.id === targetId);
+  if (index < 0) {
+    throw new Error(`object id not found: ${targetId}`);
+  }
+  const target = state.objects[index];
+  const nextObjects = [...state.objects];
+  nextObjects[index] = {
+    ...target,
+    props: {
+      ...target.props,
+      ...(input.props ?? {})
+    }
+  };
+  return {
+    ...state,
+    revision: state.revision + 1,
+    objects: nextObjects
+  };
+}
+
 export function applySetTimeStep(
   state: SceneAggregateState,
   nextTimeStep: number
@@ -84,4 +117,3 @@ export function applySetTimeStep(
     timeStep: nextTimeStep
   };
 }
-
