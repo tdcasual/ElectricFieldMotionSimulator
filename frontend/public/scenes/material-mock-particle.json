@@ -1,15 +1,26 @@
 {
-  "version": "2.0",
-  "settings": {},
+  "version": "3.0",
+  "revision": 1,
+  "running": false,
+  "timeStep": 0.016,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "selectedObjectId": "obj-material-1",
   "objects": [
     {
+      "id": "obj-material-1",
       "type": "particle",
-      "x": 240,
-      "y": 180,
-      "charge": -1,
-      "mass": 1,
-      "velocityX": 0,
-      "velocityY": 0
+      "x": 320,
+      "y": 240,
+      "velocityX": 90,
+      "velocityY": 0,
+      "radius": 10,
+      "width": 20,
+      "height": 20,
+      "color": "#58a6ff",
+      "props": {}
     }
   ]
 }

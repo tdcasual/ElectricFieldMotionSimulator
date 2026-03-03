@@ -14,7 +14,6 @@
     "build:frontend": "vite build --config frontend/vite.config.ts",
     "build:edgeone": "npm run build:frontend && node scripts/build-edgeone.mjs --scene ./frontend/public/scenes/material-mock-particle.json --name embed",
     "package:embed": "npm run build:frontend && node scripts/embed-packager.mjs",
-    "migrate:scene-v1-v2": "node scripts/migrate-scene-v1-to-v2.mjs",
     "test:frontend": "vitest --config frontend/vite.config.ts run",
     "lint:frontend": "eslint \"frontend/src/**/*.ts\" \"frontend/test/**/*.ts\"",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",

@@ -7,7 +7,7 @@ Owner: Frontend platform team
 
 Initiate rollback immediately when any of the following happens after release:
 - `P0`: core path unavailable (cannot create/edit/play/import/export/demo mode).
-- `P1`: severe data/compatibility regression impacting active users.
+- `P1`: severe data regression impacting active users.
 - Replay or performance gate results diverge from release baseline.
 
 ## Preconditions
@@ -16,8 +16,7 @@ Initiate rollback immediately when any of the following happens after release:
 - Release operators have production deployment permissions.
 - Incident channel is open and ownership is assigned.
 - Build artifacts are available from `frontend/dist` (do not deploy raw source tree).
-- Scene migration CLI is available for compatibility fallback:
-  - `npm run migrate:scene-v1-v2 -- --in <legacy-scene.json> --out <scene-v2.json>`
+- Team confirms V3 scene hard-cut contract (`version: "3.0"` only) before traffic restore.
 
 ## Rollback Procedure
 
@@ -25,18 +24,18 @@ Initiate rollback immediately when any of the following happens after release:
 2. Route traffic back to the previous stable artifact tag.
 3. Validate critical endpoints and static asset integrity (`index.html` / `viewer.html` / `embed.js` from built artifact).
 4. Execute smoke checks on core-path flows.
-5. If schema compatibility risk exists:
+5. If schema integrity risk exists:
    - Freeze new-write paths until validated.
-   - For legacy payload recovery, migrate V1 scene files with CLI and import only converted V2 payloads.
+   - Reject non-`3.0` payloads; do not introduce ad-hoc compatibility bypasses during incident response.
 6. Confirm user-facing recovery in monitoring dashboards.
 
 ## Data Safety Rules
 
 - Never run schema migration scripts during rollback unless explicitly approved.
 - Preserve raw incident payloads for replay analysis.
-- If compatibility is uncertain, prefer read-only fallback over partial writes.
-- Never bypass V2 scene gate by hot-patching runtime validators in production.
-- Never import raw V1 scene payloads directly; convert with migration CLI first when rollback policy allows.
+- If payload integrity is uncertain, prefer read-only fallback over partial writes.
+- Never bypass `3.0` scene gate by hot-patching runtime validators in production.
+- Never re-open legacy compatibility path as an emergency workaround.
 
 ## Verification Checklist
 

@@ -20,6 +20,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test/setup/storage-shim.ts'],
-    include: ['test/**/*.test.ts']
+    include: ['test/v3-*.test.ts']
   }
 });

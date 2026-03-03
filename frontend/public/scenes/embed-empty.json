@@ -1,5 +1,12 @@
 {
-  "version": "2.0",
-  "settings": {},
+  "version": "3.0",
+  "revision": 0,
+  "running": false,
+  "timeStep": 0.016,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "selectedObjectId": null,
   "objects": []
 }

@@ -7,10 +7,11 @@ type SceneValidationResult =
 export function validateSceneData(input: unknown): SceneValidationResult {
   const result = SceneSchema.safeParse(input);
   if (!result.success) {
+    const issueMessages = result.error.issues.map((issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`);
     return {
       ok: false,
-      error: 'Invalid scene payload',
-      issues: result.error.issues.map((issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`)
+      error: issueMessages[0] || 'Invalid scene payload',
+      issues: issueMessages
     };
   }
 

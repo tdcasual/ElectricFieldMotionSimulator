@@ -117,7 +117,7 @@ export class Serializer {
         if (data.version !== Serializer.SCENE_VERSION) {
             return {
                 valid: false,
-                error: `仅支持 ${Serializer.SCENE_VERSION} 版本场景。请先运行 migrate:scene-v1-v2 迁移命令。`
+                error: `仅支持 ${Serializer.SCENE_VERSION} 版本场景。`
             };
         }
 

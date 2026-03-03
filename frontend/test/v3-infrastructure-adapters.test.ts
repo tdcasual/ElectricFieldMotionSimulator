@@ -11,6 +11,11 @@ describe('v3 infrastructure adapters', () => {
       id: 'obj-1',
       type: 'particle',
       position: { x: 1, y: 2 },
+      velocity: { x: 0, y: 0 },
+      radius: 10,
+      width: 20,
+      height: 20,
+      color: '#58a6ff',
       props: { charge: 1 }
     });
 
@@ -41,7 +46,10 @@ describe('v3 infrastructure adapters', () => {
       running: true,
       timeStep: 0.02,
       timeStepLabel: '20ms',
-      objectCount: 3
+      viewport: { width: 800, height: 600 },
+      objectCount: 3,
+      selectedObjectId: null,
+      objects: []
     });
 
     expect(adapter.getLatest()).toEqual({
@@ -49,8 +57,10 @@ describe('v3 infrastructure adapters', () => {
       running: true,
       timeStep: 0.02,
       timeStepLabel: '20ms',
-      objectCount: 3
+      viewport: { width: 800, height: 600 },
+      objectCount: 3,
+      selectedObjectId: null,
+      objects: []
     });
   });
 });
-

@@ -1,83 +1,65 @@
 {
-  "version": "2.0",
-  "timestamp": 1733395200000,
-  "settings": {
-    "showGrid": true,
-    "gridSize": 50,
-    "showTrajectories": true,
-    "showEnergy": true,
-    "showFieldVectors": true
+  "version": "3.0",
+  "revision": 4,
+  "running": false,
+  "timeStep": 0.016,
+  "viewport": {
+    "width": 1280,
+    "height": 720
   },
+  "selectedObjectId": null,
   "objects": [
     {
-      "type": "electric-field-rect",
-      "id": "field-1",
-      "x": 200,
-      "y": 150,
-      "width": 400,
-      "height": 300,
-      "geometry": {
-        "kind": "polygon",
-        "vertices": [
-          { "x": 0, "y": 0 },
-          { "x": 400, "y": 0 },
-          { "x": 400, "y": 300 },
-          { "x": 0, "y": 300 }
-        ]
-      },
-      "strength": 1500,
-      "direction": 90
+      "id": "obj-electric-1",
+      "type": "electric-field",
+      "x": 420,
+      "y": 260,
+      "velocityX": 0,
+      "velocityY": 0,
+      "radius": 26,
+      "width": 180,
+      "height": 120,
+      "color": "#f1b862",
+      "props": {}
     },
     {
-      "type": "electric-field-circle",
-      "id": "field-2",
-      "x": 800,
-      "y": 300,
-      "radius": 120,
-      "strength": 1000,
-      "direction": 0
-    },
-    {
+      "id": "obj-magnetic-1",
       "type": "magnetic-field",
-      "id": "mag-1",
-      "x": 200,
-      "y": 500,
-      "width": 300,
-      "height": 200,
-      "geometry": {
-        "kind": "polygon",
-        "vertices": [
-          { "x": 0, "y": 0 },
-          { "x": 300, "y": 0 },
-          { "x": 300, "y": 200 },
-          { "x": 0, "y": 200 }
-        ]
-      },
-      "strength": 0.5
+      "x": 840,
+      "y": 420,
+      "velocityX": 0,
+      "velocityY": 0,
+      "radius": 54,
+      "width": 124,
+      "height": 124,
+      "color": "#8e79d6",
+      "props": {}
     },
     {
+      "id": "obj-particle-1",
       "type": "particle",
-      "id": "particle-1",
-      "position": [350, 200, 0],
-      "velocity": [100, 0, 0],
-      "mass": 9.109e-31,
-      "charge": -1.602e-19,
-      "radius": 6,
-      "ignoreGravity": true,
-      "showTrajectory": true,
-      "showEnergy": true
+      "x": 180,
+      "y": 200,
+      "velocityX": 130,
+      "velocityY": 70,
+      "radius": 10,
+      "width": 20,
+      "height": 20,
+      "color": "#58a6ff",
+      "props": {}
     },
     {
+      "id": "obj-particle-2",
       "type": "particle",
-      "id": "particle-2",
-      "position": [800, 250, 0],
-      "velocity": [0, 50, 0],
-      "mass": 9.109e-31,
-      "charge": 1.602e-19,
-      "radius": 6,
-      "ignoreGravity": true,
-      "showTrajectory": true,
-      "showEnergy": true
+      "x": 240,
+      "y": 120,
+      "velocityX": 90,
+      "velocityY": -80,
+      "radius": 10,
+      "width": 20,
+      "height": 20,
+      "color": "#58a6ff",
+      "props": {}
     }
   ]
 }

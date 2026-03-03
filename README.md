@@ -1,64 +1,45 @@
-# ⚡ 电磁场粒子运动模拟器
+# Electric Field Motion Simulator
 
-这是一个可以“边拖边看”的电磁学小实验场。
-你可以把电场、磁场和粒子放到画布里，实时观察轨迹、偏转和回旋运动。
+交互式电磁场模拟器。当前主线为 Vue 3 + TypeScript 的 V3 runtime（硬切完成）。
 
-如果你想快速体验：
-- 🚀 运行 `npm install && npm run dev:frontend`，然后访问终端提示地址
-- ℹ️ 开发态请使用 Vite；直接 `http-server` 打开根目录不会编译 `.vue` 文件
-- 📦 部署产物目录是 `frontend/dist`（请先执行 `npm run build:frontend`）
-- 🚀 或者看更详细的启动说明：[`QUICKSTART.md`](QUICKSTART.md)
+## 快速启动
 
-## 🧰 运行环境
+1. `npm install`
+2. `npm run dev:frontend`
+3. 打开终端输出地址（默认 `http://localhost:5173`）
 
-- Node.js：支持 `24.x` / `25.x`（推荐本地使用 `24.x`）
-- npm：`10+`
-- CI 会对 Node `24` 与 `25` 执行质量门禁，避免版本差异导致误报失败
-- 可使用 `.nvmrc` 一键切换：
-  - `nvm use`
+构建产物目录：`frontend/dist`。  
+部署前请执行：`npm run build:frontend`。
 
-## ✨ 你可以做什么
+## 运行环境
 
-- 🧲 拖拽添加对象：电场、磁场、粒子、装置
-- ▶️ 实时播放物理过程：暂停、继续、重置
-- 🎛️ 调整对象参数，马上看到运动变化
-- 💾 保存、加载、导入、导出场景
-- 🎯 在圆形边界附近获得相切提示和吸附（按住 `Alt/Option` 可临时关闭吸附）
+- Node.js: `24.x` / `25.x`（建议本地使用 `24.x`）
+- npm: `10+`
+- 可通过 `.nvmrc` 使用 `nvm use`
 
-## 🚀 上手只要 30 秒
+## V3 场景协议（硬约束）
 
-1. 从左侧工具栏放置一个场和一个粒子
-2. 点击播放按钮或按 `Space`
-3. 拖动对象位置，观察轨迹变化
-4. 右键对象（触屏用长按）打开属性面板继续微调
+- 运行时只接受 `version: "3.0"` 场景。
+- 不提供运行时兼容迁移路径（不再支持旧版本自动兼容）。
+- 场景结构基线：`version/revision/running/timeStep/viewport/selectedObjectId/objects`
+- 示例文件：
+  - `example-scene.json`
+  - `frontend/public/scenes/embed-empty.json`
+  - `frontend/public/scenes/material-mock-particle.json`
 
-## ⌨️ 常用快捷键
+## 常用命令
 
-- `Space`：播放 / 暂停
-- `Delete`：删除选中对象
-- `Ctrl+S`：保存场景
-- `Ctrl+O`：加载场景
+- `npm run dev:frontend`: 本地开发
+- `npm run build:frontend`: 构建前端
+- `npm run test:frontend`: 运行 V3 Vitest
+- `npm run test:e2e`: 运行 V3 Playwright 关键路径
+- `npm run quality:all`: 运行完整质量门禁
 
-## 📚 想了解更多
+## 文档入口
 
-- 📚 文档中心（统一入口）：[`docs/README.md`](docs/README.md)
-- 🧭 文档系统规范：[`docs/documentation-system.md`](docs/documentation-system.md)
-- 🧭 快速开始：[`QUICKSTART.md`](QUICKSTART.md)
-- ✅ 测试与验证：[`TESTING-GUIDE.md`](TESTING-GUIDE.md)
-- 📝 更新记录：[`CHANGELOG.md`](CHANGELOG.md)
-- 🧪 示例场景：[`example-scene.json`](example-scene.json)
-
-迁移与发布文档：
-- 📌 前端对齐清单：[`docs/migration/parity-checklist.md`](docs/migration/parity-checklist.md)
-- 🧱 当前架构：[`docs/migration/current-vue-architecture.md`](docs/migration/current-vue-architecture.md)
-- 🧠 Vue 原生化设计：[`docs/plans/2026-02-25-vue-native-runtime-design.md`](docs/plans/2026-02-25-vue-native-runtime-design.md)
-- 🛠️ Vue 原生化实施计划：[`docs/plans/2026-02-25-vue-native-runtime-implementation-plan.md`](docs/plans/2026-02-25-vue-native-runtime-implementation-plan.md)
-- 🧹 测试与旧版清理计划：[`docs/plans/2026-02-25-vue-testing-and-legacy-cleanup-plan.md`](docs/plans/2026-02-25-vue-testing-and-legacy-cleanup-plan.md)
-- 🗂️ 历史归档：[`docs/history/README.md`](docs/history/README.md)
-- 🚦 上线检查：[`docs/release/frontend-rewrite-launch-checklist.md`](docs/release/frontend-rewrite-launch-checklist.md)
-- 🧯 回滚预案：[`docs/release/frontend-rewrite-rollback-runbook.md`](docs/release/frontend-rewrite-rollback-runbook.md)
-
-## 🎯 一句话总结
-
-这是一个偏教学和演示友好的电磁场模拟器：
-操作轻量，反馈直观，适合快速搭实验、讲思路、做课堂展示。
+- 统一索引：`docs/README.md`
+- 快速开始：`QUICKSTART.md`
+- 当前架构：`docs/migration/current-vue-architecture.md`
+- 场景版本策略：`docs/migration/scene-compatibility-policy.md`
+- V3 硬切设计：`docs/plans/2026-03-03-v3-hardcut-no-compatibility-design.md`
+- 历史归档：`docs/history/README.md`

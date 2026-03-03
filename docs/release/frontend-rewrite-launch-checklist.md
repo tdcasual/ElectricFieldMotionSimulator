@@ -26,7 +26,7 @@ Last Reviewed: 2026-03-03 (Round 2 closure)
 ## Operational Readiness
 
 - [x] Rollback runbook reviewed: `docs/release/frontend-rewrite-rollback-runbook.md`. (`DONE`, 2026-03-03)
-- [x] Legacy scene migration CLI available (`npm run migrate:scene-v1-v2 -- --in <legacy> --out <v2>`). (`DONE`, verified 2026-03-03)
+- [x] V3 scene contract hard-cut policy reviewed (`version: "3.0"` only). (`DONE`, verified 2026-03-03)
 - [x] Last-known-good artifact tag documented. (`N/A` for local desktop workflow; use git SHA)
 - [x] Incident owner and on-call contacts confirmed. (`N/A` for local desktop workflow)
 - [x] Rollback dry-run completed. (`N/A` for local desktop workflow)

@@ -1,20 +1,17 @@
 import { defineStore } from 'pinia';
-import { computed, ref, shallowRef } from 'vue';
-import { Presets, registry } from '../engine/storeEngineBridge';
-import {
-  type GeometryInteractionSnapshot,
-  SimulatorRuntime,
-  type PropertyPayload,
-  type RuntimeSnapshot
-} from '../runtime/simulatorRuntime';
+import { computed, ref } from 'vue';
 import type { EmbedConfig, EmbedMode } from '../embed/embedConfig';
 import { resolveSceneSource } from '../embed/sceneSourceResolver';
+import { validateSceneData } from '../io/sceneIO';
 import { getSceneCompatibilityError } from '../io/sceneSchema';
+import { createV3SimulatorApplication } from '../v3/application/useCases/simulatorApplication';
+import { createInMemoryRenderAdapter } from '../v3/infrastructure/inMemoryRenderAdapter';
+import { createLocalSceneStorageAdapter } from '../v3/infrastructure/localSceneStorageAdapter';
+import { mapTimeStepIntent, mapToolbarCreateIntent, mapViewportIntent } from '../v3/ui-adapter/intentMappers';
 
 type ToolbarEntry = {
   type: string;
   label: string;
-  icon?: string | null;
 };
 
 type ToolbarGroup = {
@@ -23,511 +20,383 @@ type ToolbarGroup = {
   entries: ToolbarEntry[];
 };
 
+type DragState = {
+  id: string;
+  offsetX: number;
+  offsetY: number;
+} | null;
+
 export type LayoutMode = 'desktop' | 'tablet' | 'phone';
-type ActiveDrawer = 'property' | 'variables' | 'markdown' | null;
-type PhoneDensityMode = 'compact' | 'comfortable';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  electric: '电场',
-  magnetic: '磁场',
-  particle: '粒子',
-  display: '显示'
-};
+const DEFAULT_STATUS = 'V3 Runtime Ready';
 
-const CATEGORY_ORDER = ['electric', 'magnetic', 'particle', 'display'];
-
-function buildToolbarGroups(): ToolbarGroup[] {
-  const grouped = registry.listByCategory() as Record<string, Array<Record<string, unknown>>>;
-  const remaining = new Set(Object.keys(grouped));
-  const ordered: string[] = [];
-
-  for (const key of CATEGORY_ORDER) {
-    if (remaining.has(key)) {
-      ordered.push(key);
-      remaining.delete(key);
-    }
+const TOOLBAR_GROUPS: ToolbarGroup[] = [
+  {
+    key: 'electric',
+    label: '电场',
+    entries: [{ type: 'electric-field', label: '电场区域' }]
+  },
+  {
+    key: 'magnetic',
+    label: '磁场',
+    entries: [{ type: 'magnetic-field', label: '磁场区域' }]
+  },
+  {
+    key: 'particle',
+    label: '粒子',
+    entries: [{ type: 'particle', label: '带电粒子' }]
   }
+];
 
-  for (const key of remaining) {
-    ordered.push(key);
+function normalizeCreateType(type: string) {
+  const value = String(type ?? '').trim();
+  if (
+    value === 'electric-field' ||
+    value === 'electric-field-rect' ||
+    value === 'electric-field-circle' ||
+    value === 'semicircle-electric-field'
+  ) {
+    return 'electric-field';
   }
-
-  return ordered
-    .map((key) => {
-      const entries = grouped[key] ?? [];
-      return {
-        key,
-        label: CATEGORY_LABELS[key] ?? key,
-        entries: entries
-          .map((entry) => ({
-            type: String(entry.type ?? ''),
-            label: String(entry.label ?? entry.type ?? ''),
-            icon: typeof entry.icon === 'string' ? entry.icon : null
-          }))
-          .filter((entry) => entry.type.length > 0)
-      };
-    })
-    .filter((group) => group.entries.length > 0);
-}
-
-function asPositiveNumber(value: unknown, fallback: number) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return parsed;
-}
-
-function asNonNegativeNumber(value: unknown, fallback: number) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
-  return parsed;
-}
-
-function normalizeBoundaryMode(value: unknown) {
-  const allowed = new Set(['margin', 'remove', 'bounce', 'wrap'] as const);
-  const next = String(value ?? '');
-  return allowed.has(next as 'margin' | 'remove' | 'bounce' | 'wrap')
-    ? (next as 'margin' | 'remove' | 'bounce' | 'wrap')
-    : 'margin';
-}
-
-const DEFAULT_MARKDOWN_FONT_SIZE = 16;
-const LEGACY_MARKDOWN_FONT_SIZE = 13;
-const TAP_CHAIN_RESET_EVENT = 'simulator-reset-tap-chain';
-const GEOMETRY_DISPLAY_FIELD_SUFFIX = '__display';
-const PHONE_RECENT_GEOMETRY_LIMIT = 6;
-
-function collectGeometrySourceKeys(sections: PropertyPayload['sections']) {
-  const ordered: string[] = [];
-  const seen = new Set<string>();
-  for (const section of sections) {
-    const fields = Array.isArray(section?.fields) ? section.fields : [];
-    for (const field of fields) {
-      if (!field?.key) continue;
-      if (field.geometryRole !== 'real' && field.geometryRole !== 'display') continue;
-      const key = String(field.key || '').trim();
-      if (!key) continue;
-      const source = String(field.sourceKey || (key.endsWith(GEOMETRY_DISPLAY_FIELD_SUFFIX) ? key.slice(0, -GEOMETRY_DISPLAY_FIELD_SUFFIX.length) : key)).trim();
-      if (!source || seen.has(source)) continue;
-      seen.add(source);
-      ordered.push(source);
-    }
+  if (
+    value === 'magnetic-field' ||
+    value === 'magnetic-field-circle' ||
+    value === 'magnetic-field-long' ||
+    value === 'magnetic-field-triangle'
+  ) {
+    return 'magnetic-field';
   }
-  return ordered;
+  return 'particle';
 }
 
-function resolveGeometrySourceFromFieldKey(sections: PropertyPayload['sections'], fieldKey: string) {
-  const target = String(fieldKey || '').trim();
-  if (!target) return null;
-  for (const section of sections) {
-    const fields = Array.isArray(section?.fields) ? section.fields : [];
-    for (const field of fields) {
-      const key = String(field?.key || '').trim();
-      if (!key || key !== target) continue;
-      const source = String(field.sourceKey || (key.endsWith(GEOMETRY_DISPLAY_FIELD_SUFFIX) ? key.slice(0, -GEOMETRY_DISPLAY_FIELD_SUFFIX.length) : key)).trim();
-      return source || null;
-    }
-  }
-  return null;
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 export const useSimulatorStore = defineStore('simulator', () => {
-  const runtime = shallowRef<SimulatorRuntime | null>(null);
-  const runtimeMounted = ref(false);
+  const renderAdapter = createInMemoryRenderAdapter();
+  const storageAdapter = createLocalSceneStorageAdapter();
+  const application = createV3SimulatorApplication({ renderAdapter });
+
   const hostMode = ref<EmbedMode>('edit');
   const layoutMode = ref<LayoutMode>('desktop');
-  const phoneDensityMode = ref<PhoneDensityMode>('compact');
-
-  const toolbarGroups = ref<ToolbarGroup[]>(buildToolbarGroups());
-
-  const running = ref(false);
-  const demoMode = ref(false);
-  const timeStep = ref(0.016);
+  const toolbarGroups = ref<ToolbarGroup[]>(TOOLBAR_GROUPS);
+  const statusText = ref(DEFAULT_STATUS);
   const fps = ref(0);
+  const timeStep = ref(0.016);
+  const running = ref(false);
   const objectCount = ref(0);
-  const particleCount = ref(0);
   const selectedObjectId = ref<string | null>(null);
-  const statusText = ref('就绪');
-  const geometryInteraction = ref<GeometryInteractionSnapshot | null>(null);
+  const viewport = ref({ width: 1280, height: 720 });
+  const objects = ref<Array<{
+    id: string;
+    type: string;
+    x: number;
+    y: number;
+    radius: number;
+    width: number;
+    height: number;
+    velocityX: number;
+    velocityY: number;
+    color: string;
+    props: Record<string, unknown>;
+  }>>([]);
+  const sceneNames = ref<string[]>([]);
 
-  const showEnergyOverlay = ref(true);
-  const pixelsPerMeter = ref(1);
-  const gravity = ref(10);
-  const boundaryMode = ref<'margin' | 'remove' | 'bounce' | 'wrap'>('margin');
-  const boundaryMargin = ref(200);
-  const vertexEditMode = ref(false);
-  const classroomMode = ref(false);
-
-  const activeDrawer = ref<ActiveDrawer>(null);
-  const propertyDrawerOpen = computed(() => activeDrawer.value === 'property');
-  const propertyTitle = ref('属性面板');
-  const propertySections = ref<PropertyPayload['sections']>([]);
-  const propertyValues = ref<Record<string, unknown>>({});
-  const phoneRecentGeometrySourceKeys = ref<string[]>([]);
-  const phoneGeometryScopeSignature = ref('');
-  const variablesPanelOpen = computed(() => activeDrawer.value === 'variables');
-  const variableDraft = ref<Record<string, number>>({});
-  const markdownBoardOpen = computed(() => activeDrawer.value === 'markdown');
-  const markdownContent = ref('# 题板\n\n- 在这里记录题目和步骤\n- 支持基础 Markdown 语法\n- 支持 LaTeX：$v=\\frac{s}{t}$');
-  const markdownMode = ref<'edit' | 'preview'>('preview');
-  const markdownFontSize = ref(DEFAULT_MARKDOWN_FONT_SIZE);
+  const dragState = ref<DragState>(null);
+  const runtimeMounted = ref(false);
+  const frameHandle = ref<number | null>(null);
+  const lastFrameAt = ref<number | null>(null);
+  const resetBaseline = ref(application.exportScene());
 
   const viewMode = computed(() => hostMode.value === 'view');
   const timeStepLabel = computed(() => `${Math.round(timeStep.value * 1000)}ms`);
-  const showBoundaryMarginControl = computed(() => boundaryMode.value === 'margin');
-  const demoButtonLabel = computed(() => (demoMode.value ? '退出演示' : '演示模式'));
-  const demoButtonTitle = computed(() => (demoMode.value ? '退出演示模式' : '进入演示模式'));
+  const selectedObject = computed(() => objects.value.find((item) => item.id === selectedObjectId.value) ?? null);
 
-  function applySnapshot(snapshot: RuntimeSnapshot) {
-    const previousSelectedId = selectedObjectId.value;
-    running.value = snapshot.running;
-    demoMode.value = snapshot.mode === 'demo';
-    timeStep.value = snapshot.timeStep;
-    fps.value = snapshot.fps;
-    objectCount.value = snapshot.objectCount;
-    particleCount.value = snapshot.particleCount;
-    selectedObjectId.value = snapshot.selectedObjectId;
-    statusText.value = snapshot.statusText;
-    geometryInteraction.value = snapshot.geometryInteraction ?? null;
-    if (!snapshot.selectedObjectId && propertyDrawerOpen.value) {
-      closePropertyPanel();
+  function syncFromReadModel() {
+    const model = application.getReadModel();
+    running.value = model.running;
+    timeStep.value = model.timeStep;
+    objectCount.value = model.objectCount;
+    selectedObjectId.value = model.selectedObjectId;
+    viewport.value = {
+      width: model.viewport.width,
+      height: model.viewport.height
+    };
+    objects.value = model.objects;
+  }
+
+  async function refreshSceneNames() {
+    sceneNames.value = await storageAdapter.list();
+  }
+
+  function setStatusText(text: string) {
+    statusText.value = String(text || DEFAULT_STATUS);
+  }
+
+  function stopLoop() {
+    if (frameHandle.value != null && typeof window !== 'undefined') {
+      window.cancelAnimationFrame(frameHandle.value);
+    }
+    frameHandle.value = null;
+    lastFrameAt.value = null;
+  }
+
+  function stepLoop(timestamp: number) {
+    if (!running.value) {
+      stopLoop();
       return;
     }
-    if (propertyDrawerOpen.value && snapshot.selectedObjectId && snapshot.selectedObjectId !== previousSelectedId) {
-      refreshSelectedPropertyPayload();
+
+    const previous = lastFrameAt.value;
+    if (previous != null) {
+      const elapsedMs = Math.max(1, timestamp - previous);
+      fps.value = Math.round(1000 / elapsedMs);
     }
-  }
-
-  function syncHeaderControlsFromScene() {
-    const current = runtime.value;
-    if (!current) return;
-    const settings = (current.scene as { settings?: Record<string, unknown> }).settings ?? {};
-    showEnergyOverlay.value = settings.showEnergy !== false;
-    pixelsPerMeter.value = asPositiveNumber(settings.pixelsPerMeter, 1);
-    gravity.value = asNonNegativeNumber(settings.gravity, 10);
-    boundaryMode.value = normalizeBoundaryMode(settings.boundaryMode);
-    boundaryMargin.value = asNonNegativeNumber(settings.boundaryMargin, 200);
-    vertexEditMode.value = settings.vertexEditMode === true;
-  }
-
-  function updatePropertyPayload(payload: PropertyPayload) {
-    propertyTitle.value = payload.title;
-    propertySections.value = payload.sections;
-    propertyValues.value = { ...(payload.values ?? {}) };
-    reconcilePhoneRecentGeometryMemory();
-  }
-
-  function reconcilePhoneRecentGeometryMemory() {
-    const available = collectGeometrySourceKeys(propertySections.value);
-    const availableSet = new Set(available);
-    const scopeSignature = available.slice().sort().join('|');
-    if (phoneGeometryScopeSignature.value !== scopeSignature) {
-      phoneGeometryScopeSignature.value = scopeSignature;
-      phoneRecentGeometrySourceKeys.value = phoneRecentGeometrySourceKeys.value.filter((key) => availableSet.has(key));
+    lastFrameAt.value = timestamp;
+    const stepped = application.stepSimulation();
+    if (!stepped.ok) {
+      setStatusText(stepped.error.message);
+      stopRunning();
+      return;
     }
-
-    const deduped: string[] = [];
-    const seen = new Set<string>();
-    for (const key of phoneRecentGeometrySourceKeys.value) {
-      if (!availableSet.has(key) || seen.has(key)) continue;
-      seen.add(key);
-      deduped.push(key);
-      if (deduped.length >= PHONE_RECENT_GEOMETRY_LIMIT) break;
-    }
-    phoneRecentGeometrySourceKeys.value = deduped;
+    syncFromReadModel();
+    frameHandle.value = window.requestAnimationFrame(stepLoop);
   }
 
-  function rememberPhoneGeometryEdit(fieldKey: string) {
-    const sourceKey = resolveGeometrySourceFromFieldKey(propertySections.value, fieldKey);
-    if (!sourceKey) return;
-    const available = collectGeometrySourceKeys(propertySections.value);
-    const availableSet = new Set(available);
-    if (!availableSet.has(sourceKey)) return;
-
-    const next = [sourceKey];
-    for (const key of phoneRecentGeometrySourceKeys.value) {
-      if (key === sourceKey) continue;
-      if (!availableSet.has(key)) continue;
-      next.push(key);
-      if (next.length >= PHONE_RECENT_GEOMETRY_LIMIT) break;
-    }
-    phoneRecentGeometrySourceKeys.value = next;
-  }
-
-  function loadMarkdownPreferences() {
+  function startLoop() {
     if (typeof window === 'undefined') return;
+    if (frameHandle.value != null) return;
+    frameHandle.value = window.requestAnimationFrame(stepLoop);
+  }
+
+  function startRunning() {
+    const result = application.startRunning();
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return;
+    }
+    syncFromReadModel();
+    startLoop();
+  }
+
+  function stopRunning() {
+    const result = application.stopRunning();
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return;
+    }
+    syncFromReadModel();
+    stopLoop();
+  }
+
+  function toggleRunning() {
+    if (running.value) {
+      stopRunning();
+      return;
+    }
+    startRunning();
+  }
+
+  function setTimeStep(next: number) {
     try {
-      const content = window.localStorage.getItem('sim.markdown.content');
-      if (typeof content === 'string') {
-        markdownContent.value = content;
+      const value = mapTimeStepIntent(next);
+      const result = application.setTimeStep(value);
+      if (!result.ok) {
+        setStatusText(result.error.message);
+        return false;
       }
-
-      const mode = window.localStorage.getItem('sim.markdown.mode');
-      if (mode === 'edit' || mode === 'preview') {
-        markdownMode.value = mode;
-      }
-
-      const fontSize = Number(window.localStorage.getItem('sim.markdown.fontSize'));
-      if (Number.isFinite(fontSize)) {
-        const normalized = Math.max(10, Math.min(32, Math.round(fontSize)));
-        const migrated = normalized === LEGACY_MARKDOWN_FONT_SIZE ? DEFAULT_MARKDOWN_FONT_SIZE : normalized;
-        markdownFontSize.value = migrated;
-        if (migrated !== normalized) {
-          window.localStorage.setItem('sim.markdown.fontSize', String(migrated));
-        }
-      }
-    } catch {
-      // ignore persistence errors
-    }
-  }
-
-  function loadClassroomPreference() {
-    if (typeof window === 'undefined') return;
-    try {
-      classroomMode.value = window.localStorage.getItem('sim.ui.classroomMode') === '1';
-    } catch {
-      classroomMode.value = false;
-    }
-  }
-
-  function persistClassroomPreference() {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem('sim.ui.classroomMode', classroomMode.value ? '1' : '0');
-    } catch {
-      // ignore persistence errors
-    }
-  }
-
-  function persistMarkdownPreferences() {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem('sim.markdown.content', markdownContent.value);
-      window.localStorage.setItem('sim.markdown.mode', markdownMode.value);
-      window.localStorage.setItem('sim.markdown.fontSize', String(markdownFontSize.value));
-    } catch {
-      // ignore persistence errors
-    }
-  }
-
-  function loadPhoneDensityPreference() {
-    if (typeof window === 'undefined') return;
-    try {
-      const raw = window.localStorage.getItem('sim.ui.phoneDensity');
-      if (raw === 'compact' || raw === 'comfortable') {
-        phoneDensityMode.value = raw;
-      }
-    } catch {
-      phoneDensityMode.value = 'compact';
-    }
-  }
-
-  function persistPhoneDensityPreference() {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem('sim.ui.phoneDensity', phoneDensityMode.value);
-    } catch {
-      // ignore persistence errors
-    }
-  }
-
-  function dispatchTapChainResetEvent() {
-    if (typeof document === 'undefined') return;
-    try {
-      document.dispatchEvent(new Event(TAP_CHAIN_RESET_EVENT));
-    } catch {
-      // ignore event dispatch errors
-    }
-  }
-
-  function openDrawer(target: Exclude<ActiveDrawer, null>) {
-    activeDrawer.value = target;
-  }
-
-  function closeDrawer(target: Exclude<ActiveDrawer, null>) {
-    if (activeDrawer.value !== target) return;
-    activeDrawer.value = null;
-  }
-
-  function closeAllDrawers() {
-    activeDrawer.value = null;
-  }
-
-  function closeSceneDependentDrawers() {
-    closePropertyPanel();
-    closeVariablesPanel();
-  }
-
-  function closePropertyPanel() {
-    const wasOpen = propertyDrawerOpen.value;
-    closeDrawer('property');
-    if (wasOpen) {
-      dispatchTapChainResetEvent();
-    }
-  }
-
-  function refreshSelectedPropertyPayload() {
-    const current = runtime.value;
-    if (!current) return !!selectedObjectId.value;
-    const payload = current.buildPropertyPayload();
-    if (!payload) {
-      closePropertyPanel();
+      syncFromReadModel();
+      setStatusText(`时间步长已更新为 ${Math.round(value * 1000)}ms`);
+      return true;
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : 'timeStep invalid');
       return false;
     }
-    updatePropertyPayload(payload);
-    return true;
   }
 
-  function openPropertyPanel() {
-    const ok = refreshSelectedPropertyPayload();
-    if (!ok) return false;
-    openDrawer('property');
-    dispatchTapChainResetEvent();
-    return true;
-  }
-
-  function ensureRuntime() {
-    if (runtime.value) return runtime.value;
-    runtime.value = new SimulatorRuntime({
-      onSnapshot: (snapshot) => {
-        applySnapshot(snapshot);
-        syncHeaderControlsFromScene();
-      },
-      onPropertyRequest: () => {
-        openPropertyPanel();
-      },
-      onPropertyHide: () => {
-        closePropertyPanel();
+  function setViewportSize(width: number, height: number) {
+    try {
+      const payload = mapViewportIntent({ width, height });
+      const result = application.setViewport(payload);
+      if (!result.ok) {
+        setStatusText(result.error.message);
+        return false;
       }
-    });
-    runtime.value.setHostMode(hostMode.value);
-    return runtime.value;
-  }
-
-  function normalizeSceneVariables(input: Record<string, unknown>) {
-    const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-    const RESERVED = new Set(['__proto__', 'prototype', 'constructor']);
-    const next: Record<string, number> = {};
-    for (const [rawName, rawValue] of Object.entries(input)) {
-      const name = String(rawName || '').trim();
-      if (!name || !NAME_RE.test(name) || RESERVED.has(name)) continue;
-      const value = Number(rawValue);
-      if (!Number.isFinite(value)) continue;
-      next[name] = value;
+      syncFromReadModel();
+      return true;
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : 'viewport invalid');
+      return false;
     }
-    return next;
   }
 
-  function openVariablesPanel() {
-    const current = getRuntime();
-    const vars = current.scene.variables && typeof current.scene.variables === 'object'
-      ? current.scene.variables as Record<string, unknown>
-      : {};
-    variableDraft.value = normalizeSceneVariables(vars);
-    openDrawer('variables');
+  function createObjectAtCenter(type: string) {
+    if (viewMode.value) {
+      setStatusText('View mode does not allow edits');
+      return false;
+    }
+    const normalizedType = normalizeCreateType(type);
+    const x = viewport.value.width / 2;
+    const y = viewport.value.height / 2;
+    try {
+      const intent = mapToolbarCreateIntent({
+        type: normalizedType,
+        x,
+        y
+      });
+      const result = application.createObjectAt(intent);
+      if (!result.ok) {
+        setStatusText(result.error.message);
+        return false;
+      }
+      syncFromReadModel();
+      resetBaseline.value = application.exportScene();
+      setStatusText(`已创建 ${normalizedType}`);
+      return true;
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : 'create failed');
+      return false;
+    }
   }
 
-  function closeVariablesPanel() {
-    closeDrawer('variables');
-  }
-
-  function applyVariables(values: Record<string, number>) {
-    const current = getRuntime();
-    const next = normalizeSceneVariables(values as Record<string, unknown>);
-    current.scene.variables = { ...next };
-    variableDraft.value = { ...next };
-    current.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
-    setStatusText(`变量表已更新（${Object.keys(next).length} 项）`);
-    closeVariablesPanel();
+  function selectObjectById(id: string | null) {
+    const result = application.selectObject(id);
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return false;
+    }
+    syncFromReadModel();
     return true;
   }
 
-  function toggleMarkdownBoard() {
-    if (activeDrawer.value === 'markdown') {
-      closeDrawer('markdown');
-      return;
+  function hitTestObjectId(x: number, y: number) {
+    for (let i = objects.value.length - 1; i >= 0; i -= 1) {
+      const item = objects.value[i];
+      if (item.type === 'particle' || item.type === 'magnetic-field') {
+        const dx = x - item.x;
+        const dy = y - item.y;
+        const radius = item.type === 'particle'
+          ? item.radius
+          : Math.max(item.radius, Math.min(item.width, item.height) / 2);
+        if ((dx * dx + dy * dy) <= (radius * radius)) {
+          return item.id;
+        }
+        continue;
+      }
+      const halfWidth = item.width / 2;
+      const halfHeight = item.height / 2;
+      if (
+        x >= (item.x - halfWidth) &&
+        x <= (item.x + halfWidth) &&
+        y >= (item.y - halfHeight) &&
+        y <= (item.y + halfHeight)
+      ) {
+        return item.id;
+      }
     }
-    openDrawer('markdown');
+    return null;
   }
 
-  function closeMarkdownBoard() {
-    closeDrawer('markdown');
+  function selectObjectAt(x: number, y: number) {
+    return selectObjectById(hitTestObjectId(x, y));
   }
 
-  function setMarkdownContent(next: string) {
-    markdownContent.value = String(next ?? '');
-    persistMarkdownPreferences();
+  function beginObjectDrag(pointerX: number, pointerY: number, objectId: string | null) {
+    if (!objectId) return false;
+    const target = objects.value.find((item) => item.id === objectId);
+    if (!target) return false;
+    selectObjectById(objectId);
+    dragState.value = {
+      id: target.id,
+      offsetX: pointerX - target.x,
+      offsetY: pointerY - target.y
+    };
+    return true;
   }
 
-  function setMarkdownMode(next: 'edit' | 'preview') {
-    markdownMode.value = next === 'edit' ? 'edit' : 'preview';
-    persistMarkdownPreferences();
-  }
-
-  function setMarkdownFontSize(next: number) {
-    if (!Number.isFinite(next)) return;
-    markdownFontSize.value = Math.max(10, Math.min(32, Math.round(next)));
-    persistMarkdownPreferences();
-  }
-
-  loadMarkdownPreferences();
-  loadClassroomPreference();
-  loadPhoneDensityPreference();
-
-  function setClassroomMode(next: boolean) {
-    classroomMode.value = !!next;
-    persistClassroomPreference();
-  }
-
-  function toggleClassroomMode() {
-    setClassroomMode(!classroomMode.value);
-  }
-
-  function setPhoneDensityMode(next: PhoneDensityMode) {
-    phoneDensityMode.value = next === 'comfortable' ? 'comfortable' : 'compact';
-    persistPhoneDensityPreference();
-  }
-
-  function togglePhoneDensityMode() {
-    setPhoneDensityMode(phoneDensityMode.value === 'compact' ? 'comfortable' : 'compact');
-  }
-
-  function getRuntime() {
-    const current = ensureRuntime();
-    if (!runtimeMounted.value && import.meta.env.MODE !== 'test') {
-      current.mount();
-      runtimeMounted.value = true;
-      applySnapshot(current.getSnapshot());
-      syncHeaderControlsFromScene();
+  function updateObjectDrag(pointerX: number, pointerY: number) {
+    const activeDrag = dragState.value;
+    if (!activeDrag) return false;
+    const nextX = clamp(pointerX - activeDrag.offsetX, 0, viewport.value.width);
+    const nextY = clamp(pointerY - activeDrag.offsetY, 0, viewport.value.height);
+    const result = application.moveObject({
+      id: activeDrag.id,
+      x: nextX,
+      y: nextY
+    });
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return false;
     }
-    return current;
+    syncFromReadModel();
+    return true;
   }
 
-  function mountRuntime() {
-    if (runtimeMounted.value) return;
-    const current = ensureRuntime();
-    current.mount();
-    runtimeMounted.value = true;
-    applySnapshot(current.getSnapshot());
-    syncHeaderControlsFromScene();
+  function commitObjectDrag() {
+    if (!dragState.value) return false;
+    dragState.value = null;
+    resetBaseline.value = application.exportScene();
+    return true;
   }
 
-  function unmountRuntime() {
-    if (!runtimeMounted.value) return;
-    runtime.value?.unmount();
-    runtimeMounted.value = false;
+  function cancelObjectDrag() {
+    dragState.value = null;
   }
 
-  function setHostMode(next: EmbedMode) {
-    hostMode.value = next === 'view' ? 'view' : 'edit';
-    runtime.value?.setHostMode(hostMode.value);
-    if (hostMode.value === 'view') {
-      closeAllDrawers();
+  function setSelectedObjectProps(props: Record<string, unknown>) {
+    if (!selectedObjectId.value) return false;
+    const result = application.setObjectProps({
+      id: selectedObjectId.value,
+      props
+    });
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return false;
     }
+    syncFromReadModel();
+    resetBaseline.value = application.exportScene();
+    return true;
   }
 
-  function setLayoutMode(next: LayoutMode) {
-    if (next !== 'desktop' && next !== 'tablet' && next !== 'phone') return;
-    layoutMode.value = next;
+  function deleteSelected() {
+    if (!selectedObjectId.value) return false;
+    const result = application.deleteObject(selectedObjectId.value);
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return false;
+    }
+    syncFromReadModel();
+    resetBaseline.value = application.exportScene();
+    return true;
+  }
+
+  function clearScene() {
+    const result = application.clearScene();
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return false;
+    }
+    syncFromReadModel();
+    resetBaseline.value = application.exportScene();
+    setStatusText('场景已清空');
+    return true;
+  }
+
+  function resetScene() {
+    const result = application.loadScene(resetBaseline.value);
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return false;
+    }
+    stopRunning();
+    syncFromReadModel();
+    setStatusText('场景已重置');
+    return true;
+  }
+
+  function serializeScene() {
+    return application.exportScene();
   }
 
   function loadSceneData(data: Record<string, unknown>) {
@@ -536,17 +405,107 @@ export const useSimulatorStore = defineStore('simulator', () => {
       setStatusText(compatibilityError);
       return false;
     }
-    const previousStatus = statusText.value;
-    const ok = getRuntime().loadSceneData(data);
-    if (ok) {
-      closeSceneDependentDrawers();
-      setStatusText('场景已加载');
-    } else {
-      if (statusText.value === previousStatus) {
-        setStatusText('场景加载失败');
-      }
+    const validated = validateSceneData(data);
+    if (!validated.ok) {
+      setStatusText(validated.error);
+      return false;
     }
-    return ok;
+    const result = application.loadScene(validated.data);
+    if (!result.ok) {
+      setStatusText(result.error.message);
+      return false;
+    }
+    stopRunning();
+    syncFromReadModel();
+    resetBaseline.value = application.exportScene();
+    setStatusText('场景已加载');
+    return true;
+  }
+
+  function exportScene() {
+    if (typeof document === 'undefined' || typeof URL === 'undefined') {
+      setStatusText('当前环境不支持导出');
+      return false;
+    }
+    const payload = serializeScene();
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `electric-field-scene-v3-${Date.now()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    setStatusText('场景已导出');
+    return true;
+  }
+
+  async function importScene(file: File) {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      return loadSceneData(parsed);
+    } catch {
+      setStatusText('导入失败：无效 JSON');
+      return false;
+    }
+  }
+
+  async function saveScene(name: string) {
+    const sceneName = String(name ?? '').trim();
+    if (!sceneName) return false;
+    try {
+      await storageAdapter.save(sceneName, serializeScene());
+      await refreshSceneNames();
+      setStatusText(`场景 "${sceneName}" 已保存`);
+      return true;
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : '保存失败');
+      return false;
+    }
+  }
+
+  async function loadScene(name: string) {
+    const sceneName = String(name ?? '').trim();
+    if (!sceneName) return false;
+    try {
+      const data = await storageAdapter.load(sceneName);
+      if (!data) {
+        setStatusText(`场景 "${sceneName}" 不存在`);
+        return false;
+      }
+      return loadSceneData(data as Record<string, unknown>);
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : '加载失败');
+      return false;
+    }
+  }
+
+  function setHostMode(next: EmbedMode) {
+    hostMode.value = next === 'view' ? 'view' : 'edit';
+    if (hostMode.value === 'view') {
+      dragState.value = null;
+    }
+  }
+
+  function setLayoutMode(next: LayoutMode) {
+    if (next !== 'desktop' && next !== 'tablet' && next !== 'phone') return;
+    layoutMode.value = next;
+  }
+
+  function mountRuntime() {
+    if (runtimeMounted.value) return;
+    runtimeMounted.value = true;
+    syncFromReadModel();
+    void refreshSceneNames();
+  }
+
+  function unmountRuntime() {
+    if (!runtimeMounted.value) return;
+    runtimeMounted.value = false;
+    stopLoop();
   }
 
   async function bootstrapFromEmbed(config: EmbedConfig) {
@@ -560,283 +519,67 @@ export const useSimulatorStore = defineStore('simulator', () => {
         error: resolved.message
       };
     }
-
     if (resolved.data) {
-      const loaded = loadSceneData(resolved.data as Record<string, unknown>);
+      const loaded = loadSceneData(resolved.data as unknown as Record<string, unknown>);
       if (!loaded) {
         return {
           ok: false as const,
           code: 'validation',
-          error: 'Scene payload rejected by runtime.'
+          error: statusText.value
         };
       }
     }
-
-    if (config.autoplay && !running.value) {
-      toggleRunning();
+    if (config.autoplay) {
+      startRunning();
     }
-
     return { ok: true as const };
   }
 
-  function toggleRunning() {
-    getRuntime().toggleRunning();
-  }
-
-  function startRunning() {
-    getRuntime().start();
-  }
-
-  function stopRunning() {
-    getRuntime().stop();
-  }
-
-  function toggleDemoMode() {
-    getRuntime().toggleDemoMode();
-    closeSceneDependentDrawers();
-  }
-
-  function setTimeStep(next: number) {
-    if (!Number.isFinite(next) || next <= 0) return;
-    getRuntime().setTimeStep(next);
-    timeStep.value = next;
-  }
-
-  function setShowEnergyOverlay(next: boolean) {
-    const current = getRuntime();
-    showEnergyOverlay.value = !!next;
-    current.scene.settings.showEnergy = !!next;
-    current.requestRender({ updateUI: true, trackBaseline: false });
-  }
-
-  function setPixelsPerMeter(next: number) {
-    if (!Number.isFinite(next) || next <= 0) return;
-    const current = getRuntime();
-    pixelsPerMeter.value = next;
-    current.scene.settings.pixelsPerMeter = next;
-    current.requestRender({ invalidateFields: true, updateUI: true });
-  }
-
-  function setGravity(next: number) {
-    if (!Number.isFinite(next) || next < 0) return;
-    const current = getRuntime();
-    gravity.value = next;
-    current.scene.settings.gravity = next;
-    current.requestRender({ updateUI: true });
-  }
-
-  function setBoundaryMode(next: 'margin' | 'remove' | 'bounce' | 'wrap') {
-    const current = getRuntime();
-    boundaryMode.value = next;
-    current.scene.settings.boundaryMode = next;
-    current.requestRender({ updateUI: true });
-  }
-
-  function setBoundaryMargin(next: number) {
-    if (!Number.isFinite(next) || next < 0) return;
-    const current = getRuntime();
-    boundaryMargin.value = next;
-    current.scene.settings.boundaryMargin = next;
-    current.requestRender({ updateUI: true });
-  }
-
-  function setVertexEditMode(next: boolean) {
-    const current = getRuntime();
-    const enabled = !!next;
-    vertexEditMode.value = enabled;
-    current.scene.settings.vertexEditMode = enabled;
-    current.requestRender({ updateUI: true, trackBaseline: false });
-  }
-
-  function createObjectAtCenter(type: string) {
-    if (!type) return;
-    getRuntime().createObjectAtCenter(type);
-  }
-
-  function duplicateSelected() {
-    getRuntime().duplicateSelected();
-  }
-
-  function deleteSelected() {
-    getRuntime().deleteSelected();
-    closePropertyPanel();
-  }
-
-  function resetScene() {
-    const restored = getRuntime().resetScene();
-    if (!restored) {
-      setStatusText('暂无可重置的起始状态');
-      return;
-    }
-    closeSceneDependentDrawers();
-  }
-
-  function clearScene() {
-    getRuntime().clearScene();
-    closeSceneDependentDrawers();
-  }
-
-  function saveScene(name: string) {
-    if (!name || !name.trim()) return false;
-    const sceneName = name.trim();
-    const ok = getRuntime().saveScene(sceneName);
-    if (ok) {
-      setStatusText(`场景 "${sceneName}" 已保存`);
-    } else {
-      setStatusText(`场景 "${sceneName}" 保存失败`);
-    }
-    return ok;
-  }
-
-  function loadScene(name: string) {
-    if (!name || !name.trim()) return false;
-    const ok = getRuntime().loadScene(name.trim());
-    if (ok) {
-      closeSceneDependentDrawers();
-      setStatusText(`场景 "${name.trim()}" 已加载`);
-    } else {
-      setStatusText(`场景 "${name.trim()}" 不存在`);
-    }
-    return ok;
-  }
-
-  function exportScene() {
-    getRuntime().exportScene();
-    setStatusText('场景已导出');
-  }
-
-  async function importScene(file: File) {
-    const previousStatus = statusText.value;
-    const ok = await getRuntime().importScene(file);
-    if (ok) {
-      closeSceneDependentDrawers();
-      setStatusText('场景已导入');
-    } else {
-      if (statusText.value === previousStatus) {
-        setStatusText('导入失败');
-      }
-    }
-    return ok;
-  }
-
-  function loadPreset(name: string) {
-    const preset = Presets.get(name);
-    if (!preset) return false;
-    const current = getRuntime();
-    current.stop();
-    current.scene.clear();
-    current.scene.loadFromData(preset.data);
-    closeSceneDependentDrawers();
-    current.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
-    setStatusText(`已加载预设场景: ${preset.name}`);
-    return true;
-  }
-
-  function toggleTheme() {
-    getRuntime().toggleTheme();
-  }
-
-  function setStatusText(text: string) {
-    const message = String(text || '就绪');
-    statusText.value = message;
-    runtime.value?.setStatusText(message);
-  }
-
-  function applyPropertyValues(values: Record<string, unknown>) {
-    try {
-      getRuntime().applySelectedProperties(values);
-      refreshSelectedPropertyPayload();
-      return { ok: true as const };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '属性应用失败';
-      setStatusText(message);
-      return { ok: false as const, error: message };
-    }
-  }
+  syncFromReadModel();
 
   return {
-    toolbarGroups,
     hostMode,
     layoutMode,
-    phoneDensityMode,
-    classroomMode,
-    activeDrawer,
-    viewMode,
+    toolbarGroups,
     running,
-    demoMode,
     timeStep,
+    timeStepLabel,
     fps,
     objectCount,
-    particleCount,
     selectedObjectId,
+    selectedObject,
+    viewport,
+    objects,
+    sceneNames,
     statusText,
-    geometryInteraction,
-    showEnergyOverlay,
-    pixelsPerMeter,
-    gravity,
-    boundaryMode,
-    boundaryMargin,
-    vertexEditMode,
-    propertyDrawerOpen,
-    propertyTitle,
-    propertySections,
-    propertyValues,
-    phoneRecentGeometrySourceKeys,
-    variablesPanelOpen,
-    variableDraft,
-    markdownBoardOpen,
-    markdownContent,
-    markdownMode,
-    markdownFontSize,
-    timeStepLabel,
-    showBoundaryMarginControl,
-    demoButtonLabel,
-    demoButtonTitle,
+    viewMode,
+    setStatusText,
     mountRuntime,
     unmountRuntime,
     setHostMode,
     setLayoutMode,
-    setPhoneDensityMode,
-    togglePhoneDensityMode,
-    setClassroomMode,
-    toggleClassroomMode,
-    loadSceneData,
-    bootstrapFromEmbed,
-    toggleRunning,
+    setViewportSize,
     startRunning,
     stopRunning,
-    toggleDemoMode,
+    toggleRunning,
     setTimeStep,
-    setShowEnergyOverlay,
-    setPixelsPerMeter,
-    setGravity,
-    setBoundaryMode,
-    setBoundaryMargin,
-    setVertexEditMode,
     createObjectAtCenter,
-    duplicateSelected,
+    selectObjectById,
+    selectObjectAt,
+    hitTestObjectId,
+    beginObjectDrag,
+    updateObjectDrag,
+    commitObjectDrag,
+    cancelObjectDrag,
+    setSelectedObjectProps,
     deleteSelected,
-    resetScene,
     clearScene,
-    saveScene,
-    loadScene,
+    resetScene,
+    loadSceneData,
     exportScene,
     importScene,
-    loadPreset,
-    toggleTheme,
-    setStatusText,
-    refreshSelectedPropertyPayload,
-    rememberPhoneGeometryEdit,
-    openPropertyPanel,
-    closePropertyPanel,
-    applyPropertyValues,
-    openVariablesPanel,
-    closeVariablesPanel,
-    applyVariables,
-    toggleMarkdownBoard,
-    closeMarkdownBoard,
-    setMarkdownContent,
-    setMarkdownMode,
-    setMarkdownFontSize
+    saveScene,
+    loadScene,
+    bootstrapFromEmbed
   };
 });

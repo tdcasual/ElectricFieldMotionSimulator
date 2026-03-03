@@ -6,13 +6,13 @@ const quickstartPath = 'QUICKSTART.md';
 const hardCutPlanPath = 'docs/plans/2026-03-02-geometry-v2-hardcut-implementation-plan.md';
 const docsIndexPath = 'docs/README.md';
 
-test('quickstart documents v2 scene contract and does not require legacy top-level arrays', () => {
+test('quickstart documents v3 scene contract and does not require legacy top-level arrays', () => {
   const text = fs.readFileSync(quickstartPath, 'utf8');
 
   assert.match(
     text,
-    /version\s*\/\s*settings\s*\/\s*objects|version,\s*settings,\s*objects/i,
-    'QUICKSTART must describe the v2 scene contract (version/settings/objects).'
+    /version.*3\.0|version.*revision.*running.*timeStep.*viewport.*selectedObjectId.*objects/si,
+    'QUICKSTART must describe the v3 scene contract.'
   );
 
   assert.doesNotMatch(

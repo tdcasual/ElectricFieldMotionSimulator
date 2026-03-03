@@ -1,254 +1,234 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import AuthoringPanels from './components/AuthoringPanels.vue';
-import AppStatusFooter from './components/AppStatusFooter.vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import CanvasViewport from './components/CanvasViewport.vue';
-import DesktopToolbarSidebar from './components/DesktopToolbarSidebar.vue';
-import GeometryOverlayBadge from './components/GeometryOverlayBadge.vue';
-import HeaderActionButtons from './components/HeaderActionButtons.vue';
-import HeaderStatusAndSettings from './components/HeaderStatusAndSettings.vue';
-import ObjectActionBar from './components/ObjectActionBar.vue';
-import PhoneAuthoringSheets from './components/PhoneAuthoringSheets.vue';
-import PhoneBottomNav from './components/PhoneBottomNav.vue';
-import SelectionContextMenu from './components/SelectionContextMenu.vue';
-import { useAppActions } from './modes/useAppActions';
-import { useAppShellClass } from './modes/useAppShellClass';
-import { useAppUiState } from './modes/useAppUiState';
-import { usePhoneSheets } from './modes/usePhoneSheets';
-import { useViewportLayout } from './modes/useViewportLayout';
 import { useSimulatorStore } from './stores/simulatorStore';
 
 const simulatorStore = useSimulatorStore();
 const importFileInput = ref<HTMLInputElement | null>(null);
-const { phoneActiveSheet, showAuthoringControls, isPhoneLayout, phoneAddSheetOpen, phoneSelectedSheetOpen, phoneSceneSheetOpen, phoneMoreSheetOpen, phoneAnySheetOpen, closePhoneSheets, setPhoneActiveSheet } =
-  usePhoneSheets(simulatorStore);
-const { isCoarsePointer, mountViewportLayout, unmountViewportLayout } = useViewportLayout({
-  setLayoutMode: (mode) => simulatorStore.setLayoutMode(mode)
-});
-const { phoneSelectedScale, phoneSelectedGeometryRows, propertyDrawerModel, markdownBoardModel, variablesPanelModel, showObjectActionBar, showPhoneBottomNav, phoneSheetNavigationLocked, phoneDensityClass } = useAppUiState({
-  simulatorStore,
-  showAuthoringControls,
-  isPhoneLayout,
-  phoneAnySheetOpen,
-  isCoarsePointer
-});
-const appActions = useAppActions({
-  simulatorStore,
-  isPhoneLayout,
-  closePhoneSheets,
-  importFileInput
-});
+const sceneNameDraft = ref('v3-scene');
 
-function toggleVariablesPanelFromHeader() {
-  if (simulatorStore.variablesPanelOpen) {
-    simulatorStore.closeVariablesPanel();
-    return;
-  }
-  appActions.openVariablesPanel();
+function createObject(type: string) {
+  simulatorStore.createObjectAtCenter(type);
 }
 
-const { appShellClass } = useAppShellClass({
-  simulatorStore,
-  phoneAddSheetOpen,
-  phoneSceneSheetOpen,
-  phoneMoreSheetOpen,
-  phoneSelectedSheetOpen,
-  phoneDensityClass
-});
+function updateSelectedNumericProp(key: string, value: unknown) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return;
+  simulatorStore.setSelectedObjectProps({ [key]: numeric });
+}
 
-onMounted(async () => {
-  mountViewportLayout();
-  if (import.meta.env.MODE !== 'test') {
-    await nextTick();
-    simulatorStore.mountRuntime();
+function updateSelectedColor(value: unknown) {
+  const color = String(value ?? '').trim();
+  if (!color) return;
+  simulatorStore.setSelectedObjectProps({ color });
+}
+
+async function saveScene() {
+  await simulatorStore.saveScene(sceneNameDraft.value);
+}
+
+async function loadScene() {
+  await simulatorStore.loadScene(sceneNameDraft.value);
+}
+
+function openImportDialog() {
+  importFileInput.value?.click();
+}
+
+async function handleImportChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (file) {
+    await simulatorStore.importScene(file);
   }
+  input.value = '';
+}
+
+function clearScene() {
+  if (simulatorStore.viewMode) return;
+  simulatorStore.clearScene();
+}
+
+function resetScene() {
+  simulatorStore.resetScene();
+}
+
+onMounted(() => {
+  simulatorStore.mountRuntime();
 });
 
 onBeforeUnmount(() => {
-  unmountViewportLayout();
-  if (import.meta.env.MODE !== 'test') {
-    simulatorStore.unmountRuntime();
-  }
+  simulatorStore.unmountRuntime();
 });
 </script>
 
 <template>
-  <div id="app" data-testid="app-shell" :class="appShellClass">
+  <div id="app" :class="['layout-desktop', 'panel-open', { 'view-mode': simulatorStore.viewMode }]">
     <header id="header">
-      <h1>⚡ 电磁场粒子运动模拟器</h1>
+      <h1>Electric Field Motion Simulator V3</h1>
       <div class="header-controls">
-        <HeaderActionButtons
-          :is-phone-layout="isPhoneLayout"
-          :show-authoring-controls="showAuthoringControls"
-          :running="simulatorStore.running"
-          :classroom-mode="simulatorStore.classroomMode"
-          :variables-panel-open="simulatorStore.variablesPanelOpen"
-          :markdown-board-open="simulatorStore.markdownBoardOpen"
-          :demo-mode="simulatorStore.demoMode"
-          :demo-button-title="simulatorStore.demoButtonTitle"
-          :demo-button-label="simulatorStore.demoButtonLabel"
-          @toggle-play="appActions.togglePlayPause"
-          @toggle-classroom="simulatorStore.toggleClassroomMode"
-          @reset-scene="appActions.resetScene"
-          @clear-scene="appActions.clearScene"
-          @save-scene="appActions.saveScene"
-          @load-scene="appActions.loadScene"
-          @export-scene="appActions.exportScene"
-          @open-import="appActions.openImportDialog"
-          @toggle-theme="appActions.toggleTheme"
-          @open-variables="toggleVariablesPanelFromHeader"
-          @toggle-markdown="appActions.toggleMarkdownBoard"
-          @toggle-demo="appActions.toggleDemoMode"
-        />
-        <input
-          id="import-file-input"
-          ref="importFileInput"
-          type="file"
-          accept=".json"
-          style="display: none"
-          @change="appActions.handleImportChange"
-        />
-        <HeaderStatusAndSettings
-          :is-phone-layout="isPhoneLayout"
-          :show-authoring-controls="showAuthoringControls"
-          :status-text="simulatorStore.statusText"
-          :object-count="simulatorStore.objectCount"
-          :particle-count="simulatorStore.particleCount"
-          :show-energy-overlay="simulatorStore.showEnergyOverlay"
-          :pixels-per-meter="simulatorStore.pixelsPerMeter"
-          :gravity="simulatorStore.gravity"
-          :boundary-mode="simulatorStore.boundaryMode"
-          :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
-          :boundary-margin="simulatorStore.boundaryMargin"
-          :time-step="simulatorStore.timeStep"
-          :time-step-label="simulatorStore.timeStepLabel"
-          :vertex-edit-mode="simulatorStore.vertexEditMode"
-          :demo-mode="simulatorStore.demoMode"
-          @set-show-energy="appActions.setShowEnergy"
-          @set-pixels-per-meter="appActions.setPixelsPerMeter"
-          @set-gravity="appActions.setGravity"
-          @set-boundary-mode="appActions.setBoundaryMode"
-          @set-boundary-margin="appActions.setBoundaryMargin"
-          @set-time-step="appActions.setTimeStep"
-          @set-vertex-edit-mode="appActions.setVertexEditMode"
-        />
+        <div class="header-actions">
+          <button class="btn btn-primary" @click="simulatorStore.toggleRunning">
+            {{ simulatorStore.running ? 'Pause' : 'Play' }}
+          </button>
+          <button class="btn" @click="resetScene">Reset</button>
+          <button class="btn" @click="clearScene" :disabled="simulatorStore.viewMode">Clear</button>
+          <button class="btn" @click="simulatorStore.deleteSelected" :disabled="!simulatorStore.selectedObjectId || simulatorStore.viewMode">
+            Delete Selected
+          </button>
+          <button class="btn" @click="simulatorStore.exportScene">Export</button>
+          <button class="btn" @click="openImportDialog">Import</button>
+          <input
+            ref="importFileInput"
+            type="file"
+            accept=".json"
+            style="display: none"
+            @change="handleImportChange"
+          />
+        </div>
+        <div class="header-settings">
+          <label class="control-label">
+            Time Step
+            <input
+              id="timestep-slider"
+              type="number"
+              min="0.001"
+              step="0.001"
+              :value="simulatorStore.timeStep"
+              @change="(event) => simulatorStore.setTimeStep(Number((event.target as HTMLInputElement).value))"
+            />
+            <span id="timestep-value">{{ simulatorStore.timeStepLabel }}</span>
+          </label>
+          <label class="control-label">
+            Scene
+            <input
+              type="text"
+              :value="sceneNameDraft"
+              @input="(event) => (sceneNameDraft = (event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <button class="btn" @click="saveScene">Save</button>
+          <button class="btn" @click="loadScene">Load</button>
+        </div>
       </div>
     </header>
 
-    <DesktopToolbarSidebar
-      v-if="showAuthoringControls && !isPhoneLayout"
-      :groups="simulatorStore.toolbarGroups"
-      @create="appActions.createObjectFromToolbar"
-      @load-preset="appActions.loadPresetAndClose"
-    />
-    <PhoneAuthoringSheets
-      :show-authoring-controls="showAuthoringControls"
-      :is-phone-layout="isPhoneLayout"
-      :phone-add-sheet-open="phoneAddSheetOpen"
-      :phone-selected-sheet-open="phoneSelectedSheetOpen"
-      :phone-scene-sheet-open="phoneSceneSheetOpen"
-      :phone-more-sheet-open="phoneMoreSheetOpen"
-      :phone-any-sheet-open="phoneAnySheetOpen"
-      :toolbar-groups="simulatorStore.toolbarGroups"
-      :selected-object-id="simulatorStore.selectedObjectId"
-      :property-title="simulatorStore.propertyTitle || '选中对象'"
-      :phone-selected-scale="phoneSelectedScale"
-      :phone-selected-geometry-rows="phoneSelectedGeometryRows"
-      :show-energy-overlay="simulatorStore.showEnergyOverlay"
-      :pixels-per-meter="simulatorStore.pixelsPerMeter"
-      :gravity="simulatorStore.gravity"
-      :boundary-mode="simulatorStore.boundaryMode"
-      :show-boundary-margin-control="simulatorStore.showBoundaryMarginControl"
-      :boundary-margin="simulatorStore.boundaryMargin"
-      :time-step="simulatorStore.timeStep"
-      :time-step-label="simulatorStore.timeStepLabel"
-      :vertex-edit-mode="simulatorStore.vertexEditMode"
-      :demo-mode="simulatorStore.demoMode"
-      @close="closePhoneSheets"
-      @create-object="appActions.createObjectFromToolbar"
-      @load-preset="appActions.loadPresetAndClose"
-      @open-selected-properties="appActions.openSelectedPropertiesFromPhoneSheet"
-      @duplicate-selected="appActions.duplicateSelectedFromPhoneSheet"
-      @delete-selected="appActions.deleteSelectedFromPhoneSheet"
-      @update-phone-selected-value="appActions.applyPhoneSelectedQuickValue"
-      @set-show-energy="appActions.setShowEnergy"
-      @set-pixels-per-meter="appActions.setPixelsPerMeter"
-      @set-gravity="appActions.setGravity"
-      @set-boundary-mode="appActions.setBoundaryMode"
-      @set-boundary-margin="appActions.setBoundaryMargin"
-      @set-time-step="appActions.setTimeStep"
-      @set-vertex-edit-mode="appActions.setVertexEditMode"
-      @export-scene="appActions.exportSceneFromPhoneMore"
-      @open-import="appActions.openImportDialogFromPhoneMore"
-      @toggle-theme="appActions.toggleThemeFromPhoneMore"
-      @save-scene="appActions.saveSceneFromPhoneMore"
-      @load-scene="appActions.loadSceneFromPhoneMore"
-      @clear-scene="appActions.clearSceneFromPhoneMore"
-      @open-variables="appActions.openVariablesPanelFromPhoneMore"
-      @toggle-markdown="appActions.toggleMarkdownBoardFromPhoneMore"
-    />
+    <aside id="toolbar">
+      <h2>Objects</h2>
+      <div class="toolbar-content">
+        <section
+          v-for="group in simulatorStore.toolbarGroups"
+          :key="group.key"
+          class="toolbar-group"
+        >
+          <h3 class="toolbar-group-title">{{ group.label }}</h3>
+          <button
+            v-for="entry in group.entries"
+            :key="entry.type"
+            class="tool-item"
+            :disabled="simulatorStore.viewMode"
+            @click="createObject(entry.type)"
+          >
+            <span class="tool-item-label">{{ entry.label }}</span>
+          </button>
+        </section>
+      </div>
+    </aside>
 
-    <CanvasViewport :fps="simulatorStore.fps" />
-    <GeometryOverlayBadge
-      v-if="isPhoneLayout && simulatorStore.geometryInteraction"
-      :source-key="simulatorStore.geometryInteraction.sourceKey"
-      :real-value="simulatorStore.geometryInteraction.realValue"
-      :display-value="simulatorStore.geometryInteraction.displayValue"
-      :object-scale="simulatorStore.geometryInteraction.objectScale"
-    />
-    <ObjectActionBar
-      v-if="showObjectActionBar"
-      @open-properties="appActions.openSelectedPropertiesFromActionBar"
-      @duplicate="appActions.duplicateSelectedFromActionBar"
-      @delete="appActions.deleteSelectedFromActionBar"
-    />
+    <CanvasViewport />
 
-    <AuthoringPanels
-      :show-authoring-controls="showAuthoringControls"
-      :property-drawer-model="propertyDrawerModel"
-      :property-title="simulatorStore.propertyTitle"
-      :layout-mode="simulatorStore.layoutMode"
-      :property-sections="simulatorStore.propertySections"
-      :property-values="simulatorStore.propertyValues"
-      :density-mode="simulatorStore.phoneDensityMode"
-      :markdown-board-model="markdownBoardModel"
-      :markdown-content="simulatorStore.markdownContent"
-      :markdown-mode="simulatorStore.markdownMode"
-      :markdown-font-size="simulatorStore.markdownFontSize"
-      :variables-panel-model="variablesPanelModel"
-      :variable-draft="simulatorStore.variableDraft"
-      @update:property-drawer-model="propertyDrawerModel = $event"
-      @toggle-density="simulatorStore.togglePhoneDensityMode"
-      @apply-properties="appActions.applyProperties"
-      @update:markdown-board-model="markdownBoardModel = $event"
-      @update:markdown-content="simulatorStore.setMarkdownContent"
-      @update:markdown-mode="simulatorStore.setMarkdownMode"
-      @update:markdown-font-size="simulatorStore.setMarkdownFontSize"
-      @update:variables-panel-model="variablesPanelModel = $event"
-      @apply-variables="appActions.applyVariables"
-    />
+    <section id="property-panel" class="panel">
+      <div class="panel-header">
+        <h3>Selection</h3>
+      </div>
+      <div class="panel-content">
+        <template v-if="simulatorStore.selectedObject">
+          <p><strong>ID:</strong> {{ simulatorStore.selectedObject.id }}</p>
+          <p><strong>Type:</strong> {{ simulatorStore.selectedObject.type }}</p>
+          <div class="form-row">
+            <label>X</label>
+            <input
+              type="number"
+              :value="simulatorStore.selectedObject.x"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedNumericProp('x', (event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="form-row">
+            <label>Y</label>
+            <input
+              type="number"
+              :value="simulatorStore.selectedObject.y"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedNumericProp('y', (event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="form-row">
+            <label>Velocity X</label>
+            <input
+              type="number"
+              :value="simulatorStore.selectedObject.velocityX"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedNumericProp('velocityX', (event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="form-row">
+            <label>Velocity Y</label>
+            <input
+              type="number"
+              :value="simulatorStore.selectedObject.velocityY"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedNumericProp('velocityY', (event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="form-row">
+            <label>Radius</label>
+            <input
+              type="number"
+              min="1"
+              :value="simulatorStore.selectedObject.radius"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedNumericProp('radius', (event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="form-row">
+            <label>Width</label>
+            <input
+              type="number"
+              min="1"
+              :value="simulatorStore.selectedObject.width"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedNumericProp('width', (event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="form-row">
+            <label>Height</label>
+            <input
+              type="number"
+              min="1"
+              :value="simulatorStore.selectedObject.height"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedNumericProp('height', (event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="form-row">
+            <label>Color</label>
+            <input
+              type="color"
+              :value="simulatorStore.selectedObject.color"
+              :disabled="simulatorStore.viewMode"
+              @change="(event) => updateSelectedColor((event.target as HTMLInputElement).value)"
+            />
+          </div>
+        </template>
+        <p v-else>No object selected.</p>
+      </div>
+    </section>
 
-    <PhoneBottomNav
-      v-if="showPhoneBottomNav"
-      :model-value="phoneActiveSheet"
-      :running="simulatorStore.running"
-      :has-selection="!!simulatorStore.selectedObjectId"
-      :sheet-navigation-locked="phoneSheetNavigationLocked"
-      @toggle-play="appActions.togglePlayPauseFromPhoneNav"
-      @update:modelValue="setPhoneActiveSheet"
-    />
-
-    <AppStatusFooter
-      :status-text="simulatorStore.statusText"
-      :object-count="simulatorStore.objectCount"
-      :particle-count="simulatorStore.particleCount"
-    />
-
-    <SelectionContextMenu
-      v-if="showAuthoringControls"
-      @open-properties="appActions.openSelectedProperties"
-      @duplicate="appActions.duplicateSelected"
-      @delete="appActions.deleteSelected"
-    />
+    <footer id="footer">
+      <span id="status-text">{{ simulatorStore.statusText }}</span>
+      <span>Objects: {{ simulatorStore.objectCount }}</span>
+      <span>FPS: {{ simulatorStore.fps }}</span>
+    </footer>
   </div>
 </template>

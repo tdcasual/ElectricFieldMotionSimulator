@@ -31,16 +31,7 @@ export default defineConfig({
     {
       name: 'desktop-chromium',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /.*\.spec\.ts/,
-      testIgnore: /(touch-core-path|phone-touch-gestures|phone-import-recovery|phone-safe-area)\.spec\.ts/
-    },
-    {
-      name: 'tablet-chromium',
-      use: {
-        ...devices['iPad (gen 7)'],
-        browserName: 'chromium'
-      },
-      testMatch: /touch-core-path\.spec\.ts/
+      testMatch: /v3-.*\.spec\.ts/
     },
     {
       name: 'phone-chromium',
@@ -48,7 +39,7 @@ export default defineConfig({
         ...devices['iPhone 13'],
         browserName: 'chromium'
       },
-      testMatch: /(touch-core-path|phone-touch-gestures|phone-import-recovery|phone-safe-area)\.spec\.ts/
+      testMatch: /v3-core\.spec\.ts/
     }
   ]
 });
