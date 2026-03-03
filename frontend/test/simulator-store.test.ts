@@ -293,6 +293,20 @@ describe('simulatorStore demo mode', () => {
     expect(store.statusText).toBe('场景 "demo-fail" 保存失败');
   });
 
+  it('shows migration guidance when loading non-v2 scene payload', () => {
+    const store = useSimulatorStore();
+
+    const ok = store.loadSceneData({
+      version: '1.0',
+      settings: {},
+      objects: []
+    });
+
+    expect(ok).toBe(false);
+    expect(store.statusText).toMatch(/仅支持\s*2\.0/);
+    expect(store.statusText).toMatch(/migrate:scene-v1-v2/);
+  });
+
   it('syncs and clears geometry interaction overlay from runtime snapshot payload', () => {
     const store = useSimulatorStore();
     const mountSpy = vi.spyOn(SimulatorRuntime.prototype, 'mount').mockImplementation(() => {});

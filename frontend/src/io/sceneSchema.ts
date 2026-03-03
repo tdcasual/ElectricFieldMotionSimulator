@@ -16,7 +16,7 @@ export function getSceneCompatibilityError(data: unknown): string | null {
 
   const hasVersionIssue = result.error.issues.some((issue) => issue.path[0] === 'version');
   if (hasVersionIssue) {
-    return `仅支持 ${SCENE_VERSION} 版本场景`;
+    return `仅支持 ${SCENE_VERSION} 版本场景。请先运行 migrate:scene-v1-v2 迁移命令。`;
   }
   return '场景数据格式无效';
 }

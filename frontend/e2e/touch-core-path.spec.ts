@@ -591,6 +591,7 @@ test('phone more sheet legacy import is rejected with explicit v2 policy message
   await page.setInputFiles('#import-file-input', legacyScenePath);
 
   await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/2\.0/);
+  await expect(page.locator('[data-testid="phone-status-strip"] .phone-status-text')).toHaveText(/migrate:scene-v1-v2/);
   await expect(page.locator('#object-count')).toHaveText(/对象:\s*0/);
   await expect(page.locator('#particle-count')).toHaveText(/粒子:\s*0/);
 });
