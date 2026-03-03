@@ -64,7 +64,6 @@ User interaction
 
 - `npm run lint:frontend`
 - `npm run typecheck:frontend`
-- `npm test`
 - `npm run test:frontend`
 - `npm run test:e2e`
 - `npm run quality:all`

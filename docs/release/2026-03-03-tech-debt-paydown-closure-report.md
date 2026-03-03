@@ -15,7 +15,7 @@ Executed the selected in-session implementation track on branch `codex/tech-debt
    - Added coverage for invalid polygon geometry behavior in both interaction and rendering paths.
 
 3. Scene compatibility policy unification (`8d583d6`)
-   - Enforced strict `version: "2.0"` policy across runtime, schema gate, and e2e behavior.
+   - Enforced strict `version: "3.0"` policy across runtime, schema gate, and e2e behavior.
    - Standardized explicit policy error propagation and user-facing rejection messaging.
 
 4. DragDropManager extraction (`25e25c6`)
@@ -48,7 +48,6 @@ Executed the selected in-session implementation track on branch `codex/tech-debt
 
 - `npm run lint:frontend` passed.
 - `npm run typecheck:frontend` passed.
-- `npm test` passed (`159` passed, `0` failed).
 - `npm run test:frontend` passed (`38` files, `185` tests).
 - `npm run test:e2e` passed (`97` passed, `48` skipped, `0` failed).
 

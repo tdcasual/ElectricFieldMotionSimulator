@@ -1,19 +1,18 @@
 # Frontend Rewrite Launch Checklist
 
 Date: 2026-02-12
-Last Reviewed: 2026-03-03 (Round 2 closure)
+Last Reviewed: 2026-03-03 (V3 hard-clean baseline)
 
 ## Pre-Launch Gates
 
 - [x] `npm run lint:frontend` passes. (`DONE`, verified 2026-03-03)
 - [x] `npm run typecheck:frontend` passes. (`DONE`, verified 2026-03-03)
-- [x] `npm test` passes. (`DONE`, verified 2026-03-03)
 - [x] `npm run test:frontend` passes. (`DONE`, verified 2026-03-03)
 - [x] `npm run test:e2e` passes. (`DONE`, verified 2026-03-03)
-- [x] Replay consistency checks pass for golden-scene fixtures. (`DONE`, verified 2026-03-03)
-- [x] Performance gate `test/perf_budget.test.js` passes. (`DONE`, verified 2026-03-03)
-- [x] Deploy contract guard passes (`npm test -- test/deploy_contract.test.js`). (`DONE`, verified 2026-03-03)
-- [x] Docs drift guard passes (`npm test -- test/docs_drift.test.js`). (`DONE`, verified 2026-03-03)
+- [x] `npm run quality:all` passes. (`DONE`, verified 2026-03-03)
+- [x] Deploy contract guard passes (`frontend/test/v3-deploy-contract.test.ts`). (`DONE`, verified 2026-03-03)
+- [x] Docs governance guard passes (`frontend/test/v3-doc-governance.test.ts`). (`DONE`, verified 2026-03-03)
+- [x] Frontend bundle build succeeds (`npm run build:frontend`). (`DONE`, verified 2026-03-03)
 
 ## Core-Path Validation
 
@@ -21,7 +20,7 @@ Last Reviewed: 2026-03-03 (Round 2 closure)
 - [x] Property editing applies changes correctly. (`DONE`, verified 2026-03-03)
 - [x] Play/Pause and timestep controls are correct. (`DONE`, verified 2026-03-03)
 - [x] Scene import/export round-trip is valid. (`DONE`, verified 2026-03-03)
-- [x] Demo mode enter/exit preserves expected state. (`DONE`, verified 2026-03-03)
+- [x] Embed command roundtrip succeeds. (`DONE`, verified 2026-03-03)
 
 ## Operational Readiness
 

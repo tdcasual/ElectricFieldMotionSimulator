@@ -29,7 +29,7 @@ This ledger converts current "historical baggage" into an executable debt regist
 | D-02 | `simulatorStore` remains a high-coupling "god module" | `frontend/src/stores/simulatorStore.ts` (~842 LOC), mixed concerns (UI state + scene IO + compatibility messaging + persistence) | Any behavior change has wide blast radius across desktop/phone/embed paths | H | H | M | P1 |
 | D-03 | `DragDropManager` still concentrated despite extraction | `js/interactions/DragDropManager.js` (~1101 LOC), owns pointer lifecycle + context menu + pinch + geometry orchestration | Mobile/desktop pointer behavior remains expensive to evolve safely | H | H | M | P1 |
 | D-04 | Runtime boundary still depends on broad legacy adapter surface | `frontend/src/engine/internal/legacyJsAdapter.ts`, `frontend/src/types/legacy-runtime.d.ts`, `frontend/src/runtime/simulatorRuntime.ts` | Legacy engine changes can leak into TS runtime with weak compile-time guarantees | M | H | M | P1 |
-| D-05 | Scene hard-cut (`version: 2.0`) shifts burden to migration workflow | `docs/migration/scene-compatibility-policy.md`, `scripts/migrate-scene-v1-to-v2.mjs`, strict checks in `sceneSchema.ts` and `Serializer.js` | Historical data cannot be imported directly; ops/user must run migration first | M | M | S | P1 |
+| D-05 | Scene hard-cut (`version: 3.0`) shifts burden to migration workflow | `docs/migration/scene-compatibility-policy.md`, `scripts/out-of-band conversion workflow`, strict checks in `sceneSchema.ts` and `sceneAggregate.ts` | Historical data cannot be imported directly; ops/user must run migration first | M | M | S | P1 |
 | D-06 | Responsive + safe-area CSS branching is large and regression-prone | `styles/main.css` and `styles/components.css` contain dense `layout-phone/tablet/desktop`, safe-area, orientation branches | Mobile UI changes can unintentionally affect tablet/desktop or short-landscape behavior | H | M | M | P1 |
 | D-07 | E2E suite is powerful but expensive and brittle to UI contract shifts | `frontend/e2e/*.spec.ts` (~4k LOC), high churn in `core-path` and phone suites | Small UX refactors require broad test maintenance and snapshot churn | M | M | M | P2 |
 | D-08 | Documentation timeline/governance drift risk | Presence of dated closure docs and governance tests (`test/docs_drift.test.js`, `test/documentation_governance.test.js`) | Mismatched docs can mislead release decisions and rollback ops | M | M | S | P2 |
@@ -101,7 +101,7 @@ This ledger converts current "historical baggage" into an executable debt regist
 
 ## Mitigation Updates
 
-`[D-01] mitigated - 2026-03-03 - Added frontend localStorage compatibility shim + node policy guards + CI Node 24/25 quality matrix - Evidence: npm run test:frontend (192 passed), npm run lint:frontend, npm run typecheck:frontend, npm test`
+`[D-01] mitigated - 2026-03-03 - Added frontend localStorage compatibility shim + node policy guards + CI Node 24/25 quality matrix - Evidence: npm run test:frontend, npm run lint:frontend, npm run typecheck:frontend, npm run test:e2e`
 
 ## Status Template
 

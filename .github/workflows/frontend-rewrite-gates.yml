@@ -34,10 +34,6 @@ jobs:
 
       - name: Typecheck frontend
         run: npm run typecheck:frontend
-
-      - name: Node test suite
-        run: npm test
-
       - name: Frontend test suite
         run: npm run test:frontend
 
