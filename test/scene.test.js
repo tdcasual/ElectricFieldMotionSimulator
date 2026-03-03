@@ -226,7 +226,7 @@ test('Serializer.validateSceneData rejects scene payload with non-v2 version', (
   const result = Serializer.validateSceneData(data);
 
   assert.equal(result.valid, false);
-  assert.equal(result.error, '仅支持 2.0 版本场景');
+  assert.equal(result.error, '仅支持 2.0 版本场景。请先运行 migrate:scene-v1-v2 迁移命令。');
 });
 
 test('Serializer.validateSceneData rejects missing objects array', () => {
