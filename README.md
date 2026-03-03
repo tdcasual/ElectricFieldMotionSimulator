@@ -9,6 +9,14 @@
 - 📦 部署产物目录是 `frontend/dist`（请先执行 `npm run build:frontend`）
 - 🚀 或者看更详细的启动说明：[`QUICKSTART.md`](QUICKSTART.md)
 
+## 🧰 运行环境
+
+- Node.js：支持 `24.x` / `25.x`（推荐本地使用 `24.x`）
+- npm：`10+`
+- CI 会对 Node `24` 与 `25` 执行质量门禁，避免版本差异导致误报失败
+- 可使用 `.nvmrc` 一键切换：
+  - `nvm use`
+
 ## ✨ 你可以做什么
 
 - 🧲 拖拽添加对象：电场、磁场、粒子、装置

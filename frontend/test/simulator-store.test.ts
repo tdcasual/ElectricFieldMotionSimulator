@@ -7,6 +7,7 @@ import { useSimulatorStore } from '../src/stores/simulatorStore';
 beforeEach(() => {
   setActivePinia(createPinia());
   if (typeof window !== 'undefined') {
+    expect(typeof window.localStorage.removeItem).toBe('function');
     window.localStorage.removeItem('sim.markdown.content');
     window.localStorage.removeItem('sim.markdown.mode');
     window.localStorage.removeItem('sim.markdown.fontSize');

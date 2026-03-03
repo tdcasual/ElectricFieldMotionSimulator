@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
+const e2eHost = process.env.E2E_HOST || '127.0.0.1';
+const parsedPort = Number.parseInt(process.env.E2E_PORT ?? '', 10);
+const e2ePort = Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : 4273;
+const e2eBaseUrl = `http://${e2eHost}:${e2ePort}`;
 
 export default defineConfig({
   testDir: path.join(__dirname, 'e2e'),
@@ -13,12 +17,12 @@ export default defineConfig({
     timeout: 5_000
   },
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: e2eBaseUrl,
     trace: 'retain-on-failure'
   },
   webServer: {
-    command: 'npm run dev:frontend -- --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173',
+    command: `npm run dev:frontend -- --host ${e2eHost} --port ${e2ePort}`,
+    url: e2eBaseUrl,
     cwd: repoRoot,
     reuseExistingServer: false,
     timeout: 120_000

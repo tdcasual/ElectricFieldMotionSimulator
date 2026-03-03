@@ -2,6 +2,10 @@
   "name": "electric-field-sim",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24 <26",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "npm run dev:frontend",
     "build": "npm run build:frontend",

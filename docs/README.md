@@ -19,6 +19,8 @@
 
 ### 进行中的设计与实施计划
 - `docs/plans/`（按日期命名）
+- `docs/plans/2026-03-03-tech-debt-ledger.md`（技术债台账与优先级）
+- `docs/plans/2026-03-03-d01-node-compatibility-gate-implementation-plan.md`（D-01 Node 兼容门禁执行计划）
 
 ### 发布与运维
 - `docs/release/frontend-rewrite-launch-checklist.md`

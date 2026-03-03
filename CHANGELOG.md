@@ -26,6 +26,14 @@
 - **手机快捷几何编辑效率优化**
   - 新增“最近编辑字段”记忆并在选中面板使用 recent-first 排序
   - 对不兼容几何字段自动丢弃历史，避免跨对象污染
+- **前端测试运行时兼容层**
+  - 在 Vitest setup 新增 localStorage shim，消除 Node 25 下 localStorage API 缺失导致的误报失败
+- **CI 质量门禁 Node 矩阵化**
+  - `frontend-rewrite-gates` 质量门禁改为 Node `24`/`25` 双版本执行
+  - `test:e2e` 保持在 Node `24` 独立 job 运行，降低门禁耗时和不稳定面
+- **E2E 服务端口冲突规避**
+  - Playwright 默认本地服务端口从 `4173` 调整为 `4273`
+  - 支持通过 `E2E_PORT` / `E2E_HOST` 覆盖启动地址，便于多人并行开发
 
 ### 文档 📚
 - 新增 `docs/README.md` 作为文档统一入口
@@ -34,6 +42,9 @@
 - 新增 `test/docs_drift.test.js`，为关键文档增加漂移守卫
 - 更新 `QUICKSTART.md` 场景契约描述，统一为 `version/settings/objects`（`version=2.0`）
 - 回填 `docs/plans/2026-03-02-geometry-v2-hardcut-implementation-plan.md` 当前状态为全量完成
+- 新增 Node 运行时策略基线：`.nvmrc`（`24`）与 `package.json engines`（`>=24 <26`，`npm>=10`）
+- 更新 `README.md`、`TESTING-GUIDE.md`，明确本地推荐 Node `24.x` 与 CI Node `24/25` 校验策略
+- 新增 `test/node_policy.test.js`，为 Node 版本策略与文档一致性增加守卫测试
 
 ## [1.2.0] - 2025-12-06
 

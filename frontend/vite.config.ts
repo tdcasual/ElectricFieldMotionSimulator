@@ -19,6 +19,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    setupFiles: ['./test/setup/storage-shim.ts'],
     include: ['test/**/*.test.ts']
   }
 });
