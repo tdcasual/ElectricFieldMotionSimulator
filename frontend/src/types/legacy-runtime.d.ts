@@ -27,6 +27,7 @@ declare module '*js/core/Scene.js' {
     objects: RuntimeSceneObject[];
     particles: RuntimeSceneObject[];
     selectedObject: RuntimeSceneObject | null;
+    renderer?: unknown;
     isPaused: boolean;
     time: number;
     settings: RuntimeSceneSettings;
@@ -82,8 +83,18 @@ declare module '*js/interactions/DragDropManager.js' {
 }
 
 declare module '*js/core/registerObjects.js' {
+  export type RuntimeRegistryObjectClass = new (config?: RuntimeRecord) => RuntimeSceneObject & {
+    deserialize?: (data: RuntimeRecord) => void;
+    type?: string;
+  };
+
   export type RuntimeRegistryEntry = RuntimeRecord & {
+    type?: string;
+    class: RuntimeRegistryObjectClass;
     label?: string;
+    category?: string;
+    icon?: string;
+    defaults?: (() => RuntimeRecord) | RuntimeRecord;
     rendererKey?: string;
     schema?: (() => unknown[]) | unknown[];
     interaction?: RuntimeRecord;
@@ -92,7 +103,8 @@ declare module '*js/core/registerObjects.js' {
   export const registry: {
     get(type: string): RuntimeRegistryEntry | null;
     create(type: string, data?: RuntimeRecord): RuntimeSceneObject;
-    listByCategory(): Record<string, RuntimeSceneObject[]>;
+    register(type: string, entry: RuntimeRegistryEntry): void;
+    listByCategory(): Record<string, RuntimeRegistryEntry[]>;
   };
 }
 

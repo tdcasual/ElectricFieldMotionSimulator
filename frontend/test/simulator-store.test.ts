@@ -4,19 +4,29 @@ import { Serializer } from '../src/engine/runtimeEngineBridge';
 import { SimulatorRuntime } from '../src/runtime/simulatorRuntime';
 import { useSimulatorStore } from '../src/stores/simulatorStore';
 
-beforeEach(() => setActivePinia(createPinia()));
+beforeEach(() => {
+  setActivePinia(createPinia());
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem('sim.markdown.content');
+    window.localStorage.removeItem('sim.markdown.mode');
+    window.localStorage.removeItem('sim.markdown.fontSize');
+    window.localStorage.removeItem('sim.ui.classroomMode');
+    window.localStorage.removeItem('sim.ui.phoneDensity');
+    window.localStorage.setItem('sim.markdown.fontSize', '16');
+  }
+});
 afterEach(() => vi.restoreAllMocks());
 
 describe('simulatorStore demo mode', () => {
   it('tracks layout mode with desktop/tablet/phone values', () => {
     const store = useSimulatorStore();
-    expect((store as unknown as { layoutMode?: string }).layoutMode).toBe('desktop');
+    expect(store.layoutMode).toBe('desktop');
 
-    (store as unknown as { setLayoutMode: (mode: string) => void }).setLayoutMode('tablet');
-    expect((store as unknown as { layoutMode?: string }).layoutMode).toBe('tablet');
+    store.setLayoutMode('tablet');
+    expect(store.layoutMode).toBe('tablet');
 
-    (store as unknown as { setLayoutMode: (mode: string) => void }).setLayoutMode('phone');
-    expect((store as unknown as { layoutMode?: string }).layoutMode).toBe('phone');
+    store.setLayoutMode('phone');
+    expect(store.layoutMode).toBe('phone');
   });
 
   it('uses readable default markdown font size', () => {
@@ -26,13 +36,13 @@ describe('simulatorStore demo mode', () => {
 
   it('toggles classroom mode state', () => {
     const store = useSimulatorStore();
-    expect((store as unknown as { classroomMode?: boolean }).classroomMode).toBe(false);
+    expect(store.classroomMode).toBe(false);
 
-    (store as unknown as { toggleClassroomMode: () => void }).toggleClassroomMode();
-    expect((store as unknown as { classroomMode?: boolean }).classroomMode).toBe(true);
+    store.toggleClassroomMode();
+    expect(store.classroomMode).toBe(true);
 
-    (store as unknown as { setClassroomMode: (next: boolean) => void }).setClassroomMode(false);
-    expect((store as unknown as { classroomMode?: boolean }).classroomMode).toBe(false);
+    store.setClassroomMode(false);
+    expect(store.classroomMode).toBe(false);
   });
 
   it('toggles running state', () => {
@@ -120,7 +130,7 @@ describe('simulatorStore demo mode', () => {
   it('keeps only one drawer open at a time', () => {
     const store = useSimulatorStore();
 
-    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
+    store.activeDrawer = 'property';
     expect(store.propertyDrawerOpen).toBe(true);
     expect(store.variablesPanelOpen).toBe(false);
     expect(store.markdownBoardOpen).toBe(false);
@@ -139,10 +149,10 @@ describe('simulatorStore demo mode', () => {
   it('clears active drawer when switching host mode to view', () => {
     const store = useSimulatorStore();
     store.openVariablesPanel();
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe('variables');
+    expect(store.activeDrawer).toBe('variables');
 
     store.setHostMode('view');
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+    expect(store.activeDrawer).toBe(null);
     expect(store.propertyDrawerOpen).toBe(false);
     expect(store.variablesPanelOpen).toBe(false);
     expect(store.markdownBoardOpen).toBe(false);
@@ -157,7 +167,7 @@ describe('simulatorStore demo mode', () => {
     const loadOk = store.loadScene('drawer-load-close');
     expect(loadOk).toBe(true);
     expect(store.variablesPanelOpen).toBe(false);
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+    expect(store.activeDrawer).toBe(null);
   });
 
   it('closes variables drawer after successful resetScene to avoid stale drafts', () => {
@@ -169,7 +179,7 @@ describe('simulatorStore demo mode', () => {
     store.resetScene();
 
     expect(store.variablesPanelOpen).toBe(false);
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+    expect(store.activeDrawer).toBe(null);
   });
 
   it('closes variables drawer when toggling demo mode to avoid stale drafts', () => {
@@ -181,7 +191,7 @@ describe('simulatorStore demo mode', () => {
     store.toggleDemoMode();
 
     expect(store.variablesPanelOpen).toBe(false);
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+    expect(store.activeDrawer).toBe(null);
   });
 
   it('keeps markdown board open after successful importScene to preserve notes', async () => {
@@ -194,7 +204,7 @@ describe('simulatorStore demo mode', () => {
 
     expect(ok).toBe(true);
     expect(store.markdownBoardOpen).toBe(true);
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe('markdown');
+    expect(store.activeDrawer).toBe('markdown');
     expect(store.statusText).toBe('场景已导入');
   });
 
@@ -203,14 +213,14 @@ describe('simulatorStore demo mode', () => {
     store.openVariablesPanel();
     expect(store.variablesPanelOpen).toBe(true);
 
-    (store as unknown as { variableDraft: Record<string, number> }).variableDraft = { draftVar: 7 };
+    store.variableDraft = { draftVar: 7 };
 
     vi.spyOn(SimulatorRuntime.prototype, 'importScene').mockResolvedValue(false);
     const ok = await store.importScene({ name: 'invalid-scene.json' } as File);
 
     expect(ok).toBe(false);
     expect(store.variablesPanelOpen).toBe(true);
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe('variables');
+    expect(store.activeDrawer).toBe('variables');
     expect(store.variableDraft).toEqual({ draftVar: 7 });
     expect(store.statusText).toBe('导入失败');
   });
@@ -218,7 +228,7 @@ describe('simulatorStore demo mode', () => {
   it('dispatches tap-chain reset event when closing property panel', () => {
     const store = useSimulatorStore();
     const dispatchSpy = vi.spyOn(document, 'dispatchEvent');
-    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
+    store.activeDrawer = 'property';
 
     store.closePropertyPanel();
 
@@ -241,14 +251,14 @@ describe('simulatorStore demo mode', () => {
       geometryInteraction: null
     });
 
-    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    store.activeDrawer = 'property';
+    store.selectedObjectId = 'obj-1';
     expect(store.propertyDrawerOpen).toBe(true);
 
     store.mountRuntime();
 
     expect(store.propertyDrawerOpen).toBe(false);
-    expect((store as unknown as { activeDrawer: string | null }).activeDrawer).toBe(null);
+    expect(store.activeDrawer).toBe(null);
   });
 
   it('refreshes property payload when selection changes while property drawer is open', () => {
@@ -272,10 +282,10 @@ describe('simulatorStore demo mode', () => {
       values: { charge: 2 }
     });
 
-    (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
-    (store as unknown as { propertyTitle: string }).propertyTitle = '对象 1';
-    (store as unknown as { propertyValues: Record<string, unknown> }).propertyValues = { charge: 1 };
+    store.activeDrawer = 'property';
+    store.selectedObjectId = 'obj-1';
+    store.propertyTitle = '对象 1';
+    store.propertyValues = { charge: 1 };
 
     store.mountRuntime();
 
@@ -360,7 +370,7 @@ describe('simulatorStore demo mode', () => {
 
   it('keeps recent phone geometry edits by source key and drops incompatible history', () => {
     const store = useSimulatorStore();
-    (store as unknown as { propertySections: unknown[] }).propertySections = [
+    store.propertySections = [
       {
         fields: [
           { key: 'radius', sourceKey: 'radius', geometryRole: 'real', type: 'number' },
@@ -375,7 +385,7 @@ describe('simulatorStore demo mode', () => {
     store.rememberPhoneGeometryEdit('width');
     expect(store.phoneRecentGeometrySourceKeys).toEqual(['width', 'radius']);
 
-    (store as unknown as { propertySections: unknown[] }).propertySections = [
+    store.propertySections = [
       {
         fields: [
           { key: 'length', sourceKey: 'length', geometryRole: 'real', type: 'number' },

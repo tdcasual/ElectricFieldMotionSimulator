@@ -142,7 +142,7 @@ describe('App shell', () => {
   it('applies phone layout class from store mode', () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);
-    (store as unknown as { setLayoutMode?: (mode: string) => void }).setLayoutMode?.('phone');
+    store.setLayoutMode('phone');
 
     const wrapper = mount(App, {
       global: {
@@ -162,7 +162,7 @@ describe('App shell', () => {
       writable: true
     });
 
-    (store as unknown as { setPhoneDensityMode?: (mode: string) => void }).setPhoneDensityMode?.('compact');
+    store.setPhoneDensityMode('compact');
 
     const wrapper = mount(App, {
       global: {
@@ -183,7 +183,7 @@ describe('App shell', () => {
       writable: true
     });
 
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    store.selectedObjectId = 'obj-1';
 
     const wrapper = mount(App, {
       global: {
@@ -270,7 +270,7 @@ describe('App shell', () => {
       configurable: true,
       writable: true
     });
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    store.selectedObjectId = 'obj-1';
 
     const wrapper = mount(App, {
       global: {
@@ -290,16 +290,8 @@ describe('App shell', () => {
       configurable: true,
       writable: true
     });
-    (store as unknown as { setLayoutMode?: (mode: string) => void }).setLayoutMode?.('phone');
-    (store as unknown as {
-      geometryInteraction: {
-        objectId: string | null;
-        sourceKey: string;
-        realValue: number;
-        displayValue: number;
-        objectScale: number;
-      } | null;
-    }).geometryInteraction = {
+    store.setLayoutMode('phone');
+    store.geometryInteraction = {
       objectId: 'obj-geo-1',
       sourceKey: 'radius',
       realValue: 1.25,
@@ -319,7 +311,7 @@ describe('App shell', () => {
     expect(wrapper.get('[data-testid="geometry-overlay-display"]').text()).toBe('82');
     expect(wrapper.get('[data-testid="geometry-overlay-scale"]').text()).toBe('1.64');
 
-    (store as unknown as { geometryInteraction: null }).geometryInteraction = null;
+    store.geometryInteraction = null;
     await nextTick();
     expect(wrapper.find('[data-testid="geometry-overlay-badge"]').exists()).toBe(false);
   });
@@ -332,15 +324,7 @@ describe('App shell', () => {
       configurable: true,
       writable: true
     });
-    (store as unknown as {
-      geometryInteraction: {
-        objectId: string | null;
-        sourceKey: string;
-        realValue: number;
-        displayValue: number;
-        objectScale: number;
-      } | null;
-    }).geometryInteraction = {
+    store.geometryInteraction = {
       objectId: 'obj-geo-2',
       sourceKey: 'width',
       realValue: 2,
@@ -624,7 +608,7 @@ describe('App shell', () => {
       configurable: true,
       writable: true
     });
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    store.selectedObjectId = 'obj-1';
     const duplicateSpy = vi.spyOn(store, 'duplicateSelected');
     const deleteSpy = vi.spyOn(store, 'deleteSelected');
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -717,7 +701,7 @@ describe('App shell', () => {
     await nextTick();
     expect(wrapper.get('#phone-nav-selected-btn').attributes('disabled')).toBeDefined();
 
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    store.selectedObjectId = 'obj-1';
     await nextTick();
     expect(wrapper.get('#phone-nav-selected-btn').attributes('disabled')).toBeUndefined();
 
@@ -735,8 +719,8 @@ describe('App shell', () => {
       writable: true
     });
 
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
-    (store as unknown as { propertySections: unknown }).propertySections = [
+    store.selectedObjectId = 'obj-1';
+    store.propertySections = [
       {
         title: '磁场属性',
         fields: [
@@ -745,7 +729,7 @@ describe('App shell', () => {
         ]
       }
     ];
-    (store as unknown as { propertyValues: Record<string, unknown> }).propertyValues = {
+    store.propertyValues = {
       radius: 1,
       radius__display: 50,
       __geometryObjectScale: 1
@@ -785,7 +769,7 @@ describe('App shell', () => {
       configurable: true,
       writable: true
     });
-    (store as unknown as { activeDrawer: 'property' | null }).activeDrawer = 'property';
+    store.activeDrawer = 'property';
 
     const wrapper = mount(App, {
       global: {
@@ -809,7 +793,7 @@ describe('App shell', () => {
       configurable: true,
       writable: true
     });
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    store.selectedObjectId = 'obj-1';
     const deleteSpy = vi.spyOn(store, 'deleteSelected');
 
     const wrapper = mount(App, {
@@ -838,7 +822,7 @@ describe('App shell', () => {
       configurable: true,
       writable: true
     });
-    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    store.selectedObjectId = 'obj-1';
 
     const wrapper = mount(App, {
       global: {

@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { registry } from '../src/engine/runtimeEngineBridge';
 import { SimulatorRuntime } from '../src/runtime/simulatorRuntime';
 
+function setPrivateField(target: object, key: string, value: unknown) {
+  Reflect.set(target, key, value);
+}
+
 describe('SimulatorRuntime demo mode', () => {
   it('mounts into demo mode by default', () => {
     const runtime = new SimulatorRuntime();
@@ -11,12 +15,7 @@ describe('SimulatorRuntime demo mode', () => {
   });
 
   it('binds renderer onto scene for responsive particle hit-testing', () => {
-    const runtime = new SimulatorRuntime() as unknown as {
-      scene: { renderer?: unknown };
-      renderer: unknown;
-      mount: () => void;
-      unmount: () => void;
-    };
+    const runtime = new SimulatorRuntime();
     runtime.mount();
     expect(runtime.scene.renderer).toBe(runtime.renderer);
     runtime.unmount();
@@ -50,15 +49,10 @@ describe('SimulatorRuntime demo mode', () => {
   });
 
   it('unmount disposes drag-drop manager when present', () => {
-    const runtime = new SimulatorRuntime() as unknown as {
-      mounted: boolean;
-      dragDropManager: { dispose: () => void } | null;
-      unmount: () => void;
-    };
-
+    const runtime = new SimulatorRuntime();
     const dispose = vi.fn();
-    runtime.mounted = true;
-    runtime.dragDropManager = { dispose };
+    setPrivateField(runtime, 'mounted', true);
+    setPrivateField(runtime, 'dragDropManager', { dispose });
 
     runtime.unmount();
     expect(dispose).toHaveBeenCalledTimes(1);
@@ -145,33 +139,33 @@ describe('SimulatorRuntime demo mode', () => {
 
   it('supports geometry sourceKey mapping when schema key is not a geometry key', () => {
     const type = 'geometry-sourcekey-radius-test';
-    const runtimeRegistry = registry as unknown as {
-      get: (type: string) => {
-        class: new (config?: Record<string, unknown>) => Record<string, unknown>;
-      } | null;
-      create: (type: string, data?: Record<string, unknown>) => Record<string, unknown>;
-      register: (type: string, meta: Record<string, unknown>) => void;
-    };
-
-    const baseEntry = runtimeRegistry.get('magnetic-field');
+    const baseEntry = registry.get('magnetic-field');
     expect(baseEntry).toBeTruthy();
+    if (!baseEntry) {
+      throw new Error('Expected magnetic-field registry entry');
+    }
 
-    class GeometrySourceKeyRadiusTestField extends (baseEntry?.class as new (config?: Record<string, unknown>) => {
+    type RuntimeFieldInstance = Record<string, unknown> & {
       deserialize?: (data: Record<string, unknown>) => void;
       type?: string;
-    }) {
+    };
+
+    class GeometrySourceKeyRadiusTestField extends baseEntry.class {
       constructor(config: Record<string, unknown> = {}) {
         super(config);
-        this.type = type;
-        const inheritedDeserialize = this.deserialize;
-        this.deserialize = (data: Record<string, unknown>) => {
-          inheritedDeserialize?.call(this, data);
-          this.type = type;
+        const self = this as RuntimeFieldInstance;
+        self.type = type;
+        const inheritedDeserialize = self.deserialize;
+        self.deserialize = (data: Record<string, unknown>) => {
+          if (typeof inheritedDeserialize === 'function') {
+            inheritedDeserialize.call(self, data);
+          }
+          self.type = type;
         };
       }
     }
 
-    runtimeRegistry.register(type, {
+    registry.register(type, {
       class: GeometrySourceKeyRadiusTestField,
       label: '几何 sourceKey 测试',
       category: 'magnetic',
@@ -204,7 +198,7 @@ describe('SimulatorRuntime demo mode', () => {
 
     const runtime = new SimulatorRuntime();
     runtime.scene.settings.pixelsPerMeter = 50;
-    const field = runtimeRegistry.create(type, {
+    const field = registry.create(type, {
       x: 0,
       y: 0,
       geometry: {
@@ -232,16 +226,7 @@ describe('SimulatorRuntime demo mode', () => {
   });
 
   it('createObjectAtCenter syncs renderer viewport before computing center point', () => {
-    const runtime = new SimulatorRuntime() as unknown as {
-      renderer: { resize: () => void; width: number; height: number };
-      scene: {
-        setViewport: (width: number, height: number) => void;
-        getWorldViewportBounds: (padding: number) => { minX: number; maxX: number; minY: number; maxY: number };
-      };
-      dragDropManager: { createObject: (type: string, x: number, y: number) => void } | null;
-      createObjectAtCenter: (type: string) => void;
-    };
-
+    const runtime = new SimulatorRuntime();
     runtime.renderer.width = 0;
     runtime.renderer.height = 0;
     const resizeSpy = vi.spyOn(runtime.renderer, 'resize').mockImplementation(() => {
@@ -257,7 +242,7 @@ describe('SimulatorRuntime demo mode', () => {
     }));
 
     const createSpy = vi.fn();
-    runtime.dragDropManager = { createObject: createSpy };
+    setPrivateField(runtime, 'dragDropManager', { createObject: createSpy });
 
     runtime.createObjectAtCenter('particle');
 
