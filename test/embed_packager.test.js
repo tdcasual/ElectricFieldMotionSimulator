@@ -28,6 +28,18 @@ test('resolveCliOptions uses defaults and supports overrides', () => {
   assert.equal(parsed.zip, false);
 });
 
+test('resolveCliOptions rejects invalid package names', () => {
+  const cwd = '/tmp/demo-project';
+  assert.throws(
+    () => resolveCliOptions(['--name', '..'], cwd),
+    /Invalid --name/
+  );
+  assert.throws(
+    () => resolveCliOptions(['--name', 'a/../b'], cwd),
+    /Invalid --name/
+  );
+});
+
 test('createDeployPackage creates deployable bundle structure', () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'embed-packager-'));
   const distDir = path.join(tempRoot, 'dist');
@@ -54,6 +66,34 @@ test('createDeployPackage creates deployable bundle structure', () => {
 
   const indexHtml = fs.readFileSync(path.join(result.packageDir, 'index.html'), 'utf8');
   assert.match(indexHtml, /viewer\.html\?mode=view&sceneUrl=\.\/scene\.json/);
+});
+
+test('createDeployPackage rejects traversal-like package names', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'embed-packager-traversal-'));
+  const distDir = path.join(tempRoot, 'dist');
+  const scenePath = path.join(tempRoot, 'scene.json');
+  const outputDir = path.join(tempRoot, 'output');
+  const sentinelPath = path.join(tempRoot, 'sentinel.txt');
+
+  writeText(path.join(distDir, 'viewer.html'), '<html><body><div id="root"></div></body></html>');
+  writeText(path.join(distDir, 'embed.js'), 'window.ElectricFieldApp = function(){};');
+  writeText(path.join(distDir, 'assets', 'app.js'), 'console.log("ok");');
+  writeText(scenePath, JSON.stringify({ version: '1.0', settings: {}, objects: [] }));
+  writeText(sentinelPath, 'keep');
+
+  assert.throws(
+    () =>
+      createDeployPackage({
+        distDir,
+        scenePath,
+        outputDir,
+        packageName: '..'
+      }),
+    /packageName is required|child directory/
+  );
+
+  assert.equal(fs.existsSync(sentinelPath), true);
+  assert.equal(fs.readFileSync(sentinelPath, 'utf8'), 'keep');
 });
 
 test('createDeployPackage throws when dist files are missing', () => {

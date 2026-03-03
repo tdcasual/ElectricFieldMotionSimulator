@@ -5,6 +5,20 @@
 import { BaseObject } from './BaseObject.js';
 import { Particle } from './Particle.js';
 
+const MAX_EMISSION_RATE = 20000;
+const MAX_EMISSIONS_PER_TICK = 2000;
+
+function toNonNegativeFinite(value, fallback = 0) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) return fallback;
+    return n;
+}
+
+function clampEmissionRate(value, fallback = 1) {
+    const normalized = toNonNegativeFinite(value, fallback);
+    return Math.min(normalized, MAX_EMISSION_RATE);
+}
+
 export class ElectronGun extends BaseObject {
     static defaults() {
         return {
@@ -34,7 +48,7 @@ export class ElectronGun extends BaseObject {
                     { key: 'x', label: 'X 坐标', type: 'number', step: 10 },
                     { key: 'y', label: 'Y 坐标', type: 'number', step: 10 },
                     { key: 'direction', label: '发射方向 (度)', type: 'number', min: 0, max: 360 },
-                    { key: 'emissionRate', label: '发射频率 (个/秒)', type: 'number', min: 0, step: 0.5 },
+                    { key: 'emissionRate', label: '发射频率 (个/秒)', type: 'number', min: 0, max: MAX_EMISSION_RATE, step: 0.5 },
                     { key: 'emissionSpeed', label: '发射初速度 (m/s)', type: 'number', min: 0, step: 10, bind: {
                         get: (obj, ctx) => {
                             const ppm = ctx?.pixelsPerMeter || 1;
@@ -108,7 +122,7 @@ export class ElectronGun extends BaseObject {
         this.type = 'electron-gun';
 
         this.direction = config.direction ?? 0; // 发射方向（度），0=向右，90=向下
-        this.emissionRate = config.emissionRate ?? 1; // 粒子/秒
+        this.emissionRate = clampEmissionRate(config.emissionRate ?? 1, 1); // 粒子/秒
         this.emissionSpeed = config.emissionSpeed ?? 200; // 初速度大小（px/s）
 
         // 显示配置（用于画布叠加信息）
@@ -144,14 +158,23 @@ export class ElectronGun extends BaseObject {
     }
 
     update(dt, scene) {
-        if (this.emissionRate <= 0 || !scene) return;
+        if (!scene) return;
+        const emissionRate = clampEmissionRate(this.emissionRate, 0);
+        if (emissionRate <= 0) return;
 
-        const interval = 1 / this.emissionRate;
+        const interval = 1 / emissionRate;
+        if (!Number.isFinite(interval) || interval <= 0) return;
         this._emitAccumulator += dt;
+        let emittedThisTick = 0;
 
-        while (this._emitAccumulator >= interval) {
+        while (this._emitAccumulator >= interval && emittedThisTick < MAX_EMISSIONS_PER_TICK) {
             this._emitAccumulator -= interval;
             this.emitParticle(scene);
+            emittedThisTick += 1;
+        }
+
+        if (emittedThisTick >= MAX_EMISSIONS_PER_TICK) {
+            this._emitAccumulator = Math.min(this._emitAccumulator, interval);
         }
     }
 
@@ -219,7 +242,7 @@ export class ElectronGun extends BaseObject {
     deserialize(data) {
         super.deserialize(data);
         this.direction = data.direction ?? 0;
-        this.emissionRate = data.emissionRate ?? 0;
+        this.emissionRate = clampEmissionRate(data.emissionRate ?? 0, 0);
         this.emissionSpeed = data.emissionSpeed ?? 0;
         this.showVelocity = data.showVelocity ?? this.showVelocity ?? false;
         const velocityMode = data.velocityDisplayMode || this.velocityDisplayMode || 'vector';

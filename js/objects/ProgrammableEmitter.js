@@ -5,6 +5,24 @@
 import { BaseObject } from './BaseObject.js';
 import { Particle } from './Particle.js';
 
+const MAX_EMISSION_COUNT = 5000;
+const MAX_EMISSION_INTERVAL = 60;
+const MAX_EMISSIONS_PER_TICK = 2000;
+
+function toNonNegativeFinite(value, fallback = 0) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) return fallback;
+    return n;
+}
+
+function clampEmissionCount(value, fallback = 0) {
+    return Math.min(MAX_EMISSION_COUNT, Math.floor(toNonNegativeFinite(value, fallback)));
+}
+
+function clampEmissionInterval(value, fallback = 0.2) {
+    return Math.min(toNonNegativeFinite(value, fallback), MAX_EMISSION_INTERVAL);
+}
+
 export class ProgrammableEmitter extends BaseObject {
     static defaults() {
         return {
@@ -100,8 +118,8 @@ export class ProgrammableEmitter extends BaseObject {
                         { value: 'sequence', label: '等间隔' },
                         { value: 'time-list', label: '时间列表' }
                     ] },
-                    { key: 'emissionCount', label: '发射数量', type: 'number', min: 0, step: 1 },
-                    { key: 'emissionInterval', label: '发射间隔 (s)', type: 'number', min: 0, step: 0.05,
+                    { key: 'emissionCount', label: '发射数量', type: 'number', min: 0, max: MAX_EMISSION_COUNT, step: 1 },
+                    { key: 'emissionInterval', label: '发射间隔 (s)', type: 'number', min: 0, max: MAX_EMISSION_INTERVAL, step: 0.05,
                         visibleWhen: (obj) => obj.emissionMode === 'sequence'
                     },
                     { key: 'timeList', label: '时间列表', type: 'text', multiline: true, rows: 2, bind: bindList('timeList', { clampMin: 0 }),
@@ -223,8 +241,8 @@ export class ProgrammableEmitter extends BaseObject {
         // 时间计划
         this.startTime = config.startTime ?? 0; // s
         this.emissionMode = config.emissionMode || 'burst'; // burst | sequence | time-list
-        this.emissionCount = config.emissionCount ?? 6;
-        this.emissionInterval = config.emissionInterval ?? 0.2; // s（sequence 模式）
+        this.emissionCount = clampEmissionCount(config.emissionCount ?? 6, 6);
+        this.emissionInterval = clampEmissionInterval(config.emissionInterval ?? 0.2, 0.2); // s（sequence 模式）
         this.timeList = Array.isArray(config.timeList) ? config.timeList : [];
 
         // 角度计划
@@ -289,8 +307,9 @@ export class ProgrammableEmitter extends BaseObject {
         if (!scene) return;
         if (!Number.isFinite(dt) || dt <= 0) return;
 
-        const totalCount = Math.max(0, Math.floor(this.emissionCount));
+        const totalCount = clampEmissionCount(this.emissionCount, 0);
         if (totalCount <= 0) return;
+        let emittedThisTick = 0;
 
         const now = Number.isFinite(scene.time) ? scene.time : 0;
         const startTime = Number.isFinite(this.startTime) ? this.startTime : 0;
@@ -301,45 +320,53 @@ export class ProgrammableEmitter extends BaseObject {
         if (this.emissionMode === 'burst') {
             if (this._burstDone) return;
             if (now < startTime) return;
-            for (let i = 0; i < totalCount; i++) {
+            while (this._emittedCount < totalCount && emittedThisTick < MAX_EMISSIONS_PER_TICK) {
                 this.emitParticle(scene, plannedCount);
                 this._emittedCount++;
+                emittedThisTick++;
             }
-            this._burstDone = true;
+            if (this._emittedCount >= totalCount) {
+                this._burstDone = true;
+            }
             return;
         }
 
         if (this.emissionMode === 'sequence') {
-            const interval = Number.isFinite(this.emissionInterval) ? this.emissionInterval : 0;
+            const interval = clampEmissionInterval(this.emissionInterval, 0);
             if (interval <= 0) {
                 // 退化为 burst
                 if (!this._burstDone && now >= startTime) {
-                    for (let i = 0; i < totalCount; i++) {
+                    while (this._emittedCount < totalCount && emittedThisTick < MAX_EMISSIONS_PER_TICK) {
                         this.emitParticle(scene, plannedCount);
                         this._emittedCount++;
+                        emittedThisTick++;
                     }
-                    this._burstDone = true;
+                    if (this._emittedCount >= totalCount) {
+                        this._burstDone = true;
+                    }
                 }
                 return;
             }
 
-            while (this._emittedCount < totalCount) {
+            while (this._emittedCount < totalCount && emittedThisTick < MAX_EMISSIONS_PER_TICK) {
                 const emitTime = startTime + this._emittedCount * interval;
                 if (emitTime > now) break;
                 this.emitParticle(scene, plannedCount);
                 this._emittedCount++;
+                emittedThisTick++;
             }
             return;
         }
 
         if (this.emissionMode === 'time-list') {
             const offsets = this.getTimeOffsets();
-            while (this._emittedCount < totalCount && this._timeListIndex < offsets.length) {
+            while (this._emittedCount < totalCount && this._timeListIndex < offsets.length && emittedThisTick < MAX_EMISSIONS_PER_TICK) {
                 const emitTime = startTime + offsets[this._timeListIndex];
                 if (emitTime > now) break;
                 this.emitParticle(scene, plannedCount);
                 this._emittedCount++;
                 this._timeListIndex++;
+                emittedThisTick++;
             }
         }
     }
@@ -527,8 +554,8 @@ export class ProgrammableEmitter extends BaseObject {
         this.emissionSpeed = data.emissionSpeed ?? this.emissionSpeed ?? 0;
         this.startTime = data.startTime ?? this.startTime ?? 0;
         this.emissionMode = data.emissionMode || this.emissionMode || 'burst';
-        this.emissionCount = data.emissionCount ?? this.emissionCount ?? 0;
-        this.emissionInterval = data.emissionInterval ?? this.emissionInterval ?? 0.2;
+        this.emissionCount = clampEmissionCount(data.emissionCount ?? this.emissionCount ?? 0, this.emissionCount ?? 0);
+        this.emissionInterval = clampEmissionInterval(data.emissionInterval ?? this.emissionInterval ?? 0.2, this.emissionInterval ?? 0.2);
         this.timeList = Array.isArray(data.timeList) ? data.timeList : this.timeList ?? [];
         this.angleMode = data.angleMode || this.angleMode || 'fixed';
         this.angleMin = data.angleMin ?? this.angleMin ?? 0;

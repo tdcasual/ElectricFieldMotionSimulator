@@ -209,12 +209,13 @@ test('Scene.loadFromData clears stale selection that is no longer in scene', () 
   assert.equal(original.scene, null);
 });
 
-test('Serializer.validateSceneData fills missing objects array', () => {
+test('Serializer.validateSceneData rejects payloads missing objects array', () => {
   const data = { version: '1.0' };
   const result = Serializer.validateSceneData(data);
 
-  assert.equal(result.valid, true);
-  assert.deepEqual(data.objects, []);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, '对象数据格式无效');
+  assert.equal(Object.prototype.hasOwnProperty.call(data, 'objects'), false);
 });
 
 test('Serializer.validateSceneData rejects invalid objects array', () => {
@@ -226,6 +227,60 @@ test('Serializer.validateSceneData rejects invalid objects array', () => {
   const result = Serializer.validateSceneData(data);
   assert.equal(result.valid, false);
   assert.equal(result.error, '对象数据格式无效');
+});
+
+test('Serializer.validateSceneData rejects oversized object list', () => {
+  const data = {
+    version: '1.0',
+    objects: Array.from({ length: 5001 }, () => ({ type: 'particle' }))
+  };
+
+  const result = Serializer.validateSceneData(data);
+  assert.equal(result.valid, false);
+  assert.match(result.error, /对象数量超限/);
+});
+
+test('Serializer.validateSceneData rejects object entries without type', () => {
+  const data = {
+    version: '1.0',
+    objects: [{}]
+  };
+
+  const result = Serializer.validateSceneData(data);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, '对象类型无效');
+});
+
+test('Serializer.validateSceneData rejects non-finite numeric fields', () => {
+  const data = {
+    version: '1.0',
+    objects: [
+      {
+        type: 'particle',
+        x: 'not-a-number'
+      }
+    ]
+  };
+
+  const result = Serializer.validateSceneData(data);
+  assert.equal(result.valid, false);
+  assert.match(result.error, /对象字段 x 数值无效/);
+});
+
+test('Serializer.validateSceneData rejects emitter params above hard limits', () => {
+  const data = {
+    version: '1.0',
+    objects: [
+      {
+        type: 'electron-gun',
+        emissionRate: 50000
+      }
+    ]
+  };
+
+  const result = Serializer.validateSceneData(data);
+  assert.equal(result.valid, false);
+  assert.match(result.error, /emissionRate 超出范围/);
 });
 
 test('Serializer.saveSceneData returns false when storage write throws', () => {
