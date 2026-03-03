@@ -1,16 +1,19 @@
 # Frontend Rewrite Launch Checklist
 
 Date: 2026-02-12
-Last Reviewed: 2026-03-03
+Last Reviewed: 2026-03-03 (Round 2 closure)
 
 ## Pre-Launch Gates
 
 - [x] `npm run lint:frontend` passes. (`DONE`, verified 2026-03-03)
+- [x] `npm run typecheck:frontend` passes. (`DONE`, verified 2026-03-03)
 - [x] `npm test` passes. (`DONE`, verified 2026-03-03)
 - [x] `npm run test:frontend` passes. (`DONE`, verified 2026-03-03)
 - [x] `npm run test:e2e` passes. (`DONE`, verified 2026-03-03)
 - [x] Replay consistency checks pass for golden-scene fixtures. (`DONE`, verified 2026-03-03)
 - [x] Performance gate `test/perf_budget.test.js` passes. (`DONE`, verified 2026-03-03)
+- [x] Deploy contract guard passes (`npm test -- test/deploy_contract.test.js`). (`DONE`, verified 2026-03-03)
+- [x] Docs drift guard passes (`npm test -- test/docs_drift.test.js`). (`DONE`, verified 2026-03-03)
 
 ## Core-Path Validation
 
@@ -23,6 +26,7 @@ Last Reviewed: 2026-03-03
 ## Operational Readiness
 
 - [x] Rollback runbook reviewed: `docs/release/frontend-rewrite-rollback-runbook.md`. (`DONE`, 2026-03-03)
+- [x] Legacy scene migration CLI available (`npm run migrate:scene-v1-v2 -- --in <legacy> --out <v2>`). (`DONE`, verified 2026-03-03)
 - [x] Last-known-good artifact tag documented. (`N/A` for local desktop workflow; use git SHA)
 - [x] Incident owner and on-call contacts confirmed. (`N/A` for local desktop workflow)
 - [x] Rollback dry-run completed. (`N/A` for local desktop workflow)
