@@ -2,6 +2,46 @@
  * 序列化工具
  */
 
+const MAX_SCENE_OBJECTS = 5000;
+const MAX_EMISSION_RATE = 20000;
+const MAX_EMISSION_COUNT = 5000;
+const MAX_EMISSION_INTERVAL = 60;
+
+const FINITE_NUMBER_FIELDS = [
+    'x',
+    'y',
+    'vx',
+    'vy',
+    'width',
+    'height',
+    'radius',
+    'length',
+    'plateDistance',
+    'depth',
+    'viewGap',
+    'spotSize',
+    'lineWidth',
+    'particleRadius',
+    'emissionSpeed',
+    'startTime',
+    'speedMin',
+    'speedMax',
+    'angleMin',
+    'angleMax',
+    'particleCharge',
+    'particleMass'
+];
+
+function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function readFiniteNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : NaN;
+}
+
 export class Serializer {
     /**
      * 保存任意场景数据到localStorage（可包含 UI 扩展字段）
@@ -112,17 +152,55 @@ export class Serializer {
             return { valid: false, error: '数据格式无效' };
         }
         
-        if (!data.version) {
+        if (typeof data.version !== 'string' || data.version.trim().length === 0) {
             return { valid: false, error: '缺少版本信息' };
-        }
-
-        if (data.objects == null) {
-            data.objects = [];
-            return { valid: true };
         }
 
         if (!Array.isArray(data.objects)) {
             return { valid: false, error: '对象数据格式无效' };
+        }
+
+        if (data.objects.length > MAX_SCENE_OBJECTS) {
+            return { valid: false, error: `对象数量超限（最多 ${MAX_SCENE_OBJECTS}）` };
+        }
+
+        for (const object of data.objects) {
+            if (!object || typeof object !== 'object' || Array.isArray(object)) {
+                return { valid: false, error: '对象条目无效' };
+            }
+            if (typeof object.type !== 'string' || object.type.trim().length === 0) {
+                return { valid: false, error: '对象类型无效' };
+            }
+
+            for (const key of FINITE_NUMBER_FIELDS) {
+                if (!hasOwn(object, key)) continue;
+                const value = readFiniteNumber(object[key]);
+                if (value === null) continue;
+                if (!Number.isFinite(value)) {
+                    return { valid: false, error: `对象字段 ${key} 数值无效` };
+                }
+            }
+
+            if (hasOwn(object, 'emissionRate')) {
+                const rate = readFiniteNumber(object.emissionRate);
+                if (!Number.isFinite(rate) || rate < 0 || rate > MAX_EMISSION_RATE) {
+                    return { valid: false, error: `对象字段 emissionRate 超出范围（0-${MAX_EMISSION_RATE}）` };
+                }
+            }
+
+            if (hasOwn(object, 'emissionCount')) {
+                const count = readFiniteNumber(object.emissionCount);
+                if (!Number.isFinite(count) || count < 0 || count > MAX_EMISSION_COUNT) {
+                    return { valid: false, error: `对象字段 emissionCount 超出范围（0-${MAX_EMISSION_COUNT}）` };
+                }
+            }
+
+            if (hasOwn(object, 'emissionInterval')) {
+                const interval = readFiniteNumber(object.emissionInterval);
+                if (!Number.isFinite(interval) || interval < 0 || interval > MAX_EMISSION_INTERVAL) {
+                    return { valid: false, error: `对象字段 emissionInterval 超出范围（0-${MAX_EMISSION_INTERVAL}）` };
+                }
+            }
         }
         
         return { valid: true };

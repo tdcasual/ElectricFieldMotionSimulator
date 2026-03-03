@@ -12,7 +12,9 @@ const REQUIRED_ARTIFACTS = [
 function sanitizePackageName(raw) {
   const value = String(raw || '').trim();
   if (!value) return '';
-  return value.replace(/[^a-zA-Z0-9._-]+/g, '-');
+  if (value === '.' || value === '..') return '';
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)) return '';
+  return value;
 }
 
 function timestampName() {
@@ -130,6 +132,10 @@ export function createDeployPackage({
   const sceneData = readSceneData(resolvedScenePath);
 
   const packageDir = path.join(resolvedOutputDir, safePackageName);
+  const relativePackagePath = path.relative(resolvedOutputDir, packageDir);
+  if (!relativePackagePath || relativePackagePath.startsWith('..') || path.isAbsolute(relativePackagePath)) {
+    throw new Error('packageName must resolve to a child directory inside outputDir.');
+  }
   fs.mkdirSync(resolvedOutputDir, { recursive: true });
   fs.rmSync(packageDir, { recursive: true, force: true });
   fs.mkdirSync(packageDir, { recursive: true });
@@ -207,7 +213,11 @@ export function resolveCliOptions(argv, cwd = process.cwd()) {
     }
     if (token === '--name') {
       i += 1;
-      options.packageName = sanitizePackageName(args[i]);
+      const sanitized = sanitizePackageName(args[i]);
+      if (!sanitized) {
+        throw new Error('Invalid --name: use letters, numbers, ".", "_" or "-", and do not use "." or "..".');
+      }
+      options.packageName = sanitized;
       continue;
     }
     if (token === '--no-zip') {
