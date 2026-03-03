@@ -36,6 +36,11 @@ import {
     getObjectPointBoundary
 } from './tangencyCandidates.js';
 import { closeContextMenuUi } from './contextMenuLifecycle.js';
+import {
+    cancelPointerInteraction,
+    clearPointerInteractionState,
+    finalizePointerUpInteraction
+} from './pointerLifecycle.js';
 
 export { buildTangencyCandidates, getObjectCircleBoundary, getObjectPointBoundary };
 
@@ -767,28 +772,7 @@ export class DragDropManager {
     }
 
     clearPointerInteractionState() {
-        this.clearLongPressTimer();
-        this.isDragging = false;
-        this.draggingObject = null;
-        this.pointerDownPos = null;
-        this.pointerDownObject = null;
-        this.longPressTriggered = false;
-        this.clearTangencyHint();
-        this.clearGeometryOverlayHint();
-        this.dragMode = 'move';
-        this.resizeHandle = null;
-        this.resizeStart = null;
-        this.vertexHandleIndex = null;
-        this.isPanning = false;
-        this.panStartScreen = null;
-        this.panStartCamera = null;
-        if (this.activePointerId != null) {
-            this.canvas?.releasePointerCapture?.(this.activePointerId);
-        }
-        this.activePointerId = null;
-        if (this.canvas) {
-            this.canvas.style.cursor = 'default';
-        }
+        clearPointerInteractionState(this);
     }
 
     beginPinchGesture() {
@@ -1088,27 +1072,7 @@ export class DragDropManager {
             this.resetTapChain();
         }
 
-        this.isDragging = false;
-        this.draggingObject = null;
-        this.pointerDownPos = null;
-        this.pointerDownObject = null;
-        this.longPressTriggered = false;
-        this.clearTangencyHint();
-        this.clearGeometryOverlayHint();
-        this.dragMode = 'move';
-        this.resizeHandle = null;
-        this.resizeStart = null;
-        this.vertexHandleIndex = null;
-        this.isPanning = false;
-        this.panStartScreen = null;
-        this.panStartCamera = null;
-
-        if (e.pointerType === 'mouse') {
-            this.canvas.style.cursor = 'default';
-        }
-
-        this.canvas.releasePointerCapture?.(e.pointerId);
-        this.activePointerId = null;
+        finalizePointerUpInteraction(this, e);
     }
 
     onPointerCancel(e) {
@@ -1122,25 +1086,7 @@ export class DragDropManager {
             }
         }
         if (this.activePointerId !== e.pointerId) return;
-        this.clearLongPressTimer();
-        this.isDragging = false;
-        this.draggingObject = null;
-        this.pointerDownPos = null;
-        this.pointerDownObject = null;
-        this.longPressTriggered = false;
-        this.resetTapChain();
-        this.clearTangencyHint();
-        this.clearGeometryOverlayHint();
-        this.dragMode = 'move';
-        this.resizeHandle = null;
-        this.resizeStart = null;
-        this.vertexHandleIndex = null;
-        this.isPanning = false;
-        this.panStartScreen = null;
-        this.panStartCamera = null;
-        this.canvas.releasePointerCapture?.(e.pointerId);
-        this.activePointerId = null;
-        this.canvas.style.cursor = 'default';
+        cancelPointerInteraction(this, e);
     }
 
     getMousePos(e) {
