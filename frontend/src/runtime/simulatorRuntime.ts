@@ -17,44 +17,22 @@ import {
   getObjectRealDimension,
   isFieldEnabled,
   isFieldVisible,
-  isGeometryDimensionKey,
   parseExpressionInput,
   registry,
   setObjectDisplayDimension,
   setObjectRealDimension,
   syncObjectDisplayGeometry
 } from '../engine/runtimeEngineBridge';
-
-type AnyRecord = Record<string, unknown>;
-
-type SchemaField = {
-  key: string;
-  label?: string;
-  type?: string;
-  min?: number;
-  max?: number;
-  step?: number;
-  unit?: string;
-  multiline?: boolean;
-  rows?: number;
-  options?: Array<{ value: unknown; label?: string }>;
-  visibleWhen?: (values: AnyRecord) => boolean;
-  enabledWhen?: (values: AnyRecord) => boolean;
-  validator?: (value: unknown, values: AnyRecord) => string | null;
-  bind?: {
-    get?: (object: AnyRecord, context: AnyRecord) => unknown;
-    set?: (object: AnyRecord, value: unknown, context: AnyRecord) => void;
-  };
-  sourceKey?: string;
-  geometryRole?: 'real' | 'display';
-};
-
-type SchemaSection = {
-  title?: string;
-  group?: 'basic' | 'advanced';
-  defaultCollapsed?: boolean;
-  fields?: SchemaField[];
-};
+import {
+  asFiniteNumber,
+  buildPropertySectionsForUI,
+  coerceFieldValue,
+  computeChangedFieldKeys,
+  isRecord,
+  normalizeFieldType,
+  type AnyRecord,
+  type SchemaSection
+} from './runtimePropertySchema';
 
 type RuntimeCallbacks = {
   onSnapshot?: (snapshot: RuntimeSnapshot) => void;
@@ -98,47 +76,6 @@ type RenderRequest = {
 
 type RuntimeMode = 'normal' | 'demo';
 type HostMode = 'edit' | 'view';
-const DISPLAY_FIELD_SUFFIX = '__display';
-
-function isRecord(value: unknown): value is AnyRecord {
-  return !!value && typeof value === 'object';
-}
-
-function asFiniteNumber(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function normalizeFieldType(field: SchemaField): string {
-  const type = typeof field.type === 'string' ? field.type : 'text';
-  if (type === 'number' || type === 'text' || type === 'select' || type === 'checkbox' || type === 'expression') {
-    return type;
-  }
-  return 'text';
-}
-
-function getGeometrySourceKey(field: SchemaField): string | null {
-  if (!field || field.type !== 'number') return null;
-  if (!field.key) return null;
-  if (field.bind && (typeof field.bind.get === 'function' || typeof field.bind.set === 'function')) {
-    return null;
-  }
-
-  const explicit = typeof field.sourceKey === 'string' ? field.sourceKey.trim() : '';
-  if (explicit && isGeometryDimensionKey(explicit)) {
-    return explicit;
-  }
-
-  if (isGeometryDimensionKey(field.key)) {
-    return field.key;
-  }
-
-  return null;
-}
-
-function displayFieldKeyFor(realFieldKey: string): string {
-  return `${realFieldKey}${DISPLAY_FIELD_SUFFIX}`;
-}
 
 export class SimulatorRuntime {
   readonly scene: Scene;
@@ -523,7 +460,7 @@ export class SimulatorRuntime {
 
     const entry = registry.get(String(object.type || ''));
     if (!entry || typeof entry.schema !== 'function') return null;
-    const sections = this.buildPropertySectionsForUI((entry.schema() as SchemaSection[]) || []);
+    const sections = buildPropertySectionsForUI((entry.schema() as SchemaSection[]) || []);
     return {
       title: String(entry.label || object.type || '属性'),
       sections,
@@ -538,13 +475,13 @@ export class SimulatorRuntime {
     const entry = registry.get(String(object.type || ''));
     if (!entry || typeof entry.schema !== 'function') return;
 
-    const sections = this.buildPropertySectionsForUI((entry.schema() as SchemaSection[]) || []);
+    const sections = buildPropertySectionsForUI((entry.schema() as SchemaSection[]) || []);
     const errors: string[] = [];
     const context = this.buildBindContext();
     const currentValues = this.buildPropertyValues(object, sections);
     const incomingValues = isRecord(nextValues) ? nextValues : {};
     const mergedValues = { ...currentValues, ...incomingValues };
-    const changedFieldKeys = this.computeChangedFieldKeys(sections, currentValues, mergedValues);
+    const changedFieldKeys = computeChangedFieldKeys(sections, currentValues, mergedValues);
     let geometryChanged = false;
     let objectScaleUpdated = false;
 
@@ -598,11 +535,11 @@ export class SimulatorRuntime {
             field.bind.set(object, parsed, context);
             continue;
           }
-          field.bind.set(object, this.coerceFieldValue(field, raw), context);
+          field.bind.set(object, coerceFieldValue(field, raw), context);
           continue;
         }
 
-        const coerced = this.coerceFieldValue(field, raw);
+        const coerced = coerceFieldValue(field, raw);
         if (normalizeFieldType(field) === 'number' && !Number.isFinite(coerced as number)) {
           errors.push(`${field.label || field.key}: 数值无效`);
           continue;
@@ -750,74 +687,6 @@ export class SimulatorRuntime {
     };
   }
 
-  private buildPropertySectionsForUI(sections: SchemaSection[]): SchemaSection[] {
-    return sections.map((section) => {
-      const fields = Array.isArray(section?.fields) ? section.fields : [];
-      const mappedFields: SchemaField[] = [];
-      for (const field of fields) {
-        if (!field || !field.key) continue;
-        const geometrySourceKey = getGeometrySourceKey(field);
-        if (!geometrySourceKey) {
-          mappedFields.push(field);
-          continue;
-        }
-
-        const baseLabel = String(field.label || field.key);
-        mappedFields.push({
-          ...field,
-          label: `${baseLabel}（真实）`,
-          sourceKey: geometrySourceKey,
-          geometryRole: 'real'
-        });
-        mappedFields.push({
-          ...field,
-          key: displayFieldKeyFor(field.key),
-          label: `${baseLabel}（显示）`,
-          min: undefined,
-          max: undefined,
-          bind: undefined,
-          validator: undefined,
-          sourceKey: geometrySourceKey,
-          geometryRole: 'display'
-        });
-      }
-      return {
-        ...section,
-        fields: mappedFields
-      };
-    });
-  }
-
-  private computeChangedFieldKeys(sections: SchemaSection[], currentValues: AnyRecord, mergedValues: AnyRecord): Set<string> {
-    const changed = new Set<string>();
-    for (const section of sections) {
-      const fields = Array.isArray(section?.fields) ? section.fields : [];
-      for (const field of fields) {
-        if (!field?.key) continue;
-        if (!Object.prototype.hasOwnProperty.call(mergedValues, field.key)) continue;
-        const next = mergedValues[field.key];
-        const prev = currentValues[field.key];
-        const type = normalizeFieldType(field);
-        if (type === 'number') {
-          const prevNum = Number(prev);
-          const nextNum = Number(next);
-          if (!Number.isFinite(prevNum) || !Number.isFinite(nextNum) || Math.abs(prevNum - nextNum) > 1e-9) {
-            changed.add(field.key);
-          }
-          continue;
-        }
-        if (type === 'checkbox') {
-          if (!!prev !== !!next) changed.add(field.key);
-          continue;
-        }
-        if (String(prev ?? '') !== String(next ?? '')) {
-          changed.add(field.key);
-        }
-      }
-    }
-    return changed;
-  }
-
   private buildPropertyValues(object: AnyRecord, sections: SchemaSection[]): AnyRecord {
     const values: AnyRecord = {};
     const context = this.buildBindContext();
@@ -843,13 +712,4 @@ export class SimulatorRuntime {
     return values;
   }
 
-  private coerceFieldValue(field: SchemaField, raw: unknown): unknown {
-    const type = normalizeFieldType(field);
-    if (type === 'checkbox') return !!raw;
-    if (type === 'number') {
-      return Number(raw);
-    }
-    if (raw == null) return '';
-    return String(raw);
-  }
 }
