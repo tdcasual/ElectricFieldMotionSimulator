@@ -1,6 +1,6 @@
 # 项目文档中心
 
-最后更新：2026-02-28
+最后更新：2026-03-03
 
 本页是项目文档统一入口。请优先从这里进入对应主题文档，避免在仓库中分散查找。
 
@@ -23,6 +23,7 @@
 ### 发布与运维
 - `docs/release/frontend-rewrite-launch-checklist.md`
 - `docs/release/frontend-rewrite-rollback-runbook.md`
+- `docs/release/2026-03-03-tech-debt-paydown-closure-report.md`
 
 ## 3) 嵌入与扩展
 

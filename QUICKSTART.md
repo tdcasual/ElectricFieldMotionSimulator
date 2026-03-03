@@ -80,6 +80,7 @@
 - 从JSON文件加载场景配置
 - 自动验证文件格式
 - 显示加载的对象数量
+- 场景文件采用 `version/settings/objects` 结构（`version` 必须为 `2.0`）
 
 **步骤**：
 1. 点击"导入"按钮（📥）
@@ -160,7 +161,7 @@
 - 导入前会自动清空当前场景
 - 建议导入前先导出当前场景作为备份
 - 只接受`.json`格式文件
-- 文件必须包含必需字段（version, electricFields, magneticFields, particles）
+- 文件必须包含 `version`、`settings`、`objects` 字段（其中 `version` 必须为 `2.0`）
 
 ---
 

@@ -31,6 +31,9 @@
 - 新增 `docs/README.md` 作为文档统一入口
 - 新增 `docs/documentation-system.md` 定义文档分层、命名、更新矩阵与归档策略
 - 更新 `README.md`、`TESTING-GUIDE.md` 接入文档系统与手机端验收基线
+- 新增 `test/docs_drift.test.js`，为关键文档增加漂移守卫
+- 更新 `QUICKSTART.md` 场景契约描述，统一为 `version/settings/objects`（`version=2.0`）
+- 回填 `docs/plans/2026-03-02-geometry-v2-hardcut-implementation-plan.md` 当前状态为全量完成
 
 ## [1.2.0] - 2025-12-06
 
