@@ -24,6 +24,27 @@ describe('simulatorStore demo mode', () => {
     expect(store.markdownFontSize).toBe(16);
   });
 
+  it('loads markdown font size from storage without legacy migration', () => {
+    const original = window.localStorage;
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => (key === 'sim.markdown.fontSize' ? '13' : null),
+        setItem: () => {},
+        removeItem: () => {}
+      }
+    });
+    try {
+      const store = useSimulatorStore();
+      expect(store.markdownFontSize).toBe(13);
+    } finally {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        value: original
+      });
+    }
+  });
+
   it('toggles classroom mode state', () => {
     const store = useSimulatorStore();
     expect((store as unknown as { classroomMode?: boolean }).classroomMode).toBe(false);

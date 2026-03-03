@@ -90,7 +90,6 @@ function normalizeBoundaryMode(value: unknown) {
 }
 
 const DEFAULT_MARKDOWN_FONT_SIZE = 16;
-const LEGACY_MARKDOWN_FONT_SIZE = 13;
 const TAP_CHAIN_RESET_EVENT = 'simulator-reset-tap-chain';
 const GEOMETRY_DISPLAY_FIELD_SUFFIX = '__display';
 const PHONE_RECENT_GEOMETRY_LIMIT = 6;
@@ -265,12 +264,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
       const fontSize = Number(window.localStorage.getItem('sim.markdown.fontSize'));
       if (Number.isFinite(fontSize)) {
-        const normalized = Math.max(10, Math.min(32, Math.round(fontSize)));
-        const migrated = normalized === LEGACY_MARKDOWN_FONT_SIZE ? DEFAULT_MARKDOWN_FONT_SIZE : normalized;
-        markdownFontSize.value = migrated;
-        if (migrated !== normalized) {
-          window.localStorage.setItem('sim.markdown.fontSize', String(migrated));
-        }
+        markdownFontSize.value = Math.max(10, Math.min(32, Math.round(fontSize)));
       }
     } catch {
       // ignore persistence errors
