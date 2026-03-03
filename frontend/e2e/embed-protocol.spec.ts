@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 test('embed sdk bridge supports ready event and host commands', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
@@ -53,7 +53,7 @@ test('embed sdk bridge supports ready event and host commands', async ({ page })
 });
 
 test('embed host can bootstrap viewer by material id', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html?materialId=mock-particle');
+  await page.goto('/embed-host-test.html?materialId=mock-particle');
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
     return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
@@ -65,7 +65,7 @@ test('embed host can bootstrap viewer by material id', async ({ page }) => {
 
 test('embed host smoke captures screenshot', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 820 });
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html?materialId=mock-particle');
+  await page.goto('/embed-host-test.html?materialId=mock-particle');
 
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
@@ -90,7 +90,7 @@ test('view mode right-click on object does not crash without context menu node',
     pageErrors.push(String(error));
   });
 
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
     return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
@@ -121,7 +121,7 @@ test('view mode right-click on object does not crash without context menu node',
 });
 
 test('view mode blocks pointer edits on canvas objects', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
     return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
@@ -157,7 +157,7 @@ test('view mode blocks pointer edits on canvas objects', async ({ page }) => {
 });
 
 test('embed sdk destroy rejects in-flight command promises instead of leaving them pending', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const settled = await page.evaluate(async () => {
     const app = new (window as unknown as { ElectricFieldApp: new (options: Record<string, unknown>) => {
@@ -199,7 +199,7 @@ test('embed sdk destroy rejects in-flight command promises instead of leaving th
 });
 
 test('embed sdk re-inject rejects in-flight command promises from previous iframe', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const settled = await page.evaluate(async () => {
     const app = new (window as unknown as { ElectricFieldApp: new (options: Record<string, unknown>) => {
@@ -246,7 +246,7 @@ test('embed sdk re-inject rejects in-flight command promises from previous ifram
 });
 
 test('embed sdk re-inject recalibrates derived target origin after stale targetOrigin', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const result = await page.evaluate(async () => {
     const AppCtor = (window as unknown as {
@@ -321,7 +321,7 @@ test('embed sdk re-inject recalibrates derived target origin after stale targetO
 });
 
 test('embed sdk re-inject honors updated explicit targetOrigin option', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const result = await page.evaluate(async () => {
     const AppCtor = (window as unknown as {
@@ -348,7 +348,7 @@ test('embed sdk re-inject honors updated explicit targetOrigin option', async ({
     document.body.appendChild(mount);
     app.inject(mount);
 
-    app.options.targetOrigin = 'http://127.0.0.1:5173';
+    app.options.targetOrigin = window.location.origin;
     app.inject(mount);
 
     const waitForReady = async () => {
@@ -384,7 +384,7 @@ test('embed sdk re-inject honors updated explicit targetOrigin option', async ({
 });
 
 test('embed sdk rejects wildcard targetOrigin without explicit dev override', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const result = await page.evaluate(() => {
     const AppCtor = (window as unknown as {
@@ -419,7 +419,7 @@ test('embed sdk rejects wildcard targetOrigin without explicit dev override', as
 });
 
 test('embed sdk allows wildcard targetOrigin only with explicit dev override', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const result = await page.evaluate(async () => {
     const AppCtor = (window as unknown as {
@@ -479,7 +479,7 @@ test('embed sdk allows wildcard targetOrigin only with explicit dev override', a
 });
 
 test('embed sdk rejects inject when viewer origin cannot be resolved and targetOrigin is missing', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const result = await page.evaluate(() => {
     const AppCtor = (window as unknown as {
@@ -514,7 +514,7 @@ test('embed sdk rejects inject when viewer origin cannot be resolved and targetO
 });
 
 test('embed sdk queues commands issued before ready and settles without timeout', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const settled = await page.evaluate(async () => {
     const app = new (window as unknown as { ElectricFieldApp: new (options: Record<string, unknown>) => {
@@ -555,7 +555,7 @@ test('embed sdk queues commands issued before ready and settles without timeout'
 });
 
 test('embed sdk pre-ready queued command survives delayed ready handshake', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const settled = await page.evaluate(async () => {
     const delayedViewerHtml = [
@@ -611,7 +611,7 @@ test('embed sdk pre-ready queued command survives delayed ready handshake', asyn
 });
 
 test('embed sdk queued command times out when ready handshake never arrives', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const settled = await page.evaluate(async () => {
     const silentViewerHtml = '<!doctype html><html><body>silent viewer</body></html>';
@@ -657,7 +657,7 @@ test('embed sdk queued command times out when ready handshake never arrives', as
 });
 
 test('embed sdk rejects queued command with uncloneable payload instead of hanging', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   const settled = await page.evaluate(async () => {
     const delayedViewerHtml = [

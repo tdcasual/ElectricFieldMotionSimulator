@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('core path create/edit/play/io/demo', async ({ page }) => {
-  await page.goto('http://localhost:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   await expect(page.locator('#demo-mode-btn')).toHaveAttribute('aria-pressed', 'true');
@@ -44,7 +44,7 @@ test('core path create/edit/play/io/demo', async ({ page }) => {
 });
 
 test('desktop context menu actions keep selection workflow coherent', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -81,7 +81,7 @@ test('desktop context menu actions keep selection workflow coherent', async ({ p
 });
 
 test('desktop opening variables drawer hides any existing context menu', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -108,7 +108,7 @@ test('desktop opening variables drawer hides any existing context menu', async (
 });
 
 test('desktop opening markdown board hides any existing context menu', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -135,7 +135,7 @@ test('desktop opening markdown board hides any existing context menu', async ({ 
 });
 
 test('desktop escape closes open context menu', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -161,7 +161,7 @@ test('desktop escape closes open context menu', async ({ page }) => {
 });
 
 test('desktop right-click on blank canvas area closes existing context menu', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -188,7 +188,7 @@ test('desktop right-click on blank canvas area closes existing context menu', as
 });
 
 test('desktop toggling demo mode hides existing context menu', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -214,7 +214,7 @@ test('desktop toggling demo mode hides existing context menu', async ({ page }) 
 });
 
 test('desktop escape closes property drawer even after focus moves to header controls', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -247,7 +247,7 @@ test('desktop escape closes property drawer even after focus moves to header con
 });
 
 test('desktop right-click on header closes existing context menu', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -273,7 +273,7 @@ test('desktop right-click on header closes existing context menu', async ({ page
 });
 
 test('desktop scene settings keep boundary and timestep controls coherent', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -309,7 +309,7 @@ test('desktop scene settings keep boundary and timestep controls coherent', asyn
 });
 
 test('desktop clear scene closes property drawer and clears objects coherently', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -343,7 +343,7 @@ test('desktop clear scene closes property drawer and clears objects coherently',
 });
 
 test('desktop load scene closes property drawer and restores saved object count', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -388,7 +388,7 @@ test('desktop load scene closes property drawer and restores saved object count'
 });
 
 test('desktop load scene closes variables panel to avoid stale variable drafts', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -420,7 +420,7 @@ test('desktop load scene closes variables panel to avoid stale variable drafts',
 });
 
 test('desktop reset scene closes variables panel to avoid stale variable drafts', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -442,7 +442,7 @@ test('desktop reset scene closes variables panel to avoid stale variable drafts'
 });
 
 test('desktop toggling demo mode closes variables panel to avoid stale variable drafts', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const demoButton = page.locator('#demo-mode-btn');
@@ -462,7 +462,7 @@ test('desktop toggling demo mode closes variables panel to avoid stale variable 
 });
 
 test('desktop theme toggle keeps explicit label text coherent after switching themes', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const themeButton = page.locator('#theme-toggle-btn');
@@ -477,7 +477,7 @@ test('desktop theme toggle keeps explicit label text coherent after switching th
 });
 
 test('desktop header keeps variables and markdown drawers mutually exclusive with synced button state', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const variablesButton = page.locator('#variables-btn');
@@ -505,7 +505,7 @@ test('desktop header keeps variables and markdown drawers mutually exclusive wit
 });
 
 test('desktop variables button toggles panel open and close state coherently', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const variablesButton = page.locator('#variables-btn');
@@ -524,7 +524,7 @@ test('desktop variables button toggles panel open and close state coherently', a
 });
 
 test('desktop escape closes markdown board even after focus moves to header controls', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const markdownButton = page.locator('#markdown-toggle-btn');
@@ -546,7 +546,7 @@ test('desktop escape closes markdown board even after focus moves to header cont
 });
 
 test('desktop classroom mode toggle remains operable with drawer open and persists after reload', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const appShell = page.getByTestId('app-shell');
@@ -580,7 +580,7 @@ test('desktop classroom mode toggle remains operable with drawer open and persis
 });
 
 test('desktop escape closes variables drawer even after focus moves to header controls', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const variablesButton = page.locator('#variables-btn');
@@ -602,7 +602,7 @@ test('desktop escape closes variables drawer even after focus moves to header co
 });
 
 test('desktop tab from header while drawer open returns focus into variables panel', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const variablesButton = page.locator('#variables-btn');
@@ -621,7 +621,7 @@ test('desktop tab from header while drawer open returns focus into variables pan
 });
 
 test('desktop shift-tab from header while drawer open returns focus into variables panel end', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const variablesButton = page.locator('#variables-btn');
@@ -640,7 +640,7 @@ test('desktop shift-tab from header while drawer open returns focus into variabl
 });
 
 test('desktop successful import keeps markdown board open for note continuity', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const markdownButton = page.locator('#markdown-toggle-btn');
@@ -673,7 +673,7 @@ test('desktop successful import keeps markdown board open for note continuity', 
 });
 
 test('desktop failed import keeps variables drawer open with current draft intact', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const variablesButton = page.locator('#variables-btn');

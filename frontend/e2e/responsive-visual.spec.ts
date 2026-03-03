@@ -22,7 +22,7 @@ async function ensurePlaybackPaused(page: Page) {
 }
 
 async function stabilizeForScreenshot(page: Page) {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   await page.addStyleTag({

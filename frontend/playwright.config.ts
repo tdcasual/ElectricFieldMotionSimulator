@@ -13,14 +13,14 @@ export default defineConfig({
     timeout: 5_000
   },
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: 'http://127.0.0.1:4173',
     trace: 'retain-on-failure'
   },
   webServer: {
-    command: 'npm run dev:frontend -- --host 127.0.0.1 --port 5173',
-    url: 'http://127.0.0.1:5173',
+    command: 'npm run dev:frontend -- --host 127.0.0.1 --port 4173',
+    url: 'http://127.0.0.1:4173',
     cwd: repoRoot,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000
   },
   projects: [
@@ -28,7 +28,7 @@ export default defineConfig({
       name: 'desktop-chromium',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /.*\.spec\.ts/,
-      testIgnore: /touch-core-path\.spec\.ts/
+      testIgnore: /(touch-core-path|phone-touch-gestures|phone-import-recovery|phone-safe-area)\.spec\.ts/
     },
     {
       name: 'tablet-chromium',
@@ -44,7 +44,7 @@ export default defineConfig({
         ...devices['iPhone 13'],
         browserName: 'chromium'
       },
-      testMatch: /touch-core-path\.spec\.ts/
+      testMatch: /(touch-core-path|phone-touch-gestures|phone-import-recovery|phone-safe-area)\.spec\.ts/
     }
   ]
 });
