@@ -1,8 +1,8 @@
 # Embed Protocol (iframe + SDK)
 
-Date: 2026-02-27
+Date: 2026-03-03
 
-This document defines the host/viewer messaging contract for the phase-1 embed runtime.
+This document defines the V3 host/viewer messaging contract.
 
 ## 1. Transport
 
@@ -13,10 +13,10 @@ This document defines the host/viewer messaging contract for the phase-1 embed r
 - Viewer -> Host events:
   - `source: "electric-field-sim"`
   - `type: "<event-name>"`
-- `targetOrigin="*"` is **dev-only** for local harness/debug usage.
-- Production integrations must pin target origin explicitly (for example `https://your-host.example`) and wildcard origin is forbidden in production.
-- `embed.js` enforces this policy by default: `targetOrigin="*"` is rejected unless `allowDevWildcardTargetOrigin=true` is explicitly set.
-- If `targetOrigin` is omitted, `embed.js` derives it from iframe `viewerPath`; when derivation fails, `inject()` throws and requires an explicit `targetOrigin`.
+- `targetOrigin="*"` is dev-only for local debug.
+- Production integrations must pin explicit origin.
+- `embed.js` rejects wildcard origin unless `allowDevWildcardTargetOrigin=true`.
+- If `targetOrigin` is omitted, `embed.js` derives from `viewerPath`; if derivation fails, `inject()` throws.
 
 ## 2. Host -> Viewer Command Envelope
 
@@ -76,7 +76,7 @@ Emitted when bootstrap fails.
 
 ### 3.3 `command-result`
 
-Emitted after each accepted command message.
+Emitted after each accepted command.
 
 ```json
 {
@@ -92,73 +92,38 @@ Emitted after each accepted command message.
 }
 ```
 
-Fields:
-- `id`: echoed request id or `null`.
-- `command`: command name.
-- `ok`: command success boolean.
-- `code`/`message`: included only when `ok=false`.
-
 ## 4. Error Codes
 
 Current known codes:
-- `network`: remote scene fetch failure.
-- `parse`: inline scene parse failure.
-- `validation`: scene schema/runtime validation failure.
-- `runtime`: bootstrap/runtime exception.
-- `invalid-command`: unsupported command name.
-- `timeout`: SDK-side timeout waiting for `command-result`.
-
-## 4.1 Local Mock `materialId` (current phase)
-
-Current phase ships a local mock material registry in:
-- `frontend/src/embed/materialMockRegistry.ts`
-
-Built-in ids:
-- `mock-empty` -> `/scenes/embed-empty.json`
-- `mock-particle` -> `/scenes/material-mock-particle.json`
-
-This is a temporary backend-free adapter. Later phases can replace it with a remote material service while keeping the same `materialId` entry point.
+- `network`
+- `parse`
+- `validation`
+- `runtime`
+- `invalid-command`
+- `timeout`
 
 ## 5. SDK Mapping (`embed.js`)
 
 `ElectricFieldApp` public methods:
 - `inject(target)`
 - `destroy()`
-- `play()` -> command `play`
-- `pause()` -> command `pause`
-- `togglePlay()` -> command `togglePlay`
-- `reset()` -> command `reset`
-- `loadScene(sceneData)` -> command `loadScene`
+- `play()`
+- `pause()`
+- `togglePlay()`
+- `reset()`
+- `loadScene(sceneData)`
 
 Callbacks:
 - `onReady(payload)`
 - `onError(payload)`
 - `onCommandResult(payload)`
 
-Security-related options:
-- `targetOrigin`: explicit `postMessage` target origin (recommended in production).
-- `allowDevWildcardTargetOrigin`: default `false`; when `true`, allows `targetOrigin="*"` for local debugging only.
+Security options:
+- `targetOrigin`
+- `allowDevWildcardTargetOrigin` (default `false`)
 
-## 6. Host Usage Example
+## 6. Integration Coverage
 
-```html
-<script src="./embed.js"></script>
-<div id="sim"></div>
-<script>
-  const app = new ElectricFieldApp({
-    mode: 'view',
-    sceneUrl: './scene.json',
-    onReady: (payload) => console.log('ready', payload),
-    onError: (payload) => console.error('error', payload),
-    onCommandResult: (payload) => console.log('command-result', payload)
-  });
-  app.inject('#sim');
-  app.play();
-</script>
-```
-
-## 7. Integration Coverage
-
-The protocol path is validated by:
-- `frontend/e2e/embed-protocol.spec.ts`
-- `frontend/test/host-bridge.test.ts`
+Validated by:
+- `frontend/e2e/v3-embed.spec.ts`
+- `frontend/test/v3-infrastructure-adapters.test.ts`

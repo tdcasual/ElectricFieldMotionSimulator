@@ -31,6 +31,8 @@ function expectNoMatches(result: ReturnType<typeof runRg>, ignore: ((line: strin
 
 describe('v3 layer boundaries', () => {
   it('removes legacy bridge runtime entry points from active frontend path', () => {
+    expect(existsSync(resolve(PROJECT_ROOT, 'js'))).toBe(false);
+    expect(existsSync(resolve(PROJECT_ROOT, 'test'))).toBe(false);
     expect(existsSync(resolve(PROJECT_ROOT, 'frontend/src/runtime/simulatorRuntime.ts'))).toBe(false);
     expect(existsSync(resolve(PROJECT_ROOT, 'frontend/src/runtime/runtimePropertySchema.ts'))).toBe(false);
     expect(existsSync(resolve(PROJECT_ROOT, 'frontend/src/engine/runtimeEngineBridge.ts'))).toBe(false);

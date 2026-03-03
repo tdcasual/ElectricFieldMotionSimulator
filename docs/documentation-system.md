@@ -1,93 +1,57 @@
-# 文档系统规范
+# 文档系统规范（V3 主线）
 
-最后更新：2026-02-28
+最后更新：2026-03-03
 
 ## 目标
 
-建立统一、可维护、可追溯的项目文档系统，确保以下原则：
+建立最小且可执行的文档系统，确保：
 
-- 单一入口：所有文档从 `docs/README.md` 可导航
+- 单一入口：所有有效文档可由 `docs/README.md` 导航
 - 代码同步：行为变更必须同步更新文档
-- 主线清晰：当前文档与历史归档明确分层
-- 可验证：测试与验收标准有明确命令和阈值
+- 口径一致：不保留过期兼容路径与历史实施噪音
+- 可验证：文档中的命令可直接执行
 
-## 文档分层
+## 文档范围
 
-### 根目录文档（项目入口）
+### 根目录文档（入口）
 
-- `README.md`：产品能力、快速入口、主文档索引
-- `QUICKSTART.md`：本地启动与最短上手路径
-- `TESTING-GUIDE.md`：分层测试策略与验收清单
-- `CHANGELOG.md`：对外可见的变更记录
+- `README.md`
+- `QUICKSTART.md`
+- `TESTING-GUIDE.md`
+- `CHANGELOG.md`
 
-### `docs/` 主线文档（工作文档）
+### `docs/` 主线文档（唯一工作面）
 
-- `docs/migration/`：架构与迁移基线
-- `docs/plans/`：进行中或近期执行计划
+- `docs/migration/`：架构与场景协议
 - `docs/release/`：发布检查与回滚预案
-- `docs/embed-protocol.md` 等专题文档
-
-### `docs/history/` 归档文档（追溯文档）
-
-- 已完成且不再作为当前实现依据的设计/计划
-- 历史手工调试资源
-
-## 命名规则
-
-### 计划/设计文档
-
-- 格式：`YYYY-MM-DD-<topic>.md`
-- 要求：文件名主题明确，避免 `misc`、`temp`、`new` 等模糊词
-
-### 规范类文档
-
-- 使用语义明确的稳定文件名，如：
-  - `documentation-system.md`
-  - `embed-protocol.md`
+- `docs/embed-protocol.md`：嵌入协议
+- `docs/device-extension-checklist.md`：扩展清单
+- `docs/documentation-system.md`：治理规则
 
 ## 何时必须更新文档
 
-以下变更必须同步更新至少一个文档入口：
-
-1. 交互行为变更（尤其移动端触控、手势、快捷路径）
-2. 测试策略或阈值变更
-3. 架构边界或模块职责变更
-4. 发布流程、回滚流程变更
-5. 新增文档目录或新增关键文档
-
-## 文档更新矩阵
-
-- 交互/UX行为变更：更新 `README.md`（若用户可感知）与 `TESTING-GUIDE.md`
-- 测试阈值变更：更新 `TESTING-GUIDE.md`
-- 重大修复与能力调整：更新 `CHANGELOG.md`
-- 新计划或设计：新增到 `docs/plans/`，并在 `docs/README.md` 可发现
-- 历史化文档：移动到 `docs/history/` 并更新 `docs/history/README.md`
+1. 场景协议、命令协议、错误语义发生变化。
+2. 测试门禁、CI 策略、运行环境策略发生变化。
+3. 架构边界或模块职责发生变化。
+4. 发布流程、回滚流程发生变化。
 
 ## 提交流程（文档门禁）
 
-在宣告完成前，至少执行以下检查：
+在宣告完成前，至少执行：
 
 ```bash
-rg -n "docs/README.md|documentation-system|mobile|touch|swipe" README.md TESTING-GUIDE.md docs/README.md docs/documentation-system.md
+rg -n "docs/README.md|scene-compatibility-policy|embed-protocol|quality:all" README.md QUICKSTART.md TESTING-GUIDE.md docs/README.md
 ```
 
-如涉及移动端交互，必须至少运行一次手机端 E2E：
+如涉及交互行为改动，至少运行一次：
 
 ```bash
 npm run test:e2e -- --project=phone-chromium
 ```
 
-## 归档策略
-
-- 计划已执行完且不再作为当前迭代依据时，迁移到 `docs/history/plans/`
-- 保留原文件名，避免时间线断裂
-- 在 `docs/history/README.md` 补充索引
-
 ## 评审清单
 
-提交前确认：
-
-- 是否能从 `docs/README.md` 找到本次变更对应文档
-- 文档是否写明了可执行的验证命令
-- 文档是否包含明确日期
-- 术语与目录命名是否一致
+- `docs/README.md` 能找到本次变更对应文档。
+- 文档中的命令在当前仓库可执行。
+- 不包含已删除目录或废弃兼容路径引用。
+- 文档日期与当前状态一致。
