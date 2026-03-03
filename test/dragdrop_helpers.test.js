@@ -13,6 +13,11 @@ import {
   buildTangencyCandidates
 } from '../js/interactions/tangencyCandidates.js';
 import { computeRectFromHandle } from '../js/interactions/geometryResize.js';
+import {
+  getObjectResizeMode,
+  isFieldResizable,
+  tryStartObjectResize
+} from '../js/interactions/geometryInteractionController.js';
 
 test('resolveToolEntry maps toolbar aliases', () => {
   const cap = resolveToolEntry('capacitor');
@@ -240,4 +245,48 @@ test('computeRectFromHandle computes constrained rect for nw handle drag', () =>
     width: 115,
     height: 100
   });
+});
+
+test('getObjectResizeMode resolves radius for circle geometry and rect otherwise', () => {
+  assert.equal(getObjectResizeMode({
+    geometry: { kind: 'circle', radius: 25 }
+  }), 'radius');
+  assert.equal(getObjectResizeMode({
+    geometry: { kind: 'polygon', vertices: [] }
+  }), 'rect');
+});
+
+test('isFieldResizable checks interaction kind on manager', () => {
+  const manager = {
+    getInteractionKind(object) {
+      return object.kind;
+    }
+  };
+  assert.equal(isFieldResizable(manager, { kind: 'magnetic-field' }), true);
+  assert.equal(isFieldResizable(manager, { kind: 'electric-field' }), true);
+  assert.equal(isFieldResizable(manager, { kind: 'particle' }), false);
+});
+
+test('tryStartObjectResize arms resize drag state when pointer hits resize handle', () => {
+  const manager = {
+    isCoarsePointer: false,
+    dragMode: 'move',
+    resizeHandle: null,
+    resizeStart: null,
+    getInteractionKind() {
+      return 'magnetic-field';
+    }
+  };
+  const field = {
+    x: 10,
+    y: 20,
+    radius: 30,
+    geometry: { kind: 'circle', radius: 30 }
+  };
+
+  const started = tryStartObjectResize(manager, field, { x: 40, y: 20 });
+  assert.equal(started, true);
+  assert.equal(manager.dragMode, 'resize');
+  assert.equal(manager.resizeHandle, 'radius');
+  assert.equal(manager.resizeStart?.radius, 30);
 });

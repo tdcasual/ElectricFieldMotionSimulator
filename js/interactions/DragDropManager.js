@@ -17,25 +17,35 @@ import {
     getObjectRealDimension,
     setObjectDisplayDimension
 } from '../modes/GeometryScaling.js';
-import { computePointTangencyMatch, computeTangencyMatch } from './TangencyEngine.js';
 import {
-    computeVertexBounds,
     getWorldVertices,
     hasLocalVertices,
-    normalizeObjectVerticesFromWorld,
-    scaleWorldVerticesToBounds
+    normalizeObjectVerticesFromWorld
 } from '../geometry/VertexGeometry.js';
 import {
     getGeometryWorldVertices,
     getObjectGeometryKind
 } from '../geometry/GeometryKernel.js';
-import { computeRectFromHandle } from './geometryResize.js';
 import {
     buildTangencyCandidates,
     getObjectCircleBoundary,
     getObjectPointBoundary
 } from './tangencyCandidates.js';
 import { closeContextMenuUi } from './contextMenuLifecycle.js';
+import {
+    applyTangencySnap,
+    captureResizeStart,
+    getObjectResizeHandle,
+    getObjectResizeHandles,
+    getObjectResizeMode,
+    isFieldResizable,
+    resolveGeometryOverlaySourceKey,
+    resizeObject,
+    syncDisplayResizeScale,
+    tryStartObjectResize,
+    updateGeometryOverlayHint,
+    updateTangencyHintAndSnap
+} from './geometryInteractionController.js';
 import {
     cancelPointerInteraction,
     clearPointerInteractionState,
@@ -64,22 +74,8 @@ const CREATION_OVERRIDES = {
     })
 };
 
-const TANGENCY_TOLERANCE_PX = 2;
-const MIN_TANGENCY_RADIUS = 15;
 const POINTER_DRAG_THRESHOLD_SQ_MOUSE = 1;
 const POINTER_DRAG_THRESHOLD_SQ_TOUCH = 64; // 8px jitter tolerance for touch long-press
-const RESIZE_SCALE_DIMENSION_PREFERENCE = [
-    'radius',
-    'width',
-    'height',
-    'length',
-    'plateDistance',
-    'depth',
-    'viewGap',
-    'spotSize',
-    'lineWidth',
-    'particleRadius'
-];
 const RESET_TAP_CHAIN_EVENT = 'simulator-reset-tap-chain';
 
 function clamp(value, min, max) {
@@ -96,19 +92,11 @@ export function getCreationOverrides(type, pixelsPerMeter, options = {}) {
     return CREATION_OVERRIDES[type](pixelsPerMeter);
 }
 
-function isFiniteNumber(value) {
-    return Number.isFinite(value);
-}
-
 function getRegistryInteractionKind(object) {
     if (!object || typeof object !== 'object') return null;
     const type = typeof object.type === 'string' ? object.type : '';
     if (!type) return null;
     return registry.get(type)?.interaction?.kind || null;
-}
-
-function isMagneticFieldObject(object) {
-    return getRegistryInteractionKind(object) === 'magnetic-field';
 }
 
 export function clearTangencyHintState(scene) {
@@ -586,55 +574,11 @@ export class DragDropManager {
     }
 
     resolveGeometryOverlaySourceKey(object, preferredKeys = []) {
-        if (!object || typeof object !== 'object') return null;
-        const keys = Array.isArray(preferredKeys) ? preferredKeys.filter((key) => typeof key === 'string') : [];
-        for (const key of RESIZE_SCALE_DIMENSION_PREFERENCE) {
-            if (!keys.includes(key)) {
-                keys.push(key);
-            }
-        }
-
-        for (const key of keys) {
-            const displayValue = Number(object[key]);
-            const realValue = getObjectRealDimension(object, key, this.scene);
-            if (!Number.isFinite(displayValue) || displayValue <= 0) continue;
-            if (!Number.isFinite(realValue) || realValue <= 0) continue;
-            return key;
-        }
-        return null;
+        return resolveGeometryOverlaySourceKey(this, object, preferredKeys);
     }
 
     updateGeometryOverlayHint(object, preferredKeys = []) {
-        const sourceKey = this.resolveGeometryOverlaySourceKey(object, preferredKeys);
-        if (!sourceKey) {
-            this.clearGeometryOverlayHint();
-            return false;
-        }
-
-        const displayValue = Number(object[sourceKey]);
-        const realValue = getObjectRealDimension(object, sourceKey, this.scene);
-        const objectScaleRaw = getObjectGeometryScale(object);
-        const objectScale = Number.isFinite(objectScaleRaw) && objectScaleRaw > 0 ? objectScaleRaw : 1;
-        if (!Number.isFinite(displayValue) || displayValue <= 0) {
-            this.clearGeometryOverlayHint();
-            return false;
-        }
-        if (!Number.isFinite(realValue) || realValue <= 0) {
-            this.clearGeometryOverlayHint();
-            return false;
-        }
-
-        const interaction = this.ensureSceneInteractionState();
-        if (!interaction) return false;
-        interaction.geometryOverlay = {
-            objectId: object?.id ?? null,
-            sourceKey,
-            realValue,
-            displayValue,
-            objectScale
-        };
-        this.getAppAdapter()?.updateUI?.();
-        return true;
+        return updateGeometryOverlayHint(this, object, preferredKeys);
     }
 
     getTangencyMode() {
@@ -643,108 +587,15 @@ export class DragDropManager {
     }
 
     syncDisplayResizeScale(object, preferredKeys = []) {
-        if (!object || typeof object !== 'object') return false;
-        const keys = Array.isArray(preferredKeys) ? preferredKeys.filter((key) => typeof key === 'string') : [];
-        for (const key of RESIZE_SCALE_DIMENSION_PREFERENCE) {
-            if (!keys.includes(key)) {
-                keys.push(key);
-            }
-        }
-
-        for (const key of keys) {
-            const displayValue = Number(object[key]);
-            if (!Number.isFinite(displayValue) || displayValue <= 0) continue;
-            if (setObjectDisplayDimension(object, key, displayValue, this.scene)) {
-                return true;
-            }
-        }
-        return false;
+        return syncDisplayResizeScale(this, object, preferredKeys);
     }
 
     applyTangencySnap(match, mode) {
-        if (!match?.snapTarget || !this.draggingObject) return;
-        if (mode === 'move') {
-            if (isFiniteNumber(match.snapTarget.x)) {
-                this.draggingObject.x = match.snapTarget.x;
-            }
-            if (isFiniteNumber(match.snapTarget.y)) {
-                this.draggingObject.y = match.snapTarget.y;
-            }
-            return;
-        }
-
-        if (mode !== 'resize') return;
-        if (!isFiniteNumber(match.snapTarget.radius)) return;
-        const snappedRadius = Math.max(MIN_TANGENCY_RADIUS, match.snapTarget.radius);
-        if (!setObjectDisplayDimension(this.draggingObject, 'radius', snappedRadius, this.scene)) {
-            this.draggingObject.radius = snappedRadius;
-            if (this.isMagneticResizable(this.draggingObject)) {
-                this.draggingObject.width = snappedRadius * 2;
-                this.draggingObject.height = snappedRadius * 2;
-            }
-            this.syncDisplayResizeScale(this.draggingObject, ['radius']);
-        }
+        return applyTangencySnap(this, match, mode);
     }
 
     updateTangencyHintAndSnap(eventLike = null) {
-        if (!this.isDragging || !this.draggingObject || this.draggingObject.type === 'particle') {
-            this.clearTangencyHint();
-            return;
-        }
-
-        const mode = this.getTangencyMode();
-        if (!mode) {
-            this.clearTangencyHint();
-            return;
-        }
-
-        const activeCircle = getObjectCircleBoundary(this.draggingObject);
-        const activePoint = activeCircle ? null : getObjectPointBoundary(this.draggingObject);
-        if (!activeCircle && !activePoint) {
-            this.clearTangencyHint();
-            return;
-        }
-
-        const objects = this.getSceneObjects();
-        const candidateObjects = activePoint
-            ? objects.filter((item) => isMagneticFieldObject(item))
-            : objects;
-        const candidates = buildTangencyCandidates(candidateObjects, this.draggingObject);
-        const match = activeCircle
-            ? computeTangencyMatch(activeCircle, candidates, TANGENCY_TOLERANCE_PX, mode)
-            : computePointTangencyMatch(activePoint, candidates, TANGENCY_TOLERANCE_PX);
-        if (!match) {
-            this.clearTangencyHint();
-            return;
-        }
-
-        const suppressed = !!eventLike?.altKey;
-        if (!suppressed) {
-            this.applyTangencySnap(match, mode);
-        }
-
-        const currentCircle = getObjectCircleBoundary(this.draggingObject) || activeCircle;
-        const currentPoint = getObjectPointBoundary(this.draggingObject) || activePoint;
-        const interaction = this.ensureSceneInteractionState();
-        if (!interaction) return;
-        interaction.tangencyHint = {
-            activeObjectId: this.draggingObject.id ?? null,
-            activeType: mode,
-            kind: match.kind,
-            relation: match.relation,
-            errorPx: match.errorPx,
-            movementPx: match.movementPx,
-            suppressed,
-            applied: !suppressed,
-            candidate: match.candidate,
-            activeCircle: currentCircle,
-            activePoint: currentPoint,
-            label: match.kind === 'circle-circle'
-                ? `相切（${match.relation === 'inner' ? '内切' : '外切'}）`
-                : (match.kind === 'point-circle' || match.kind === 'point-segment' || match.kind === 'circle-point'
-                    ? '边界贴合'
-                    : '相切')
-        };
+        return updateTangencyHintAndSnap(this, eventLike);
     }
 
     isTouchPointerEvent(eventLike) {
@@ -1107,154 +958,31 @@ export class DragDropManager {
     }
 
     isFieldResizable(object) {
-        if (!object) return false;
-        const kind = this.getInteractionKind(object);
-        return kind === 'magnetic-field' || kind === 'electric-field';
+        return isFieldResizable(this, object);
     }
 
     getObjectResizeMode(object) {
-        if (!object) return 'rect';
-        if (getObjectGeometryKind(object) === 'circle') return 'radius';
-        return 'rect';
+        return getObjectResizeMode(object);
     }
 
     getObjectResizeHandles(object) {
-        if (!this.isFieldResizable(object)) return [];
-        const mode = this.getObjectResizeMode(object);
-        const hasExplicitGeometry = object?.geometry && typeof object.geometry === 'object';
-
-        if (mode === 'radius') {
-            const circle = getObjectCircleBoundary(object);
-            if (!circle) return [];
-            return [{ key: 'radius', x: circle.x + circle.radius, y: circle.y }];
-        }
-
-        const polygonVertices = hasLocalVertices(object)
-            ? getWorldVertices(object)
-            : getGeometryWorldVertices(object);
-        if (polygonVertices.length) {
-            const bounds = computeVertexBounds(polygonVertices);
-            if (!bounds) return [];
-            return [
-                { key: 'nw', x: bounds.minX, y: bounds.minY },
-                { key: 'ne', x: bounds.maxX, y: bounds.minY },
-                { key: 'sw', x: bounds.minX, y: bounds.maxY },
-                { key: 'se', x: bounds.maxX, y: bounds.maxY }
-            ];
-        }
-        if (hasExplicitGeometry) return [];
-
-        const x = Number.isFinite(object?.x) ? object.x : 0;
-        const y = Number.isFinite(object?.y) ? object.y : 0;
-        const w = Number.isFinite(object?.width) ? object.width : 0;
-        const h = Number.isFinite(object?.height) ? object.height : 0;
-
-        return [
-            { key: 'nw', x, y },
-            { key: 'ne', x: x + w, y },
-            { key: 'sw', x, y: y + h },
-            { key: 'se', x: x + w, y: y + h }
-        ];
+        return getObjectResizeHandles(this, object);
     }
 
     getObjectResizeHandle(object, pos) {
-        const handles = this.getObjectResizeHandles(object);
-        const tolerance = this.isCoarsePointer ? 18 : 10;
-        const tolSq = tolerance * tolerance;
-        for (const handle of handles) {
-            const dx = pos.x - handle.x;
-            const dy = pos.y - handle.y;
-            if ((dx * dx + dy * dy) <= tolSq) {
-                return handle.key;
-            }
-        }
-        return null;
+        return getObjectResizeHandle(this, object, pos);
     }
 
     captureResizeStart(object) {
-        const x = Number.isFinite(object?.x) ? object.x : 0;
-        const y = Number.isFinite(object?.y) ? object.y : 0;
-        const vertices = (() => {
-            if (hasLocalVertices(object)) {
-                return object.vertices.map((point) => ({ ...point }));
-            }
-            const worldVertices = getGeometryWorldVertices(object);
-            if (!worldVertices.length) return null;
-            return worldVertices.map((point) => ({
-                x: point.x - x,
-                y: point.y - y
-            }));
-        })();
-        return {
-            x,
-            y,
-            width: Number.isFinite(object?.width) ? object.width : 0,
-            height: Number.isFinite(object?.height) ? object.height : 0,
-            radius: Number.isFinite(object?.radius) ? object.radius : 0,
-            vertices
-        };
+        return captureResizeStart(object);
     }
 
     tryStartObjectResize(object, pointerPos) {
-        if (!this.isFieldResizable(object)) return false;
-        const handle = this.getObjectResizeHandle(object, pointerPos);
-        if (!handle) return false;
-        this.dragMode = 'resize';
-        this.resizeHandle = handle;
-        this.resizeStart = this.captureResizeStart(object);
-        return true;
+        return tryStartObjectResize(this, object, pointerPos);
     }
 
     resizeObject(field, pos) {
-        if (!this.resizeHandle || !this.resizeStart) return;
-
-        const minSize = 30;
-        const minRadius = 15;
-        const start = this.resizeStart;
-        const mode = this.getObjectResizeMode(field);
-
-        if (mode === 'radius') {
-            const cx = start.x;
-            const cy = start.y;
-            const r = Math.max(minRadius, Math.hypot(pos.x - cx, pos.y - cy));
-            field.x = cx;
-            field.y = cy;
-            field.radius = r;
-            if (this.isMagneticResizable(field)) {
-                field.width = r * 2;
-                field.height = r * 2;
-            }
-            return;
-        }
-
-        if (start.vertices && ['nw', 'ne', 'sw', 'se'].includes(this.resizeHandle)) {
-            const nextRect = computeRectFromHandle(this.resizeHandle, start, pos, minSize);
-            const worldVertices = scaleWorldVerticesToBounds(start, nextRect);
-            if (worldVertices) {
-                normalizeObjectVerticesFromWorld(field, worldVertices);
-                return;
-            }
-        }
-
-        const startX = start.x;
-        const startY = start.y;
-        const startW = start.width;
-        const startH = start.height;
-        const startRight = startX + startW;
-        const startBottom = startY + startH;
-
-        const setRect = ({ x, y, width, height }) => {
-            field.x = x;
-            field.y = y;
-            field.width = width;
-            field.height = height;
-            if (this.isMagneticResizable(field)) {
-                field.radius = Math.min(width, height) / 2;
-            }
-        };
-
-        const nextRect = computeRectFromHandle(this.resizeHandle, start, pos, minSize);
-        setRect(nextRect);
+        return resizeObject(this, field, pos);
     }
 
     removeParticleIfInDisappearZone(particle) {
