@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { Renderer } from '../js/core/Renderer.js';
 import { buildUniformElectricGeometry } from '../js/rendering/fieldGeometryRenderer.js';
 import { buildSelectionHandles } from '../js/rendering/fieldSelectionOverlayRenderer.js';
@@ -29,6 +30,16 @@ function createFakeContext() {
     }
   };
 }
+
+function read(filePath) {
+  return fs.readFileSync(filePath, 'utf8');
+}
+
+test('Renderer delegates electric field drawing to dedicated module', () => {
+  const source = read('js/core/Renderer.js');
+  assert.match(source, /from '\.\.\/rendering\/electricFieldRenderer\.js'/);
+  assert.match(source, /drawElectricField\(field,\s*scene\)\s*{\s*return drawElectricField\(this,\s*field,\s*scene\);\s*}/s);
+});
 
 test('polygon electric field renders polygon path and vertex handles in vertex mode', () => {
   const renderer = Object.create(Renderer.prototype);

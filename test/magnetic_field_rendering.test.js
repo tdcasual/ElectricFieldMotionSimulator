@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { Renderer } from '../js/core/Renderer.js';
 import { buildMagneticGeometryPath } from '../js/rendering/fieldGeometryRenderer.js';
 
@@ -25,6 +26,20 @@ function createFakeContext() {
     }
   };
 }
+
+function read(filePath) {
+  return fs.readFileSync(filePath, 'utf8');
+}
+
+test('Renderer delegates magnetic and device drawing to dedicated modules', () => {
+  const source = read('js/core/Renderer.js');
+  assert.match(source, /from '\.\.\/rendering\/magneticFieldRenderer\.js'/);
+  assert.match(source, /drawMagneticField\(field,\s*scene\)\s*{\s*return drawMagneticField\(this,\s*field,\s*scene\);\s*}/s);
+  assert.match(source, /from '\.\.\/rendering\/deviceRenderer\.js'/);
+  assert.match(source, /drawDisappearZone\(zone,\s*scene\)\s*{\s*return drawDisappearZone\(this,\s*zone,\s*scene\);\s*}/s);
+  assert.match(source, /drawElectronGun\(emitter,\s*scene\)\s*{\s*return drawElectronGun\(this,\s*emitter,\s*scene\);\s*}/s);
+  assert.match(source, /drawProgrammableEmitter\(emitter,\s*scene\)\s*{\s*return drawProgrammableEmitter\(this,\s*emitter,\s*scene\);\s*}/s);
+});
 
 function renderMagneticSymbol(strength) {
   const renderer = Object.create(Renderer.prototype);
