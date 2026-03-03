@@ -1,5 +1,6 @@
 import type { InteractionStateRefs, SetStatusText, SimulatorApplication } from './types';
 import { mapToolbarCreateIntent } from '../../v3/ui-adapter/intentMappers';
+import { hitTestTopmostObjectId } from '../../v3/domain/geometry';
 
 type CreateInteractionModuleContext = InteractionStateRefs & {
   application: SimulatorApplication;
@@ -51,31 +52,7 @@ export function createInteractionModule(ctx: CreateInteractionModuleContext) {
   }
 
   function hitTestObjectId(x: number, y: number) {
-    for (let i = ctx.objects.value.length - 1; i >= 0; i -= 1) {
-      const item = ctx.objects.value[i];
-      if (item.type === 'particle' || item.type === 'magnetic-field') {
-        const dx = x - item.x;
-        const dy = y - item.y;
-        const radius = item.type === 'particle'
-          ? item.radius
-          : Math.max(item.radius, Math.min(item.width, item.height) / 2);
-        if ((dx * dx + dy * dy) <= (radius * radius)) {
-          return item.id;
-        }
-        continue;
-      }
-      const halfWidth = item.width / 2;
-      const halfHeight = item.height / 2;
-      if (
-        x >= (item.x - halfWidth) &&
-        x <= (item.x + halfWidth) &&
-        y >= (item.y - halfHeight) &&
-        y <= (item.y + halfHeight)
-      ) {
-        return item.id;
-      }
-    }
-    return null;
+    return hitTestTopmostObjectId(ctx.objects.value, x, y);
   }
 
   function selectObjectAt(x: number, y: number) {

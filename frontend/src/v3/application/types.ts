@@ -4,12 +4,12 @@ export type CommandEnvelope<P = unknown> = {
   expectedRevision?: number;
 };
 
-export type CommandExecutionErrorCode =
+type CommandExecutionErrorCode =
   | 'unknown_command'
   | 'version_conflict'
   | 'handler_failed';
 
-export type CommandExecutionError = {
+type CommandExecutionError = {
   code: CommandExecutionErrorCode;
   message: string;
   cause?: unknown;
@@ -28,4 +28,3 @@ export type CommandExecutionFailure = {
 export type CommandExecutionResult<S> =
   | CommandExecutionSuccess<S>
   | CommandExecutionFailure;
-

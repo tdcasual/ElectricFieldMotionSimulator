@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -84,5 +84,21 @@ describe('v3 layer boundaries', () => {
     ]);
 
     expectNoMatches(result);
+  });
+
+  it('uses shared geometry rules from v3/domain for store hit-test and canvas rendering', () => {
+    const interactionStore = readFileSync(
+      resolve(PROJECT_ROOT, 'frontend/src/stores/modules/interactionStore.ts'),
+      'utf8'
+    );
+    const canvasViewport = readFileSync(
+      resolve(PROJECT_ROOT, 'frontend/src/components/CanvasViewport.vue'),
+      'utf8'
+    );
+
+    expect(interactionStore).toContain("from '../../v3/domain/geometry'");
+    expect(canvasViewport).toContain("from '../v3/domain/geometry'");
+    expect(interactionStore).not.toMatch(/Math\.max\(item\.radius,\s*Math\.min\(item\.width,\s*item\.height\)\s*\/\s*2\)/);
+    expect(canvasViewport).not.toMatch(/Math\.max\(object\.radius,\s*Math\.min\(object\.width,\s*object\.height\)\s*\/\s*2\)/);
   });
 });

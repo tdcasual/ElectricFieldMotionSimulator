@@ -8,7 +8,8 @@ Date: 2026-03-03
 2. `frontend/src/App.vue` is the only UI orchestration entry.
 3. `frontend/src/stores/simulatorStore.ts` dispatches intents to V3 application use-cases.
 4. `frontend/src/v3/*` is the runtime core (domain/application/interaction/infrastructure).
-5. Legacy runtime bridge files have been removed from active frontend execution path.
+5. `frontend/src/v3/domain/geometry.ts` is the single geometry rule source for hit-test + render projection.
+6. Legacy runtime bridge files have been removed from active frontend execution path.
 
 ## Data Flow
 
@@ -35,6 +36,7 @@ User interaction
   - Scene lifecycle (`create/move/select/edit/delete/clear/load/save`)
 - V3 domain-owned:
   - Aggregate state and deterministic state transitions
+  - Geometry rules for hit-test and render projection
 - Infrastructure-owned:
   - Scene storage adapter
   - Render snapshot adapter
@@ -51,6 +53,7 @@ User interaction
   - `frontend/src/stores/simulatorStore.ts`
 - V3 core:
   - `frontend/src/v3/domain/sceneAggregate.ts`
+  - `frontend/src/v3/domain/geometry.ts`
   - `frontend/src/v3/application/useCases/simulatorApplication.ts`
   - `frontend/src/v3/application/readModel/projectSceneReadModel.ts`
   - `frontend/src/v3/interaction/pointerFsm.ts`

@@ -3,6 +3,10 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useSimulatorStore } from '../stores/simulatorStore';
 import { createPointerFsm } from '../v3/interaction/pointerFsm';
 import type { PointerIntent } from '../v3/interaction/types';
+import {
+  resolveObjectRenderGeometry,
+  resolveObjectSelectionGeometry
+} from '../v3/domain/geometry';
 
 const simulatorStore = useSimulatorStore();
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -50,21 +54,23 @@ function drawScene() {
 
   for (const object of simulatorStore.objects) {
     const selected = simulatorStore.selectedObjectId === object.id;
+    const renderGeometry = resolveObjectRenderGeometry(object);
     if (object.type === 'particle') {
       ctx.beginPath();
       ctx.fillStyle = object.color || '#58a6ff';
-      ctx.arc(object.x, object.y, object.radius, 0, Math.PI * 2);
+      ctx.arc(object.x, object.y, renderGeometry.kind === 'circle' ? renderGeometry.radius : object.radius, 0, Math.PI * 2);
       ctx.fill();
     } else if (object.type === 'electric-field') {
       ctx.fillStyle = 'rgba(241, 184, 98, 0.3)';
       ctx.strokeStyle = object.color || '#f1b862';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.rect(object.x - object.width / 2, object.y - object.height / 2, object.width, object.height);
+      if (renderGeometry.kind !== 'rect') continue;
+      ctx.rect(renderGeometry.x, renderGeometry.y, renderGeometry.width, renderGeometry.height);
       ctx.fill();
       ctx.stroke();
     } else if (object.type === 'magnetic-field') {
-      const radius = Math.max(object.radius, Math.min(object.width, object.height) / 2);
+      const radius = renderGeometry.kind === 'circle' ? renderGeometry.radius : object.radius;
       ctx.beginPath();
       ctx.fillStyle = 'rgba(142, 121, 214, 0.24)';
       ctx.strokeStyle = object.color || '#8e79d6';
@@ -79,22 +85,18 @@ function drawScene() {
       ctx.strokeStyle = '#00d2ff';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
-      if (object.type === 'particle') {
+      const selectionGeometry = resolveObjectSelectionGeometry(object);
+      if (selectionGeometry.kind === 'circle') {
         ctx.beginPath();
-        ctx.arc(object.x, object.y, object.radius + 8, 0, Math.PI * 2);
+        ctx.arc(selectionGeometry.centerX, selectionGeometry.centerY, selectionGeometry.radius, 0, Math.PI * 2);
         ctx.stroke();
-      } else if (object.type === 'electric-field') {
-        ctx.strokeRect(
-          object.x - object.width / 2 - 6,
-          object.y - object.height / 2 - 6,
-          object.width + 12,
-          object.height + 12
-        );
       } else {
-        const radius = Math.max(object.radius, Math.min(object.width, object.height) / 2) + 8;
-        ctx.beginPath();
-        ctx.arc(object.x, object.y, radius, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.strokeRect(
+          selectionGeometry.x,
+          selectionGeometry.y,
+          selectionGeometry.width,
+          selectionGeometry.height
+        );
       }
       ctx.restore();
     }

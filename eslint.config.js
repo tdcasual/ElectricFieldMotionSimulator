@@ -9,7 +9,6 @@ export default [
   },
   {
     files: ['frontend/src/**/*.ts', 'frontend/test/**/*.ts'],
-    ignores: ['frontend/src/engine/legacyBridge.ts'],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 'latest',
@@ -28,7 +27,7 @@ export default [
                 '../../engine/internal/*',
                 '@/engine/internal/*'
               ],
-              message: 'Use frontend/src/engine/legacyBridge for legacy runtime imports.'
+              message: 'Legacy runtime import paths are removed; use V3 modules under frontend/src/v3.'
             }
           ]
         }
