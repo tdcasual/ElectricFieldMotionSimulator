@@ -1,6 +1,6 @@
 # 项目文档中心
 
-最后更新：2026-02-28
+最后更新：2026-03-08
 
 本页是项目文档统一入口。请优先从这里进入对应主题文档，避免在仓库中分散查找。
 
@@ -19,6 +19,9 @@
 
 ### 进行中的设计与实施计划
 - `docs/plans/`（按日期命名）
+- `docs/plans/2026-03-08-performance-baseline-governance.md`
+- `docs/plans/2026-03-08-mobile-interaction-guidelines.md`
+- `docs/plans/2026-03-08-release-readiness-checklist.md`
 
 ### 发布与运维
 - `docs/release/frontend-rewrite-launch-checklist.md`

@@ -1,6 +1,6 @@
 # 文档系统规范
 
-最后更新：2026-02-28
+最后更新：2026-03-08
 
 ## 目标
 
@@ -61,6 +61,7 @@
 - 测试阈值变更：更新 `TESTING-GUIDE.md`
 - 重大修复与能力调整：更新 `CHANGELOG.md`
 - 新计划或设计：新增到 `docs/plans/`，并在 `docs/README.md` 可发现
+- 性能治理 / 移动端规范 / 发布清单：优先沉淀为可导航主线文档，并在 `TESTING-GUIDE.md` 或 `docs/README.md` 建立入口
 - 历史化文档：移动到 `docs/history/` 并更新 `docs/history/README.md`
 
 ## 提交流程（文档门禁）
@@ -71,10 +72,10 @@
 rg -n "docs/README.md|documentation-system|mobile|touch|swipe" README.md TESTING-GUIDE.md docs/README.md docs/documentation-system.md
 ```
 
-如涉及移动端交互，必须至少运行一次手机端 E2E：
+如涉及移动端交互，必须至少运行一次手机端 E2E；推荐显式指定独立端口，避免误用共享默认端口：
 
 ```bash
-npm run test:e2e -- --project=phone-chromium
+PLAYWRIGHT_VITE_PORT=4499 npm run test:e2e -- --project=phone-chromium
 ```
 
 ## 归档策略

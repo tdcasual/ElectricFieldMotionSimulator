@@ -36,6 +36,7 @@
 - 🧭 文档系统规范：[`docs/documentation-system.md`](docs/documentation-system.md)
 - 🧭 快速开始：[`QUICKSTART.md`](QUICKSTART.md)
 - ✅ 测试与验证：[`TESTING-GUIDE.md`](TESTING-GUIDE.md)
+- 🧪 E2E 端口提示：Playwright 回归建议使用独立端口，例如 `PLAYWRIGHT_VITE_PORT=4499 npm run test:e2e`；手工开发请以终端实际输出地址为准，不要写死 `5173`
 - 📝 更新记录：[`CHANGELOG.md`](CHANGELOG.md)
 - 🧪 示例场景：[`example-scene.json`](example-scene.json)
 
