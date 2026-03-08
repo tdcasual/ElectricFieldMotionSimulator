@@ -235,6 +235,14 @@
     font-weight: 600;
 }
 
+.toolbar-hint {
+    margin: 0 0 8px;
+    padding: 0 2px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
 .tool-item {
     display: flex;
     align-items: center;
@@ -657,6 +665,21 @@ body.light-theme .preset-btn:hover {
 
 .property-value textarea {
     resize: vertical;
+}
+
+.property-expression-hint {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.property-expression-hint.is-ok {
+    color: var(--accent-green);
+}
+
+.property-expression-hint.is-error {
+    color: var(--accent-red);
 }
 
 .section-toggle {
@@ -1337,6 +1360,17 @@ body.light-theme .preset-btn:hover {
 
 .phone-scene-body .control-label input[type="range"] {
     min-height: var(--phone-sheet-field-input-height);
+}
+
+.control-note {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 .phone-more-body {

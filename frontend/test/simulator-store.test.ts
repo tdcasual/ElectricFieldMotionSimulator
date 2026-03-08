@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Serializer } from '../src/engine/legacyBridge';
+import { Presets, Serializer } from '../src/engine/legacyBridge';
 import { SimulatorRuntime } from '../src/runtime/simulatorRuntime';
 import { useSimulatorStore } from '../src/stores/simulatorStore';
 
@@ -89,6 +89,26 @@ describe('simulatorStore demo mode', () => {
     expect(store.objectCount).toBe(1);
   });
 
+  it('restores property drawer after exiting demo mode when it was open before entering', () => {
+    const store = useSimulatorStore();
+    store.createObjectAtCenter('particle');
+    const selectedId = store.selectedObjectId;
+
+    expect(store.openPropertyPanel()).toBe(true);
+    expect(store.propertyDrawerOpen).toBe(true);
+    expect(store.activeDrawer).toBe('property');
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(true);
+    expect(store.propertyDrawerOpen).toBe(false);
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(false);
+    expect(store.selectedObjectId).toBe(selectedId);
+    expect(store.propertyDrawerOpen).toBe(true);
+    expect(store.activeDrawer).toBe('property');
+  });
+
   it('loads preset and updates object count', () => {
     const store = useSimulatorStore();
     const ok = store.loadPreset('uniform-acceleration');
@@ -114,6 +134,61 @@ describe('simulatorStore demo mode', () => {
     expect(ok).toBe(true);
     expect(store.variablesPanelOpen).toBe(false);
     expect(store.variableDraft).toEqual({ a: 3, speedScale: 1.5 });
+  });
+
+
+  it('syncs variable draft to loaded scene variables without forcing variables panel closed', () => {
+    const store = useSimulatorStore();
+    store.applyVariables({ legacy: 1 });
+    store.openVariablesPanel();
+    expect(store.variableDraft).toEqual({ legacy: 1 });
+    expect(store.variablesPanelOpen).toBe(true);
+
+    const result = store.loadSceneData({
+      version: '1.0',
+      settings: {},
+      variables: { a: 7, speedScale: 2.5 },
+      objects: []
+    });
+
+    expect(result.ok).toBe(true);
+    expect(store.variableDraft).toEqual({ a: 7, speedScale: 2.5 });
+    expect(store.variablesPanelOpen).toBe(true);
+  });
+
+  it('syncs variable draft after successful local scene load', () => {
+    const store = useSimulatorStore();
+    store.applyVariables({ legacy: 1 });
+
+    vi.spyOn(SimulatorRuntime.prototype, 'loadScene').mockImplementation(function (this: SimulatorRuntime) {
+      this.scene.variables = { loaded: 9 };
+      return { ok: true };
+    });
+
+    const ok = store.loadScene('vars-scene');
+
+    expect(ok).toBe(true);
+    expect(store.variableDraft).toEqual({ loaded: 9 });
+  });
+
+  it('syncs variable draft after loading preset scene variables', () => {
+    const store = useSimulatorStore();
+    store.applyVariables({ legacy: 1 });
+
+    vi.spyOn(Presets, 'get').mockReturnValue({
+      name: '变量预设',
+      data: {
+        version: '1.0',
+        settings: {},
+        variables: { speed: 3 },
+        objects: []
+      }
+    } as never);
+
+    const ok = store.loadPreset('vars-preset');
+
+    expect(ok).toBe(true);
+    expect(store.variableDraft).toEqual({ speed: 3 });
   });
 
   it('toggles markdown board and updates markdown preferences', () => {
@@ -144,6 +219,74 @@ describe('simulatorStore demo mode', () => {
 
     store.toggleMarkdownBoard();
     expect(store.variablesPanelOpen).toBe(false);
+    expect(store.markdownBoardOpen).toBe(true);
+    expect(store.propertyDrawerOpen).toBe(false);
+  });
+
+
+  it('restores property drawer after applying variables opened from property flow', () => {
+    const store = useSimulatorStore();
+    store.createObjectAtCenter('particle');
+    expect(store.openPropertyPanel()).toBe(true);
+
+    store.openVariablesPanel();
+    expect(store.activeDrawer).toBe('variables');
+
+    const ok = store.applyVariables({ a: 2 });
+    expect(ok).toBe(true);
+    expect(store.activeDrawer).toBe('property');
+    expect(store.propertyDrawerOpen).toBe(true);
+    expect(store.variablesPanelOpen).toBe(false);
+  });
+
+  it('restores previous drawer chain when nested drawers close', () => {
+    const store = useSimulatorStore();
+    store.createObjectAtCenter('particle');
+    expect(store.openPropertyPanel()).toBe(true);
+
+    store.toggleMarkdownBoard();
+    expect(store.activeDrawer).toBe('markdown');
+
+    store.openVariablesPanel();
+    expect(store.activeDrawer).toBe('variables');
+
+    store.closeVariablesPanel();
+    expect(store.activeDrawer).toBe('markdown');
+    expect(store.markdownBoardOpen).toBe(true);
+
+    store.closeMarkdownBoard();
+    expect(store.activeDrawer).toBe('property');
+    expect(store.propertyDrawerOpen).toBe(true);
+  });
+
+
+  it('restores markdown board after closing property drawer opened above it', () => {
+    const store = useSimulatorStore();
+    store.toggleMarkdownBoard();
+    store.createObjectAtCenter('particle');
+
+    expect(store.openPropertyPanel()).toBe(true);
+    expect(store.activeDrawer).toBe('property');
+
+    store.closePropertyPanel();
+
+    expect(store.activeDrawer).toBe('markdown');
+    expect(store.markdownBoardOpen).toBe(true);
+    expect(store.propertyDrawerOpen).toBe(false);
+  });
+
+  it('restores markdown board after deleting selected object closes property drawer', () => {
+    const store = useSimulatorStore();
+    store.toggleMarkdownBoard();
+    store.createObjectAtCenter('particle');
+
+    expect(store.openPropertyPanel()).toBe(true);
+    expect(store.activeDrawer).toBe('property');
+
+    store.deleteSelected();
+
+    expect(store.selectedObjectId).toBe(null);
+    expect(store.activeDrawer).toBe('markdown');
     expect(store.markdownBoardOpen).toBe(true);
     expect(store.propertyDrawerOpen).toBe(false);
   });
@@ -229,6 +372,45 @@ describe('simulatorStore demo mode', () => {
     expect(store.propertyValues).toEqual({ charge: 2 });
   });
 
+
+  it('keeps detailed save validation errors in status text', () => {
+    const store = useSimulatorStore();
+    vi.spyOn(SimulatorRuntime.prototype, 'saveScene').mockReturnValue({
+      ok: false,
+      error: '对象数量超限（最多 5000）'
+    } as never);
+
+    const ok = store.saveScene('oversized');
+
+    expect(ok).toBe(false);
+    expect(store.statusText).toContain('对象数量超限');
+  });
+
+  it('keeps detailed export validation errors in status text', () => {
+    const store = useSimulatorStore();
+    vi.spyOn(SimulatorRuntime.prototype, 'exportScene').mockReturnValue({
+      ok: false,
+      error: '对象数量超限（最多 5000）'
+    } as never);
+
+    (store as unknown as { exportScene: () => boolean }).exportScene();
+
+    expect(store.statusText).toContain('对象数量超限');
+  });
+
+  it('keeps detailed load validation errors in status text', () => {
+    const store = useSimulatorStore();
+    vi.spyOn(SimulatorRuntime.prototype, 'loadScene').mockReturnValue({
+      ok: false,
+      error: '对象数量超限（最多 5000）'
+    } as never);
+
+    const ok = store.loadScene('oversized');
+
+    expect(ok).toBe(false);
+    expect(store.statusText).toContain('对象数量超限');
+  });
+
   it('reports save failure when storage write throws', () => {
     const store = useSimulatorStore();
     vi.spyOn(Serializer, 'saveSceneData').mockReturnValue(false);
@@ -236,6 +418,44 @@ describe('simulatorStore demo mode', () => {
     const ok = store.saveScene('demo-fail');
     expect(ok).toBe(false);
     expect(store.statusText).toBe('场景 "demo-fail" 保存失败');
+  });
+
+  it('keeps detailed import validation errors in status text', async () => {
+    const store = useSimulatorStore();
+    vi.spyOn(SimulatorRuntime.prototype, 'importScene').mockResolvedValue({
+      ok: false,
+      error: '对象字段 emissionRate 超出范围（0-20000）'
+    });
+
+    const ok = await store.importScene(new File(['{}'], 'broken.json', { type: 'application/json' }));
+
+    expect(ok).toBe(false);
+    expect(store.statusText).toContain('emissionRate');
+  });
+
+  it('keeps detailed scene load validation errors in status text', () => {
+    const store = useSimulatorStore();
+
+    const result = store.loadSceneData({ objects: [] });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain('缺少版本信息');
+    expect(store.statusText).toContain('缺少版本信息');
+  });
+
+  it('returns conflicting display geometry edits back to UI with detailed message', () => {
+    const store = useSimulatorStore();
+    vi.spyOn(SimulatorRuntime.prototype, 'applySelectedProperties').mockImplementation(() => {
+      throw new Error('显示尺寸存在冲突：宽度（显示）、高度（显示）推导出的缩放不一致');
+    });
+
+    const result = store.applyPropertyValues({ width__display: '300', height__display: '300' });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain('显示尺寸存在冲突');
+    expect(store.statusText).toContain('显示尺寸存在冲突');
   });
 
   it('syncs and clears geometry interaction overlay from runtime snapshot payload', () => {

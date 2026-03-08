@@ -14,6 +14,8 @@ const props = defineProps<{
   layoutMode: LayoutMode;
   propertySections: unknown[];
   propertyValues: Record<string, unknown>;
+  expressionVariables: Record<string, number>;
+  expressionTime: number;
   densityMode: PhoneDensityMode;
   markdownBoardModel: boolean;
   markdownContent: string;
@@ -44,6 +46,8 @@ const emit = defineEmits<{
     :layout-mode="props.layoutMode"
     :sections="props.propertySections"
     :values="props.propertyValues"
+    :expression-variables="props.expressionVariables"
+    :expression-time="props.expressionTime"
     :density-mode="props.densityMode"
     @update:model-value="(next) => emit('update:property-drawer-model', next)"
     @toggle-density="emit('toggle-density')"

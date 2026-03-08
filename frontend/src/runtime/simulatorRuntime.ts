@@ -89,6 +89,13 @@ export type PropertyPayload = {
   values: AnyRecord;
 };
 
+export type SceneMutationResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+    };
+
 type RenderRequest = {
   invalidateFields?: boolean;
   forceRender?: boolean;
@@ -130,6 +137,15 @@ function displayFieldKeyFor(sourceKey: string): string {
   return `${sourceKey}${DISPLAY_FIELD_SUFFIX}`;
 }
 
+
+const EXPRESSION_SOURCE_NUMBER_RE = /^[+-]?(?:\d+\.\d*|\d+|\.\d+)(?:[eE][+-]?\d+)?$/;
+
+function isDynamicExpressionSource(raw: unknown): raw is string {
+  const text = String(raw ?? '').trim();
+  if (!text) return false;
+  return !EXPRESSION_SOURCE_NUMBER_RE.test(text);
+}
+
 export class SimulatorRuntime {
   readonly scene: Scene;
   readonly renderer: Renderer;
@@ -140,11 +156,12 @@ export class SimulatorRuntime {
   private readonly callbacks: RuntimeCallbacks;
   private readonly resetBaseline = createResetBaselineController();
   private readonly appAdapter: AnyRecord;
+  private readonly dynamicExpressionFieldsByType = new Map<string, SchemaField[]>();
 
   private dragDropManager: DragDropManager | null = null;
   private mode: RuntimeMode = 'normal';
   private hostMode: HostMode = 'edit';
-  private demoSession: { snapshot: AnyRecord; wasRunning: boolean } | null = null;
+  private demoSession: { snapshot: AnyRecord; wasRunning: boolean; selectedObjectId: string | null } | null = null;
   private readonly demoState = {
     zoom: 1,
     basePixelsPerMeter: DEMO_BASE_PIXELS_PER_UNIT,
@@ -295,7 +312,10 @@ export class SimulatorRuntime {
 
     this.demoSession = {
       snapshot: JSON.parse(JSON.stringify(snapshot)) as AnyRecord,
-      wasRunning: this.running
+      wasRunning: this.running,
+      selectedObjectId: (this.scene.selectedObject as { id?: unknown } | null)?.id
+        ? String((this.scene.selectedObject as { id?: unknown }).id)
+        : null
     };
 
     this.stop();
@@ -321,6 +341,7 @@ export class SimulatorRuntime {
     if (isRecord(session?.snapshot)) {
       this.scene.clear();
       this.scene.loadFromData(session.snapshot);
+      this.restoreSelectedObjectById(session.selectedObjectId ?? null);
     }
 
     this.scene.settings.mode = 'normal';
@@ -365,6 +386,8 @@ export class SimulatorRuntime {
       trackBaseline = true
     } = options;
 
+    this.refreshDynamicExpressionBindings();
+
     if (invalidateFields) {
       this.renderer.invalidateFields();
     }
@@ -396,6 +419,7 @@ export class SimulatorRuntime {
     }
     const object = registry.create(type, { x, y });
     this.scene.addObject(object);
+    this.scene.selectedObject = object as never;
     this.requestRender({ invalidateFields: true, updateUI: true });
   }
 
@@ -403,6 +427,15 @@ export class SimulatorRuntime {
     if (!this.scene.selectedObject) return;
     this.scene.duplicateObject(this.scene.selectedObject);
     this.requestRender({ invalidateFields: true, updateUI: true });
+  }
+
+  private restoreSelectedObjectById(selectedObjectId: string | null) {
+    if (!selectedObjectId) {
+      this.scene.selectedObject = null;
+      return;
+    }
+    const next = this.scene.objects.find((object) => String((object as { id?: unknown })?.id ?? '') === selectedObjectId) ?? null;
+    this.scene.selectedObject = (next as never) ?? null;
   }
 
   deleteSelected() {
@@ -438,49 +471,92 @@ export class SimulatorRuntime {
     }
   }
 
-  saveScene(name: string) {
-    if (!name || !name.trim()) return false;
-    return Serializer.saveSceneData(this.scene.serialize(), name.trim());
-  }
-
-  loadScene(name: string) {
-    if (!name || !name.trim()) return false;
-    const data = Serializer.loadScene(name.trim());
-    if (!data) return false;
-    this.scene.clear();
-    this.scene.loadFromData(data);
-    this.applyModeSettings();
-    this.callbacks.onPropertyHide?.();
-    this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
-    return true;
-  }
-
-  loadSceneData(data: unknown) {
-    if (!isRecord(data)) return false;
+  private buildPersistableSceneData():
+    | { ok: true; data: AnyRecord }
+    | { ok: false; error: string } {
+    const data = this.scene.serialize();
     const validation = Serializer.validateSceneData(data);
-    if (!validation.valid) return false;
+    if (!validation.valid) {
+      return { ok: false, error: validation.error || '场景数据无效' };
+    }
+    return { ok: true, data };
+  }
+
+  saveScene(name: string): SceneMutationResult {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return { ok: false, error: '场景名称不能为空' };
+    }
+
+    const sceneData = this.buildPersistableSceneData();
+    if (!sceneData.ok) {
+      return sceneData;
+    }
+
+    const ok = Serializer.saveSceneData(sceneData.data, trimmedName);
+    if (!ok) {
+      return { ok: false, error: `场景 "${trimmedName}" 保存失败` };
+    }
+    return { ok: true };
+  }
+
+  loadScene(name: string): SceneMutationResult {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return { ok: false, error: '场景名称不能为空' };
+    }
+
+    const data = Serializer.loadScene(trimmedName);
+    if (!data) {
+      return { ok: false, error: `场景 "${trimmedName}" 不存在` };
+    }
+
+    return this.loadSceneData(data);
+  }
+
+  loadSceneData(data: unknown): SceneMutationResult {
+    if (!isRecord(data)) {
+      return { ok: false, error: '数据格式无效' };
+    }
+    const validation = Serializer.validateSceneData(data);
+    if (!validation.valid) {
+      return { ok: false, error: validation.error || '场景数据无效' };
+    }
     this.scene.clear();
     this.scene.loadFromData(data);
     this.applyModeSettings();
     this.callbacks.onPropertyHide?.();
     this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
-    return true;
+    return { ok: true };
   }
 
-  exportScene() {
-    Serializer.exportToFile(this.scene, `electric-field-scene-${Date.now()}.json`);
+  exportScene(): SceneMutationResult {
+    const sceneData = this.buildPersistableSceneData();
+    if (!sceneData.ok) {
+      return sceneData;
+    }
+
+    Serializer.exportToFile(
+      { serialize: () => sceneData.data },
+      `electric-field-scene-${Date.now()}.json`
+    );
+    return { ok: true };
   }
 
-  importScene(file: File): Promise<boolean> {
+  importScene(file: File): Promise<SceneMutationResult> {
     return new Promise((resolve) => {
       Serializer.importFromFile(file, (error: Error | null, data: unknown) => {
-        if (error || !isRecord(data)) {
-          resolve(false);
+        if (error) {
+          resolve({ ok: false, error: error.message || '导入失败' });
+          return;
+        }
+        if (!isRecord(data)) {
+          resolve({ ok: false, error: '导入文件不是有效场景对象' });
           return;
         }
         const validation = Serializer.validateSceneData(data);
         if (!validation.valid) {
-          resolve(false);
+          resolve({ ok: false, error: validation.error || '场景数据无效' });
           return;
         }
         this.scene.clear();
@@ -488,7 +564,7 @@ export class SimulatorRuntime {
         this.applyModeSettings();
         this.callbacks.onPropertyHide?.();
         this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
-        resolve(true);
+        resolve({ ok: true });
       });
     });
   }
@@ -501,6 +577,26 @@ export class SimulatorRuntime {
 
   getSelectedObject() {
     return this.scene.selectedObject as AnyRecord | null;
+  }
+
+  selectObjectByIndex(index: number): { ok: true; id: string | null } | { ok: false; error: string } {
+    const normalizedIndex = Math.trunc(Number(index));
+    if (!Number.isFinite(normalizedIndex) || normalizedIndex < 0) {
+      return { ok: false, error: '对象索引无效' };
+    }
+
+    const objects = Array.isArray(this.scene.objects) ? this.scene.objects : [];
+    const object = objects[normalizedIndex];
+    if (!object || typeof object !== 'object') {
+      return { ok: false, error: '对象不存在' };
+    }
+
+    this.scene.selectedObject = object as never;
+    this.requestRender({ invalidateFields: true, updateUI: true, trackBaseline: false });
+    return {
+      ok: true,
+      id: (object as { id?: unknown }).id == null ? null : String((object as { id?: unknown }).id)
+    };
   }
 
   buildPropertyPayload(): PropertyPayload | null {
@@ -532,7 +628,7 @@ export class SimulatorRuntime {
     const mergedValues = { ...currentValues, ...incomingValues };
     const changedFieldKeys = this.computeChangedFieldKeys(sections, currentValues, mergedValues);
     let geometryChanged = false;
-    let objectScaleUpdated = false;
+    const requestedDisplayScales: Array<{ key: string; label: string; scale: number }> = [];
 
     for (const section of sections) {
       const fields = Array.isArray(section?.fields) ? section.fields : [];
@@ -563,14 +659,28 @@ export class SimulatorRuntime {
 
         if (field.geometryRole === 'display' && field.sourceKey) {
           if (!changedFieldKeys.has(field.key)) continue;
-          if (objectScaleUpdated) continue;
           const rawNumber = Number(raw);
-          if (!setObjectDisplayDimension(object, field.sourceKey, rawNumber, this.scene)) {
+          const realValue = getObjectRealDimension(object, field.sourceKey, this.scene);
+          const normalizedRealValue = realValue == null ? null : Number(realValue);
+          const sceneScale = Number(context.pixelsPerMeter);
+          if (
+            !Number.isFinite(rawNumber) || rawNumber <= 0 ||
+            normalizedRealValue == null || !Number.isFinite(normalizedRealValue) || normalizedRealValue <= 0 ||
+            !Number.isFinite(sceneScale) || sceneScale <= 0
+          ) {
             errors.push(`${field.label || field.key}: 显示值无效`);
             continue;
           }
-          objectScaleUpdated = true;
-          geometryChanged = true;
+          const nextScale = rawNumber / (normalizedRealValue * sceneScale);
+          if (!Number.isFinite(nextScale) || nextScale <= 0) {
+            errors.push(`${field.label || field.key}: 缩放无效`);
+            continue;
+          }
+          requestedDisplayScales.push({
+            key: field.key,
+            label: String(field.label || field.key),
+            scale: nextScale
+          });
           continue;
         }
 
@@ -595,9 +705,24 @@ export class SimulatorRuntime {
         }
         object[field.key] = coerced;
 
+        if (field.key === 'showTrajectory' && coerced === false && typeof object.clearTrajectory === 'function') {
+          object.clearTrajectory();
+        }
+
         if (field.key === 'customExpression' && typeof object.compileCustomExpression === 'function') {
           object.compileCustomExpression();
         }
+      }
+    }
+
+    if (requestedDisplayScales.length > 0) {
+      const baseScale = requestedDisplayScales[0].scale;
+      const conflict = requestedDisplayScales.find((item) => Math.abs(item.scale - baseScale) > 1e-9);
+      if (conflict) {
+        errors.push(`显示尺寸存在冲突：${requestedDisplayScales.map((item) => item.label).join('、')} 推导出的缩放不一致`);
+      } else {
+        object.__geometryObjectScale = baseScale;
+        geometryChanged = true;
       }
     }
 
@@ -623,6 +748,7 @@ export class SimulatorRuntime {
     if (!this.running) return;
     this.performanceMonitor.startFrame();
     this.scene.time += this.timeStep;
+    this.refreshDynamicExpressionBindings();
     this.physicsEngine.update(this.scene, this.timeStep);
     this.renderer.render(this.scene);
     this.performanceMonitor.endFrame();
@@ -726,6 +852,54 @@ export class SimulatorRuntime {
 
     if (!changed) return;
     this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: false });
+  }
+
+  private refreshDynamicExpressionBindings() {
+    const objects = Array.isArray(this.scene.objects) ? this.scene.objects : [];
+    if (objects.length === 0) return;
+
+    const context = this.buildBindContext();
+    for (const object of objects) {
+      const fields = this.getDynamicExpressionFieldsForType(String(object?.type || ''));
+      if (fields.length === 0) continue;
+      for (const field of fields) {
+        const raw = field.bind?.get?.(object, context);
+        if (!isDynamicExpressionSource(raw)) continue;
+        const parsed = parseExpressionInput(raw, this.scene) as {
+          ok: boolean;
+          empty?: boolean;
+          error?: string;
+          expr?: string | null;
+          value?: number | null;
+        };
+        if (!parsed?.ok || parsed.empty) continue;
+        field.bind?.set?.(object, parsed, context);
+      }
+    }
+  }
+
+  private getDynamicExpressionFieldsForType(type: string): SchemaField[] {
+    if (!type) return [];
+    const cached = this.dynamicExpressionFieldsByType.get(type);
+    if (cached) return cached;
+
+    const entry = registry.get(type);
+    if (!entry || typeof entry.schema !== 'function') {
+      this.dynamicExpressionFieldsByType.set(type, []);
+      return [];
+    }
+
+    const fields: SchemaField[] = [];
+    const sections = (entry.schema() as SchemaSection[]) || [];
+    for (const section of sections) {
+      for (const field of section?.fields ?? []) {
+        if (!field || normalizeFieldType(field) !== 'expression') continue;
+        if (!field.bind || typeof field.bind.get !== 'function' || typeof field.bind.set !== 'function') continue;
+        fields.push(field);
+      }
+    }
+    this.dynamicExpressionFieldsByType.set(type, fields);
+    return fields;
   }
 
   private buildBindContext(): AnyRecord {

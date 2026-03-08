@@ -42,6 +42,11 @@ onBeforeUnmount(() => {
           <button id="secondary-load-btn" class="btn" type="button" @click="emit('load-scene')">📂 读取场景</button>
           <button id="secondary-export-btn" class="btn" type="button" @click="emit('export-scene')">📤 导出场景</button>
           <button id="secondary-import-btn" class="btn" type="button" @click="emit('open-import')">📥 导入场景</button>
+        </div>
+      </section>
+      <section class="phone-more-section" aria-label="危险操作" data-testid="phone-more-danger-section">
+        <p class="phone-more-section-title">危险操作</p>
+        <div class="phone-more-grid phone-more-danger-grid">
           <button id="secondary-clear-btn" class="btn object-action-danger phone-more-danger" type="button" @click="emit('clear-scene')">🗑 清空场景</button>
         </div>
       </section>

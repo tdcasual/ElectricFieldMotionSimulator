@@ -5,6 +5,8 @@
 import { registry } from './registerObjects.js';
 import { OBJECT_SCALE_KEY, REAL_STORE_KEY } from '../modes/GeometryScaling.js';
 
+const MAX_SCENE_OBJECTS = 5000;
+
 export class Scene {
     constructor() {
         this.objects = [];
@@ -36,6 +38,14 @@ export class Scene {
 
         // 场景变量（用于表达式引用）
         this.variables = {};
+    }
+
+    canAcceptParticle() {
+        const objectCount = Array.isArray(this.objects) ? this.objects.length : 0;
+        const particleCount = Array.isArray(this.particles) ? this.particles.length : 0;
+        const nonParticleCount = Math.max(0, objectCount - particleCount);
+        const particleBudget = Math.max(0, MAX_SCENE_OBJECTS - nonParticleCount);
+        return particleCount < particleBudget;
     }
 
     setViewport(width, height) {

@@ -344,6 +344,15 @@ export class DragDropManager {
         this.contextMenuCloseTimer = null;
     }
 
+    hideContextMenu() {
+        const contextMenu = document.getElementById('context-menu');
+        if (contextMenu) {
+            contextMenu.style.display = 'none';
+        }
+        this.clearContextMenuCloseTimer();
+        this.clearContextMenuCloseHandler();
+    }
+
     dispose() {
         this.clearLongPressTimer();
         this.clearContextMenuCloseTimer();
@@ -463,9 +472,12 @@ export class DragDropManager {
 
         if (object) {
             this.scene.addObject(object);
+            this.scene.selectedObject = object;
             ensureObjectGeometryState(object, this.scene);
-            this.requestSceneRender({ invalidateFields: true });
+            this.requestSceneRender({ invalidateFields: true, updateUI: true });
         }
+
+        return object;
     }
 
     setStatus(text) {
@@ -773,7 +785,7 @@ export class DragDropManager {
     }
 
     isTouchPointerEvent(eventLike) {
-        return eventLike?.pointerType !== 'mouse';
+        return eventLike?.pointerType === 'touch';
     }
 
     updateTouchPoint(pointerId, screenPos) {
@@ -868,6 +880,7 @@ export class DragDropManager {
     }
 
     onPointerDown(e) {
+        this.hideContextMenu();
         if (!this.canvas) return;
         if (this.isTouchPointerEvent(e)) {
             this.updateTouchPoint(e.pointerId, this.getScreenPos(e));
@@ -972,7 +985,7 @@ export class DragDropManager {
             }
 
             // 触屏长按打开属性面板
-            if (e.pointerType !== 'mouse') {
+            if (this.isTouchPointerEvent(e)) {
                 this.clearLongPressTimer();
                 this.longPressTimer = setTimeout(() => {
                     if (this.pointerDownObject === clickedObject && !this.isDragging) {
@@ -1019,9 +1032,9 @@ export class DragDropManager {
         }
         if (this.activePointerId !== e.pointerId) return;
         const screenPos = this.getScreenPos(e);
-        const thresholdSq = e.pointerType === 'mouse'
-            ? POINTER_DRAG_THRESHOLD_SQ_MOUSE
-            : POINTER_DRAG_THRESHOLD_SQ_TOUCH;
+        const thresholdSq = this.isTouchPointerEvent(e)
+            ? POINTER_DRAG_THRESHOLD_SQ_TOUCH
+            : POINTER_DRAG_THRESHOLD_SQ_MOUSE;
 
         if (this.isPanning && this.panStartScreen) {
             const dx = screenPos.x - this.panStartScreen.x;
@@ -1111,7 +1124,7 @@ export class DragDropManager {
 
         const tappedObject = this.pointerDownObject;
         const wasDragging = this.isDragging;
-        const shouldHandleTap = !this.isInteractionLocked() && !wasDragging && tappedObject && !this.longPressTriggered && e.pointerType !== 'mouse';
+        const shouldHandleTap = !this.isInteractionLocked() && !wasDragging && tappedObject && !this.longPressTriggered && this.isTouchPointerEvent(e);
 
         this.clearLongPressTimer();
 
@@ -1657,6 +1670,7 @@ export class DragDropManager {
 
     onContextMenu(e) {
         e.preventDefault();
+        this.hideContextMenu();
         if (this.isInteractionLocked()) return;
         const fromTouch = e.sourceCapabilities?.firesTouchEvents === true;
         if (fromTouch) return;

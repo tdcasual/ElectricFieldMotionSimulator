@@ -26,6 +26,7 @@ const emit = defineEmits<{
 <template>
   <aside id="toolbar">
     <h2>组件库</h2>
+    <p class="toolbar-hint" data-testid="desktop-toolbar-hint">单击后点击画布放置，双击可直接居中创建。</p>
     <ToolbarPanel :groups="props.groups" @create="(type) => emit('create', type)" />
     <div class="tool-section preset-section">
       <h3>预设场景</h3>

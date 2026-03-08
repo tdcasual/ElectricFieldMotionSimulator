@@ -22,8 +22,8 @@ describe('embed bootstrap in simulator store', () => {
     store.createObjectAtCenter('particle');
     expect(store.objectCount).toBe(1);
 
-    const ok = store.loadSceneData({ version: '1.0', settings: {}, objects: [] });
-    expect(ok).toBe(true);
+    const result = store.loadSceneData({ version: '1.0', settings: {}, objects: [] });
+    expect(result.ok).toBe(true);
     expect(store.objectCount).toBe(0);
   });
 
@@ -37,5 +37,17 @@ describe('embed bootstrap in simulator store', () => {
     expect(result.ok).toBe(true);
     expect(store.viewMode).toBe(true);
     expect(store.running).toBe(true);
+  });
+
+  it('returns detailed validation message for invalid inline scene payload', async () => {
+    const store = useSimulatorStore();
+    const config = parseEmbedConfigFromSearch(`?sceneData=${encodeURIComponent(JSON.stringify({ objects: [] }))}`);
+
+    const result = await store.bootstrapFromEmbed(config);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain('version');
+    expect(store.statusText).toContain('version');
   });
 });

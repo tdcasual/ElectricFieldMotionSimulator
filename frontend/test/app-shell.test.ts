@@ -771,6 +771,108 @@ describe('App shell', () => {
     expect(applySpy).toHaveBeenCalledWith({ radius__display: '120' });
   });
 
+
+  it('restores selected sheet after closing property drawer opened from phone selected sheet', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { selectedObjectId: string | null }).selectedObjectId = 'obj-1';
+    (store as unknown as { propertySections: unknown }).propertySections = [
+      { title: '基础', fields: [{ key: 'mass', label: '质量', type: 'number' }] }
+    ];
+    (store as unknown as { propertyValues: Record<string, unknown> }).propertyValues = { mass: 1 };
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    await wrapper.get('#phone-nav-selected-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-selected-sheet"]').exists()).toBe(true);
+
+    await wrapper.get('#phone-selected-properties-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-selected-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('#property-panel').exists()).toBe(true);
+
+    store.closePropertyPanel();
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="phone-selected-sheet"]').exists()).toBe(true);
+  });
+
+  it('restores more sheet after closing variables panel opened from phone more sheet', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(true);
+
+    await wrapper.get('#secondary-variables-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="variables-panel"]').exists()).toBe(true);
+
+    store.closeVariablesPanel();
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="variables-panel"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(true);
+  });
+
+  it('restores more sheet after closing markdown board opened from phone more sheet', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    await wrapper.get('#phone-nav-more-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(true);
+
+    await wrapper.get('#secondary-markdown-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="markdown-board"]').isVisible()).toBe(true);
+
+    await wrapper.get('[aria-label="关闭题板"]').trigger('click');
+    await nextTick();
+
+    expect(store.markdownBoardOpen).toBe(false);
+    expect(wrapper.find('[data-testid="phone-more-sheet"]').exists()).toBe(true);
+  });
+
+
   it('keeps phone bottom nav visible while locking sheet buttons when property drawer is open', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);

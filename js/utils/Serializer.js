@@ -47,6 +47,12 @@ export class Serializer {
      * 保存任意场景数据到localStorage（可包含 UI 扩展字段）
      */
     static saveSceneData(data, name) {
+        const validation = Serializer.validateSceneData(data);
+        if (!validation.valid) {
+            console.error('保存场景失败:', validation.error || '场景数据无效');
+            return false;
+        }
+
         try {
             const json = JSON.stringify(data);
             localStorage.setItem(`scene_${name}`, json);
@@ -56,7 +62,7 @@ export class Serializer {
             return false;
         }
     }
-    
+
     /**
      * 从localStorage加载场景
      */
@@ -71,7 +77,7 @@ export class Serializer {
             return null;
         }
     }
-    
+
     /**
      * 导出场景为JSON文件
      */
@@ -80,7 +86,7 @@ export class Serializer {
         const jsonStr = JSON.stringify(data, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement('a');
         a.href = url;
         a.download = filename || `scene-${Date.now()}.json`;
@@ -89,13 +95,13 @@ export class Serializer {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
-    
+
     /**
      * 从JSON文件导入场景
      */
     static importFromFile(file, callback) {
         const reader = new FileReader();
-        
+
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
@@ -104,14 +110,14 @@ export class Serializer {
                 callback(error, null);
             }
         };
-        
+
         reader.onerror = () => {
             callback(new Error('文件读取失败'), null);
         };
-        
+
         reader.readAsText(file);
     }
-    
+
     /**
      * 获取所有保存的场景
      */
@@ -130,7 +136,7 @@ export class Serializer {
             return [];
         }
     }
-    
+
     /**
      * 删除场景
      */
@@ -143,7 +149,7 @@ export class Serializer {
             return false;
         }
     }
-    
+
     /**
      * 验证场景数据格式
      */
@@ -151,7 +157,7 @@ export class Serializer {
         if (!data || typeof data !== 'object') {
             return { valid: false, error: '数据格式无效' };
         }
-        
+
         if (typeof data.version !== 'string' || data.version.trim().length === 0) {
             return { valid: false, error: '缺少版本信息' };
         }
@@ -202,7 +208,7 @@ export class Serializer {
                 }
             }
         }
-        
+
         return { valid: true };
     }
 }

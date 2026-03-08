@@ -283,6 +283,27 @@ test('Serializer.validateSceneData rejects emitter params above hard limits', ()
   assert.match(result.error, /emissionRate 超出范围/);
 });
 
+
+test('Serializer.saveSceneData rejects oversized payloads before storage write', () => {
+  withLocalStorageMock(
+    {
+      setItem() {
+        throw new Error('should not write oversized scene');
+      }
+    },
+    () => {
+      const ok = Serializer.saveSceneData(
+        {
+          version: '1.0',
+          objects: Array.from({ length: 5001 }, () => ({ type: 'particle' }))
+        },
+        'oversized'
+      );
+      assert.equal(ok, false);
+    }
+  );
+});
+
 test('Serializer.saveSceneData returns false when storage write throws', () => {
   withMutedConsoleError(() => {
     withLocalStorageMock(

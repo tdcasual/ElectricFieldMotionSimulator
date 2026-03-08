@@ -179,6 +179,10 @@ export class ElectronGun extends BaseObject {
     }
 
     emitParticle(scene) {
+        if (typeof scene?.canAcceptParticle === 'function' && !scene.canAcceptParticle()) {
+            return;
+        }
+
         const baseX = Number.isFinite(this.x) ? this.x : null;
         const baseY = Number.isFinite(this.y) ? this.y : null;
         if (baseX === null || baseY === null) return;

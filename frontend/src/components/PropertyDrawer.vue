@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
+import { parseExpressionInput } from '../engine/legacyBridge';
 import DrawerHost from './DrawerHost.vue';
 
 type SchemaField = {
@@ -33,13 +34,17 @@ const props = withDefaults(
     densityMode?: 'compact' | 'comfortable';
     sections?: SchemaSection[];
     values?: Record<string, unknown>;
+    expressionVariables?: Record<string, number>;
+    expressionTime?: number;
   }>(),
   {
     title: '属性面板',
     layoutMode: 'desktop',
     densityMode: 'compact',
     sections: () => [],
-    values: () => ({})
+    values: () => ({}),
+    expressionVariables: () => ({}),
+    expressionTime: 0
   }
 );
 
@@ -136,6 +141,39 @@ function apply() {
 
 function fieldType(field: SchemaField) {
   return field.type === 'number' ? 'number' : 'text';
+}
+
+function formatPreviewNumber(value: number) {
+  if (!Number.isFinite(value)) return '0';
+  const abs = Math.abs(value);
+  if (abs !== 0 && (abs >= 1e6 || abs < 1e-3)) return value.toExponential(3);
+  return String(Math.round(value * 1000) / 1000);
+}
+
+function getExpressionHint(field: SchemaField) {
+  const parsed = parseExpressionInput(draft[field.key], {
+    variables: props.expressionVariables ?? {},
+    time: props.expressionTime ?? 0
+  });
+
+  if (!parsed.ok) {
+    return {
+      text: `错误：${parsed.error || '表达式解析失败'}`,
+      tone: 'error'
+    } as const;
+  }
+
+  if (parsed.empty) {
+    return {
+      text: '可填“数值”或“表达式”，变量在“ƒx 变量表”中设置',
+      tone: 'neutral'
+    } as const;
+  }
+
+  return {
+    text: `预览：${formatPreviewNumber(parsed.value)}${field.unit ? ` ${field.unit}` : ''}`,
+    tone: 'ok'
+  } as const;
 }
 
 function isSectionOpen(index: number) {
@@ -325,6 +363,17 @@ const quickFields = computed<SchemaField[]>(() => {
                     :step="field.step"
                     :disabled="!isEnabled(field)"
                   />
+                  <div
+                    v-if="field.type === 'expression'"
+                    :data-testid="`expression-hint-${field.key}`"
+                    class="property-expression-hint"
+                    :class="{
+                      'is-error': getExpressionHint(field).tone === 'error',
+                      'is-ok': getExpressionHint(field).tone === 'ok'
+                    }"
+                  >
+                    {{ getExpressionHint(field).text }}
+                  </div>
                 </dd>
               </template>
             </dl>

@@ -55,7 +55,7 @@ describe('host bridge', () => {
       stopRunning: () => {},
       toggleRunning: () => {},
       resetScene: () => {},
-      loadSceneData: () => false
+      loadSceneData: () => ({ ok: false, error: '缺少版本信息' })
     };
 
     const result = executeHostCommand(store, {
@@ -68,6 +68,7 @@ describe('host bridge', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('validation');
+    expect(result.message).toContain('缺少版本信息');
   });
 
   it('emits command-result through message bridge', () => {

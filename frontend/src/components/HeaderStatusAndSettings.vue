@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import SceneSettingsControls from './SceneSettingsControls.vue';
 
 type BoundaryMode = 'margin' | 'remove' | 'bounce' | 'wrap';
@@ -20,6 +21,12 @@ const props = defineProps<{
   demoMode: boolean;
 }>();
 
+const phoneStatusText = computed(() => {
+  if (!props.isPhoneLayout) return props.statusText;
+  if (props.demoMode) return '演示模式：比例尺/重力已锁定';
+  return props.statusText;
+});
+
 const emit = defineEmits<{
   (event: 'set-show-energy', payload: Event): void;
   (event: 'set-pixels-per-meter', payload: Event): void;
@@ -32,7 +39,7 @@ const emit = defineEmits<{
 
 <template>
   <div v-if="props.isPhoneLayout" class="phone-status-strip" data-testid="phone-status-strip">
-    <span class="phone-status-text">{{ props.statusText }}</span>
+    <span class="phone-status-text">{{ phoneStatusText }}</span>
     <span class="phone-status-metrics">对象 {{ props.objectCount }} · 粒子 {{ props.particleCount }}</span>
   </div>
   <div v-if="props.showAuthoringControls && !props.isPhoneLayout" id="header-settings-panel" class="header-settings">

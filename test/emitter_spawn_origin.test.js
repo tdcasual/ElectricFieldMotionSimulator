@@ -42,3 +42,34 @@ test('ProgrammableEmitter emits particle from emitter center point', () => {
   assert.equal(Object.prototype.hasOwnProperty.call(emitter, 'barrelLength'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(emitter.serialize(), 'barrelLength'), false);
 });
+
+
+test('ElectronGun emitParticle stops at runtime particle budget', () => {
+  const scene = new Scene();
+  const gun = new ElectronGun({ x: 0, y: 0, emissionSpeed: 0 });
+  scene.addObject(gun);
+
+  for (let i = 0; i < 5000 - 1; i += 1) {
+    scene.addObject({ type: 'particle', scene: null });
+  }
+
+  gun.emitParticle(scene);
+
+  assert.equal(scene.particles.length, 5000 - 1);
+  assert.equal(scene.objects.length, 5000);
+});
+
+test('ProgrammableEmitter emitParticle stops at runtime particle budget', () => {
+  const scene = new Scene();
+  const emitter = new ProgrammableEmitter({ x: 0, y: 0, emissionSpeed: 0 });
+  scene.addObject(emitter);
+
+  for (let i = 0; i < 5000 - 1; i += 1) {
+    scene.addObject({ type: 'particle', scene: null });
+  }
+
+  emitter.emitParticle(scene, 1);
+
+  assert.equal(scene.particles.length, 5000 - 1);
+  assert.equal(scene.objects.length, 5000);
+});

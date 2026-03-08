@@ -136,6 +136,117 @@ test('onContextMenu ignores missing context menu container', () => {
   }
 });
 
+
+test('onContextMenu hides stale menu when right-clicking blank area', () => {
+  const cleanup = installDom('<div id="context-menu" style="display:block"></div><canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    const contextMenu = document.getElementById('context-menu');
+    assert.ok(canvas);
+    assert.ok(contextMenu);
+    stubCanvasRect(canvas);
+
+    const scene = {
+      settings: { mode: 'normal' },
+      selectedObject: { id: 'obj-1' },
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return null;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onContextMenu({
+      preventDefault() {},
+      sourceCapabilities: { firesTouchEvents: false },
+      button: 2,
+      which: 3,
+      ctrlKey: false,
+      clientX: 300,
+      clientY: 200
+    });
+
+    assert.equal(contextMenu.style.display, 'none');
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('onPointerDown hides stale context menu before starting a new interaction', () => {
+  const cleanup = installDom('<div id="context-menu" style="display:block"></div><canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    const contextMenu = document.getElementById('context-menu');
+    assert.ok(canvas);
+    assert.ok(contextMenu);
+    stubCanvasRect(canvas);
+
+    const scene = {
+      settings: { mode: 'normal' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return null;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    manager.onPointerDown({
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: 100,
+      clientY: 120,
+      preventDefault() {},
+      stopPropagation() {}
+    });
+
+    assert.equal(contextMenu.style.display, 'none');
+    manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
 test('dispose detaches tool-item listeners to prevent duplicate handler execution', () => {
   const cleanup = installDom(`
     <div class="tool-item" data-type="particle" role="button" aria-pressed="false"><span>粒子</span></div>
@@ -193,6 +304,62 @@ test('dispose detaches tool-item listeners to prevent duplicate handler executio
     tool.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     assert.equal(statusCalls, 2);
     manager2.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test('createObject selects the newly created object and requests UI sync', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const objects = [];
+    const renderCalls = [];
+    const scene = {
+      settings: { mode: 'normal', pixelsPerMeter: 1 },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      addObject(object) {
+        objects.push(object);
+        return object;
+      },
+      findObjectAt() {
+        return null;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return objects;
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender(options) {
+          renderCalls.push(options);
+        },
+        updateUI() {}
+      }
+    });
+
+    manager.createObject('particle', 120, 140);
+
+    assert.equal(objects.length, 1);
+    assert.equal(scene.selectedObject, objects[0]);
+    assert.equal(renderCalls.length, 1);
+    assert.equal(renderCalls[0]?.updateUI, true);
+    manager.dispose();
   } finally {
     cleanup();
   }
@@ -321,6 +488,135 @@ test('read-only interaction lock prevents object dragging', () => {
     assert.equal(clickedObject.x, 30);
     assert.equal(clickedObject.y, 40);
     manager.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+
+test('pen double-tap should not open properties like touch gesture', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-pen-double-tap',
+      type: 'particle',
+      position: { x: 100, y: 100 },
+      containsPoint: () => true,
+      clearTrajectory() {}
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    let propertyRequestCount = 0;
+    const onShowProperties = () => {
+      propertyRequestCount += 1;
+    };
+    document.addEventListener('show-properties', onShowProperties);
+
+    const originalNow = globalThis.performance.now;
+    let now = 1000;
+    globalThis.performance.now = () => now;
+
+    try {
+      manager.onPointerDown({ pointerId: 51, pointerType: 'pen', button: 0, clientX: 100, clientY: 100 });
+      manager.onPointerUp({ pointerId: 51, pointerType: 'pen', button: 0, clientX: 100, clientY: 100 });
+      now += 120;
+      manager.onPointerDown({ pointerId: 52, pointerType: 'pen', button: 0, clientX: 100, clientY: 100 });
+      manager.onPointerUp({ pointerId: 52, pointerType: 'pen', button: 0, clientX: 100, clientY: 100 });
+
+      assert.equal(propertyRequestCount, 0);
+    } finally {
+      document.removeEventListener('show-properties', onShowProperties);
+      globalThis.performance.now = originalNow;
+      manager.dispose();
+    }
+  } finally {
+    cleanup();
+  }
+});
+
+test('pen pointerdown should not arm touch long-press timer', () => {
+  const cleanup = installDom('<canvas id="particle-canvas"></canvas>');
+  try {
+    const canvas = document.getElementById('particle-canvas');
+    assert.ok(canvas);
+    stubCanvasRect(canvas);
+
+    const clickedObject = {
+      id: 'obj-pen-long-press',
+      type: 'particle',
+      position: { x: 100, y: 100 },
+      containsPoint: () => true,
+      clearTrajectory() {}
+    };
+
+    const scene = {
+      settings: { mode: 'normal', interactionLocked: false, hostMode: 'edit' },
+      selectedObject: null,
+      camera: { offsetX: 0, offsetY: 0 },
+      findObjectAt() {
+        return clickedObject;
+      },
+      toWorldPoint(x, y) {
+        return { x, y };
+      },
+      getAllObjects() {
+        return [clickedObject];
+      }
+    };
+
+    const renderer = {
+      invalidateFields() {},
+      render() {}
+    };
+
+    const manager = new DragDropManager(scene, renderer, {
+      canvas,
+      appAdapter: {
+        scene,
+        requestRender() {},
+        updateUI() {}
+      }
+    });
+
+    try {
+      manager.onPointerDown({ pointerId: 61, pointerType: 'pen', button: 0, clientX: 100, clientY: 100 });
+
+      assert.equal(manager.longPressTimer, null);
+    } finally {
+      manager.dispose();
+    }
   } finally {
     cleanup();
   }

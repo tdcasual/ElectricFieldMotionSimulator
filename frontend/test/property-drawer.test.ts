@@ -148,4 +148,65 @@ describe('PropertyDrawer', () => {
     expect(wrapper.find('[data-testid="property-quick-edit"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid="quick-field"]').length).toBe(4);
   });
+
+
+  it('keeps unsaved draft when temporarily hidden and reopened', async () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        sections: [{ fields: [{ key: 'mass', label: '质量', type: 'number' }] }],
+        values: { mass: 1 }
+      }
+    });
+
+    const input = wrapper.get('input[type="number"]');
+    await input.setValue('3');
+
+    await wrapper.setProps({ modelValue: false });
+    await wrapper.setProps({ modelValue: true });
+
+    expect((wrapper.get('input[type="number"]').element as HTMLInputElement).value).toBe('3');
+  });
+
+  it('renders expression preview with variable context', () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        sections: [
+          {
+            title: '运动',
+            fields: [{ key: 'vx', label: '当前速度 vx', type: 'expression', unit: 'm/s' }]
+          }
+        ],
+        values: { vx: '2 * a' },
+        expressionVariables: { a: 3 },
+        expressionTime: 0
+      }
+    });
+
+    expect(wrapper.get('[data-testid="expression-hint-vx"]').text()).toContain('预览：6 m/s');
+  });
+
+  it('updates expression preview when variable context changes', async () => {
+    const wrapper = mount(PropertyDrawer, {
+      props: {
+        modelValue: true,
+        sections: [
+          {
+            title: '运动',
+            fields: [{ key: 'vx', label: '当前速度 vx', type: 'expression', unit: 'm/s' }]
+          }
+        ],
+        values: { vx: '2 * a' },
+        expressionVariables: { a: 2 },
+        expressionTime: 0
+      }
+    });
+
+    expect(wrapper.get('[data-testid="expression-hint-vx"]').text()).toContain('预览：4 m/s');
+
+    await wrapper.setProps({ expressionVariables: { a: 5 } });
+
+    expect(wrapper.get('[data-testid="expression-hint-vx"]').text()).toContain('预览：10 m/s');
+  });
 });

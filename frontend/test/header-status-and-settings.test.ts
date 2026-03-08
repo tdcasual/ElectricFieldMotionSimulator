@@ -34,6 +34,24 @@ describe('HeaderStatusAndSettings', () => {
     expect(wrapper.find('#header-settings-panel').exists()).toBe(false);
   });
 
+  it('shows concise phone demo status text in phone layout', () => {
+    const wrapper = mountHeader({
+      isPhoneLayout: true,
+      showAuthoringControls: true,
+      demoMode: true,
+      statusText: '已进入演示模式：数值默认 1、角度默认 0，滚轮可按鼠标位置缩放'
+    });
+
+    expect(wrapper.text()).toContain('演示模式：比例尺/重力已锁定');
+    expect(wrapper.text()).not.toContain('数值默认 1、角度默认 0');
+  });
+
+  it('shows a local explanation when demo mode locks scene controls', () => {
+    const wrapper = mountHeader({ isPhoneLayout: false, showAuthoringControls: true, demoMode: true });
+
+    expect(wrapper.get('[data-testid="scene-demo-note"]').text()).toContain('退出演示后可编辑');
+  });
+
   it('shows desktop settings and forwards control events', async () => {
     const wrapper = mountHeader({ isPhoneLayout: false, showAuthoringControls: true });
 

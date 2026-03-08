@@ -14,12 +14,14 @@ type HostCommandResult =
   | { ok: true }
   | { ok: false; code: 'invalid-command' | 'validation'; message: string };
 
+type HostSceneLoadResult = boolean | { ok: boolean; error?: string };
+
 type HostCommandStore = {
   startRunning: () => void;
   stopRunning: () => void;
   toggleRunning: () => void;
   resetScene: () => void;
-  loadSceneData: (data: Record<string, unknown>) => boolean;
+  loadSceneData: (data: Record<string, unknown>) => HostSceneLoadResult;
 };
 
 function isRecord(value: unknown): value is AnyRecord {
@@ -59,6 +61,16 @@ function extractScenePayload(payload: unknown): Record<string, unknown> | null {
   return null;
 }
 
+function normalizeLoadSceneResult(result: HostSceneLoadResult) {
+  if (typeof result === 'boolean') {
+    return result ? { ok: true as const } : { ok: false as const, error: 'Scene payload was rejected.' };
+  }
+  if (result && typeof result === 'object' && result.ok === false) {
+    return { ok: false as const, error: typeof result.error === 'string' && result.error.trim().length > 0 ? result.error : 'Scene payload was rejected.' };
+  }
+  return { ok: true as const };
+}
+
 export function executeHostCommand(store: HostCommandStore, message: HostCommandMessage): HostCommandResult {
   if (message.command === 'play') {
     store.startRunning();
@@ -89,12 +101,12 @@ export function executeHostCommand(store: HostCommandStore, message: HostCommand
         message: 'loadScene requires a scene payload object.'
       };
     }
-    const loaded = store.loadSceneData(sceneData);
-    if (!loaded) {
+    const loaded = normalizeLoadSceneResult(store.loadSceneData(sceneData));
+    if (!loaded.ok) {
       return {
         ok: false,
         code: 'validation',
-        message: 'Scene payload was rejected.'
+        message: loaded.error
       };
     }
     return { ok: true };

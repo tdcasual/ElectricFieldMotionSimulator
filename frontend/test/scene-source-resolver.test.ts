@@ -53,6 +53,7 @@ describe('scene source resolver', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('validation');
+    expect(result.message).toContain('version');
   });
 
   it('preserves camera and variables fields from inline payload', async () => {

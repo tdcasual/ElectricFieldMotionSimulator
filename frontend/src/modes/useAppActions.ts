@@ -64,8 +64,19 @@ export function useAppActions(options: UseAppActionsOptions) {
     simulatorStore.toggleMarkdownBoard();
   }
 
+  function confirmResetScene() {
+    if (!isPhoneLayout.value) return true;
+    try {
+      return window.confirm('确定回到起始态吗？当前场景会恢复到记录的起点。');
+    } catch {
+      return true;
+    }
+  }
+
   function resetScene() {
+    if (!confirmResetScene()) return false;
     simulatorStore.resetScene();
+    return true;
   }
 
   function confirmClearScene() {
@@ -207,7 +218,7 @@ export function useAppActions(options: UseAppActionsOptions) {
 
   function createObjectFromToolbar(type: string) {
     simulatorStore.createObjectAtCenter(type);
-    if (isPhoneLayout.value) {
+    if (!isPhoneLayout.value) {
       closePhoneSheets();
     }
   }
@@ -248,17 +259,14 @@ export function useAppActions(options: UseAppActionsOptions) {
 
   function openVariablesPanelFromPhoneMore() {
     openVariablesPanel();
-    closePhoneSheets();
   }
 
   function toggleMarkdownBoardFromPhoneMore() {
     toggleMarkdownBoard();
-    closePhoneSheets();
   }
 
   function openSelectedPropertiesFromPhoneSheet() {
     simulatorStore.openPropertyPanel();
-    closePhoneSheets();
   }
 
   function duplicateSelectedFromPhoneSheet() {

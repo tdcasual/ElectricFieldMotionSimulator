@@ -70,11 +70,12 @@ function validatePayload(
 ): SceneSourceResult {
   const validated = validateSceneData(payload);
   if (!validated.ok) {
+    const detail = validated.issues[0];
     return {
       ok: false,
       source,
       code: 'validation',
-      message: validated.error
+      message: detail ? `${validated.error} (${detail})` : validated.error
     };
   }
   return {

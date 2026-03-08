@@ -24,6 +24,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
+  <p v-if="props.demoMode" class="control-note" data-testid="scene-demo-note">演示模式下比例尺和重力已锁定，退出演示后可编辑。</p>
   <label class="control-label">
     <span>显示能量:</span>
     <input id="toggle-energy-overlay" type="checkbox" :checked="props.showEnergyOverlay" @change="(event) => emit('set-show-energy', event)" />

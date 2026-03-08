@@ -38,7 +38,7 @@ afterEach(() => {
 });
 
 describe('useAppActions', () => {
-  it('closes phone sheets after creating an object only in phone layout', () => {
+  it('only closes sheets after creating an object outside phone layout', () => {
     const simulatorStore = createStore();
     const closePhoneSheets = vi.fn();
     const isPhoneLayout = ref(true);
@@ -52,12 +52,37 @@ describe('useAppActions', () => {
 
     actions.createObjectFromToolbar('particle');
     expect(simulatorStore.createObjectAtCenter).toHaveBeenCalledWith('particle');
-    expect(closePhoneSheets).toHaveBeenCalledTimes(1);
+    expect(closePhoneSheets).not.toHaveBeenCalled();
 
     closePhoneSheets.mockClear();
     isPhoneLayout.value = false;
     actions.createObjectFromToolbar('particle');
-    expect(closePhoneSheets).not.toHaveBeenCalled();
+    expect(closePhoneSheets).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires confirmation before resetting scene on phone but not on desktop', () => {
+    const simulatorStore = createStore();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const isPhoneLayout = ref(true);
+
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets: vi.fn(),
+      isPhoneLayout,
+      importFileInput: ref(null)
+    });
+
+    expect(actions.resetScene()).toBe(false);
+    expect(simulatorStore.resetScene).not.toHaveBeenCalled();
+
+    confirmSpy.mockReturnValue(true);
+    expect(actions.resetScene()).toBe(true);
+    expect(simulatorStore.resetScene).toHaveBeenCalledTimes(1);
+
+    simulatorStore.resetScene.mockClear();
+    isPhoneLayout.value = false;
+    expect(actions.resetScene()).toBe(true);
+    expect(simulatorStore.resetScene).toHaveBeenCalledTimes(1);
   });
 
   it('only closes phone more sheet when save succeeds', () => {
@@ -109,6 +134,41 @@ describe('useAppActions', () => {
     actions.deleteSelectedFromPhoneSheet();
     expect(simulatorStore.deleteSelected).toHaveBeenCalledTimes(1);
     expect(closePhoneSheets).toHaveBeenCalledTimes(1);
+  });
+
+
+  it('keeps source phone sheet state when opening property drawer from selected sheet', () => {
+    const simulatorStore = createStore();
+    const closePhoneSheets = vi.fn();
+
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets,
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    actions.openSelectedPropertiesFromPhoneSheet();
+
+    expect(simulatorStore.openPropertyPanel).toHaveBeenCalledTimes(1);
+    expect(closePhoneSheets).not.toHaveBeenCalled();
+  });
+
+  it('keeps source phone sheet state when opening variables from more sheet', () => {
+    const simulatorStore = createStore();
+    const closePhoneSheets = vi.fn();
+
+    const actions = useAppActions({
+      simulatorStore,
+      closePhoneSheets,
+      isPhoneLayout: ref(true),
+      importFileInput: ref(null)
+    });
+
+    actions.openVariablesPanelFromPhoneMore();
+
+    expect(simulatorStore.openVariablesPanel).toHaveBeenCalledTimes(1);
+    expect(closePhoneSheets).not.toHaveBeenCalled();
   });
 
   it('clearScene tolerates confirm dialog errors and still clears scene', () => {

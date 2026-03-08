@@ -14,6 +14,8 @@ function mountPanels(overrides: Record<string, unknown> = {}) {
       layoutMode: 'desktop',
       propertySections: [],
       propertyValues: {},
+      expressionVariables: {},
+      expressionTime: 0,
       densityMode: 'compact',
       markdownBoardModel: false,
       markdownContent: '# 标题',

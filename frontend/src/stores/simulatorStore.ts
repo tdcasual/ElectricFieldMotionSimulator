@@ -5,10 +5,12 @@ import {
   type GeometryInteractionSnapshot,
   SimulatorRuntime,
   type PropertyPayload,
-  type RuntimeSnapshot
+  type RuntimeSnapshot,
+  type SceneMutationResult
 } from '../runtime/simulatorRuntime';
 import type { EmbedConfig, EmbedMode } from '../embed/embedConfig';
 import { resolveSceneSource } from '../embed/sceneSourceResolver';
+import { captureDemoAuthoringRestoreState, consumeDemoAuthoringRestoreState, createDemoAuthoringRestoreState } from './demoAuthoringSession';
 
 type ToolbarEntry = {
   type: string;
@@ -25,6 +27,7 @@ type ToolbarGroup = {
 export type LayoutMode = 'desktop' | 'tablet' | 'phone';
 type ActiveDrawer = 'property' | 'variables' | 'markdown' | null;
 type PhoneDensityMode = 'compact' | 'comfortable';
+type SceneLoadResult = SceneMutationResult;
 
 const CATEGORY_LABELS: Record<string, string> = {
   electric: '电场',
@@ -155,6 +158,9 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const classroomMode = ref(false);
 
   const activeDrawer = ref<ActiveDrawer>(null);
+  const drawerHistory = ref<Array<Exclude<ActiveDrawer, null>>>([]);
+  const propertyDrawerSelectionId = ref<string | null>(null);
+  const pendingDemoAuthoringRestore = ref(createDemoAuthoringRestoreState());
   const propertyDrawerOpen = computed(() => activeDrawer.value === 'property');
   const propertyTitle = ref('属性面板');
   const propertySections = ref<PropertyPayload['sections']>([]);
@@ -163,6 +169,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const phoneGeometryScopeSignature = ref('');
   const variablesPanelOpen = computed(() => activeDrawer.value === 'variables');
   const variableDraft = ref<Record<string, number>>({});
+  const sceneVariables = ref<Record<string, number>>({});
+  const sceneTime = ref(0);
   const markdownBoardOpen = computed(() => activeDrawer.value === 'markdown');
   const markdownContent = ref('# 题板\n\n- 在这里记录题目和步骤\n- 支持基础 Markdown 语法\n- 支持 LaTeX：$v=\\frac{s}{t}$');
   const markdownMode = ref<'edit' | 'preview'>('preview');
@@ -198,17 +206,23 @@ export const useSimulatorStore = defineStore('simulator', () => {
     const current = runtime.value;
     if (!current) return;
     const settings = (current.scene as { settings?: Record<string, unknown> }).settings ?? {};
+    const vars = current.scene.variables && typeof current.scene.variables === 'object'
+      ? current.scene.variables as Record<string, unknown>
+      : {};
     showEnergyOverlay.value = settings.showEnergy !== false;
     pixelsPerMeter.value = asPositiveNumber(settings.pixelsPerMeter, 1);
     gravity.value = asNonNegativeNumber(settings.gravity, 10);
     boundaryMode.value = normalizeBoundaryMode(settings.boundaryMode);
     boundaryMargin.value = asNonNegativeNumber(settings.boundaryMargin, 200);
+    sceneVariables.value = normalizeSceneVariables(vars);
+    sceneTime.value = Number.isFinite(current.scene.time) ? current.scene.time : 0;
   }
 
   function updatePropertyPayload(payload: PropertyPayload) {
     propertyTitle.value = payload.title;
     propertySections.value = payload.sections;
     propertyValues.value = { ...(payload.values ?? {}) };
+    propertyDrawerSelectionId.value = selectedObjectId.value;
     reconcilePhoneRecentGeometryMemory();
   }
 
@@ -330,17 +344,44 @@ export const useSimulatorStore = defineStore('simulator', () => {
     }
   }
 
+  function restorePreviousDrawer() {
+    while (drawerHistory.value.length > 0) {
+      const candidate = drawerHistory.value.pop() ?? null;
+      if (candidate === 'property') {
+        if (!selectedObjectId.value) continue;
+        if (propertyDrawerSelectionId.value !== selectedObjectId.value) {
+          const ok = refreshSelectedPropertyPayload();
+          if (!ok) continue;
+          propertyDrawerSelectionId.value = selectedObjectId.value;
+        }
+        activeDrawer.value = 'property';
+        dispatchTapChainResetEvent();
+        return true;
+      }
+      activeDrawer.value = candidate;
+      return true;
+    }
+    return false;
+  }
+
   function openDrawer(target: Exclude<ActiveDrawer, null>) {
+    if (activeDrawer.value === target) return;
+    if (activeDrawer.value !== null) {
+      drawerHistory.value = drawerHistory.value.filter((item) => item !== activeDrawer.value && item !== target);
+      drawerHistory.value.push(activeDrawer.value);
+    }
     activeDrawer.value = target;
   }
 
   function closeDrawer(target: Exclude<ActiveDrawer, null>) {
     if (activeDrawer.value !== target) return;
     activeDrawer.value = null;
+    if (restorePreviousDrawer()) return;
   }
 
   function closeAllDrawers() {
     activeDrawer.value = null;
+    drawerHistory.value = [];
   }
 
   function closePropertyPanel() {
@@ -366,9 +407,18 @@ export const useSimulatorStore = defineStore('simulator', () => {
   function openPropertyPanel() {
     const ok = refreshSelectedPropertyPayload();
     if (!ok) return false;
+    propertyDrawerSelectionId.value = selectedObjectId.value;
     openDrawer('property');
     dispatchTapChainResetEvent();
     return true;
+  }
+
+  function selectObjectByIndex(index: number) {
+    const result = getRuntime().selectObjectByIndex(index);
+    if (!result.ok) {
+      setStatusText(result.error);
+    }
+    return result;
   }
 
   function ensureRuntime() {
@@ -401,6 +451,13 @@ export const useSimulatorStore = defineStore('simulator', () => {
       next[name] = value;
     }
     return next;
+  }
+
+  function syncVariableDraftFromScene(current = getRuntime()) {
+    const vars = current.scene.variables && typeof current.scene.variables === 'object'
+      ? current.scene.variables as Record<string, unknown>
+      : {};
+    variableDraft.value = normalizeSceneVariables(vars);
   }
 
   function openVariablesPanel() {
@@ -516,15 +573,17 @@ export const useSimulatorStore = defineStore('simulator', () => {
     layoutMode.value = next;
   }
 
-  function loadSceneData(data: Record<string, unknown>) {
-    const ok = getRuntime().loadSceneData(data);
-    if (ok) {
+  function loadSceneData(data: Record<string, unknown>): SceneLoadResult {
+    const current = getRuntime();
+    const result = current.loadSceneData(data);
+    if (result.ok) {
+      syncVariableDraftFromScene(current);
       closePropertyPanel();
       setStatusText('场景已加载');
     } else {
-      setStatusText('场景加载失败');
+      setStatusText(result.error);
     }
-    return ok;
+    return result;
   }
 
   async function bootstrapFromEmbed(config: EmbedConfig) {
@@ -541,11 +600,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
     if (resolved.data) {
       const loaded = loadSceneData(resolved.data as Record<string, unknown>);
-      if (!loaded) {
+      if (!loaded.ok) {
         return {
           ok: false as const,
           code: 'validation',
-          error: 'Scene payload rejected by runtime.'
+          error: loaded.error
         };
       }
     }
@@ -570,7 +629,22 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   function toggleDemoMode() {
+    const enteringDemo = !demoMode.value;
+    if (enteringDemo) {
+      pendingDemoAuthoringRestore.value = captureDemoAuthoringRestoreState({
+        propertyDrawerOpen: propertyDrawerOpen.value,
+        selectedObjectId: selectedObjectId.value
+      });
+    }
     getRuntime().toggleDemoMode();
+    if (demoMode.value) return;
+    const result = consumeDemoAuthoringRestoreState(pendingDemoAuthoringRestore.value, {
+      selectedObjectId: selectedObjectId.value
+    });
+    pendingDemoAuthoringRestore.value = result.nextState;
+    if (result.shouldReopenPropertyDrawer) {
+      openPropertyPanel();
+    }
   }
 
   function setTimeStep(next: number) {
@@ -645,41 +719,51 @@ export const useSimulatorStore = defineStore('simulator', () => {
   function saveScene(name: string) {
     if (!name || !name.trim()) return false;
     const sceneName = name.trim();
-    const ok = getRuntime().saveScene(sceneName);
-    if (ok) {
+    const result = getRuntime().saveScene(sceneName);
+    if (result.ok) {
       setStatusText(`场景 "${sceneName}" 已保存`);
-    } else {
-      setStatusText(`场景 "${sceneName}" 保存失败`);
+      return true;
     }
-    return ok;
+    setStatusText(result.error);
+    return false;
   }
 
   function loadScene(name: string) {
     if (!name || !name.trim()) return false;
-    const ok = getRuntime().loadScene(name.trim());
-    if (ok) {
+    const sceneName = name.trim();
+    const current = getRuntime();
+    const result = current.loadScene(sceneName);
+    if (result.ok) {
+      syncVariableDraftFromScene(current);
       closePropertyPanel();
-      setStatusText(`场景 "${name.trim()}" 已加载`);
-    } else {
-      setStatusText(`场景 "${name.trim()}" 不存在`);
+      setStatusText(`场景 "${sceneName}" 已加载`);
+      return true;
     }
-    return ok;
+    setStatusText(result.error);
+    return false;
   }
 
   function exportScene() {
-    getRuntime().exportScene();
-    setStatusText('场景已导出');
+    const result = getRuntime().exportScene();
+    if (result.ok) {
+      setStatusText('场景已导出');
+      return true;
+    }
+    setStatusText(result.error);
+    return false;
   }
 
   async function importScene(file: File) {
-    const ok = await getRuntime().importScene(file);
-    if (ok) {
+    const current = getRuntime();
+    const result = await current.importScene(file);
+    if (result.ok) {
+      syncVariableDraftFromScene(current);
       closePropertyPanel();
       setStatusText('场景已导入');
     } else {
-      setStatusText('导入失败');
+      setStatusText(result.error);
     }
-    return ok;
+    return result.ok;
   }
 
   function loadPreset(name: string) {
@@ -689,6 +773,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     current.stop();
     current.scene.clear();
     current.scene.loadFromData(preset.data);
+    syncVariableDraftFromScene(current);
     closePropertyPanel();
     current.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
     setStatusText(`已加载预设场景: ${preset.name}`);
@@ -746,6 +831,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
     phoneRecentGeometrySourceKeys,
     variablesPanelOpen,
     variableDraft,
+    sceneVariables,
+    sceneTime,
     markdownBoardOpen,
     markdownContent,
     markdownMode,
@@ -788,6 +875,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     setStatusText,
     refreshSelectedPropertyPayload,
     rememberPhoneGeometryEdit,
+    selectObjectByIndex,
     openPropertyPanel,
     closePropertyPanel,
     applyPropertyValues,

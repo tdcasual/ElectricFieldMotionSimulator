@@ -22,6 +22,17 @@ describe('DesktopToolbarSidebar', () => {
     ]);
   });
 
+  it('shows desktop creation hint text', () => {
+    const wrapper = mount(DesktopToolbarSidebar, {
+      props: {
+        groups: []
+      }
+    });
+
+    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('单击后点击画布放置');
+    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('双击可直接居中创建');
+  });
+
   it('forwards create event from toolbar panel', async () => {
     const wrapper = mount(DesktopToolbarSidebar, {
       props: {

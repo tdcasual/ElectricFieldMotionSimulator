@@ -33,6 +33,15 @@ describe('PhoneMoreSheet', () => {
     expect(wrapper.emitted('toggle-markdown')).toHaveLength(1);
   });
 
+  it('places clear-scene inside a dedicated danger section', () => {
+    const wrapper = mount(PhoneMoreSheet);
+
+    const dangerSection = wrapper.get('[data-testid="phone-more-danger-section"]');
+    expect(dangerSection.text()).toContain('危险操作');
+    expect(dangerSection.find('#secondary-clear-btn').exists()).toBe(true);
+    expect(wrapper.get('[aria-label="场景文件"]').text()).not.toContain('清空场景');
+  });
+
   it('emits close on header close button and swipe-down gesture', async () => {
     const wrapper = mount(PhoneMoreSheet);
 
