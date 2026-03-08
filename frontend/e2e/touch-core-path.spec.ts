@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { addParticleFromPhoneSheet, closeMarkdownBoardAndExpectMoreRestored, dismissPhoneSelectedSheetIfOpen, openMarkdownFromPhoneMore, openPhoneMoreSheet, openPhoneSceneSheet, openPropertyPanelFromActionBar, openVariablesFromPhoneMore, selectCenterObject } from './helpers/phoneFlows';
 
 async function dispatchTouchEventViaCdp(
   session: {
@@ -17,26 +18,8 @@ async function dispatchTouchEventViaCdp(
   });
 }
 
-async function addParticleFromPhoneSheet(page: Page) {
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
-  await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
-}
-
-async function selectCenterObject(page: Page, x: number, y: number) {
-  await page.touchscreen.tap(x, y);
-  await expect(page.getByTestId('object-action-bar')).toBeVisible();
-}
-
-async function openPropertyPanelFromActionBar(page: Page) {
-  await page.locator('[data-testid="action-open-properties"]').tap();
-  await expect(page.locator('#property-panel')).toBeVisible();
-}
-
 test('touch path place object and double-tap open property panel', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const canvas = page.locator('#particle-canvas');
@@ -51,10 +34,7 @@ test('touch path place object and double-tap open property panel', async ({ page
   const isPhoneLayout = await phoneNav.isVisible().catch(() => false);
 
   if (isPhoneLayout) {
-    await page.locator('#phone-nav-add-btn').tap();
-    await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-    await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-    await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+    await addParticleFromPhoneSheet(page);
     targetX = box!.x + box!.width / 2;
     targetY = box!.y + box!.height / 2;
   } else {
@@ -73,7 +53,7 @@ test('touch path place object and double-tap open property panel', async ({ page
 });
 
 test('long-press with micro-jitter opens property panel on phone', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -86,10 +66,7 @@ test('long-press with micro-jitter opens property panel on phone', async ({ page
   const x = box!.x + box!.width / 2;
   const y = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await addParticleFromPhoneSheet(page);
   await page.touchscreen.tap(x, y);
   await expect(page.getByTestId('object-action-bar')).toBeVisible();
   const cdpSession = await page.context().newCDPSession(page);
@@ -108,7 +85,7 @@ test('long-press with micro-jitter opens property panel on phone', async ({ page
 });
 
 test('pinch gesture should reset double-tap chain before next single tap', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -121,10 +98,7 @@ test('pinch gesture should reset double-tap chain before next single tap', async
   const x = box!.x + box!.width / 2;
   const y = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await addParticleFromPhoneSheet(page);
 
   // First tap selects object and starts double-tap timing window.
   await page.touchscreen.tap(x, y);
@@ -148,7 +122,7 @@ test('pinch gesture should reset double-tap chain before next single tap', async
 });
 
 test('edit mode pinch should change zoom and keep tap-chain behavior stable on phone', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -173,10 +147,7 @@ test('edit mode pinch should change zoom and keep tap-chain behavior stable on p
   const x = box!.x + box!.width / 2;
   const y = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await addParticleFromPhoneSheet(page);
 
   await page.touchscreen.tap(x, y);
   await expect(page.getByTestId('object-action-bar')).toBeVisible();
@@ -215,7 +186,7 @@ test('edit mode pinch should change zoom and keep tap-chain behavior stable on p
 });
 
 test('tap blank area resets tap chain before reopening properties', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   const canvas = page.locator('#particle-canvas');
@@ -230,10 +201,7 @@ test('tap blank area resets tap chain before reopening properties', async ({ pag
   const isPhoneLayout = await phoneNav.isVisible().catch(() => false);
 
   if (isPhoneLayout) {
-    await page.locator('#phone-nav-add-btn').tap();
-    await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-    await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-    await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+    await addParticleFromPhoneSheet(page);
   } else {
     const tool = page.locator('#toolbar .tool-item[data-type="particle"]').first();
     await tool.tap();
@@ -254,7 +222,7 @@ test('tap blank area resets tap chain before reopening properties', async ({ pag
 });
 
 test('phone selected sheet pins recently edited geometry field to top', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -272,10 +240,6 @@ test('phone selected sheet pins recently edited geometry field to top', async ({
   await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="magnetic-field"]').first().tap();
   await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
 
-  await page.touchscreen.tap(centerX, centerY);
-  await expect(page.getByTestId('object-action-bar')).toBeVisible();
-
-  await page.locator('#phone-nav-selected-btn').tap();
   const selectedSheet = page.getByTestId('phone-selected-sheet');
   await expect(selectedSheet).toBeVisible();
 
@@ -308,7 +272,7 @@ test('phone selected sheet pins recently edited geometry field to top', async ({
 });
 
 test('phone sheet controls keep touch targets at least 44px', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -317,8 +281,7 @@ test('phone sheet controls keep touch targets at least 44px', async ({ page }, t
   const phoneNav = page.locator('#phone-bottom-nav');
   await expect(phoneNav).toBeVisible();
 
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 
   const sceneCloseButtonHeight = await page.locator('[data-testid="phone-scene-sheet"] .btn-icon').evaluate((el) => {
     return el.getBoundingClientRect().height;
@@ -347,8 +310,7 @@ test('phone sheet controls keep touch targets at least 44px', async ({ page }, t
   expect(energyToggleSize.width).toBeGreaterThanOrEqual(24);
   expect(energyToggleSize.height).toBeGreaterThanOrEqual(24);
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
   const moreExportButtonHeight = await page.locator('#secondary-export-btn').evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
@@ -356,7 +318,7 @@ test('phone sheet controls keep touch targets at least 44px', async ({ page }, t
 });
 
 test('phone header reset button keeps touch target at least 44px', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -370,7 +332,7 @@ test('phone header reset button keeps touch target at least 44px', async ({ page
 });
 
 test('phone header controls stay below top safe-area inset', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -396,15 +358,14 @@ test('phone header controls stay below top safe-area inset', async ({ page }, te
 });
 
 test('phone form inputs keep zoom-safe font size', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only readability and input ergonomics check');
   }
 
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 
   const gravityFontSize = await page.locator('#gravity-input').evaluate((el) => {
     return Number.parseFloat(window.getComputedStyle(el).fontSize || '0');
@@ -413,7 +374,7 @@ test('phone form inputs keep zoom-safe font size', async ({ page }, testInfo) =>
 });
 
 test('phone property checkbox rows expose a full-height tap target', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -458,17 +419,15 @@ test('phone property checkbox rows expose a full-height tap target', async ({ pa
 });
 
 test('phone markdown and variables panels keep touch targets at least 44px', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only tool panel ergonomics check');
   }
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-markdown-btn').tap();
-  await expect(page.getByTestId('markdown-board')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openMarkdownFromPhoneMore(page);
 
   const markdownFontInputHeight = await page.locator('.markdown-font-input').evaluate((el) => {
     return el.getBoundingClientRect().height;
@@ -480,13 +439,9 @@ test('phone markdown and variables panels keep touch targets at least 44px', asy
     return el.getBoundingClientRect().height;
   });
 
-  await page.getByLabel('关闭题板').tap();
-  await expect(page.getByTestId('markdown-board')).toBeHidden();
+  await closeMarkdownBoardAndExpectMoreRestored(page);
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await openVariablesFromPhoneMore(page);
 
   const variablesInputHeight = await page.locator('.variables-input').first().evaluate((el) => {
     return el.getBoundingClientRect().height;
@@ -511,30 +466,24 @@ test('phone markdown and variables panels keep touch targets at least 44px', asy
 });
 
 test('phone markdown and variables inputs keep zoom-safe font size', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only input zoom ergonomics check');
   }
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-markdown-btn').tap();
-  await expect(page.getByTestId('markdown-board')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openMarkdownFromPhoneMore(page);
 
   const markdownFontInputSize = await page.locator('.markdown-font-input').evaluate((el) => {
     return Number.parseFloat(window.getComputedStyle(el).fontSize || '0');
   });
   expect(markdownFontInputSize).toBeGreaterThanOrEqual(16);
 
-  await page.getByLabel('关闭题板').tap();
-  await expect(page.getByTestId('markdown-board')).toBeHidden();
+  await closeMarkdownBoardAndExpectMoreRestored(page);
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await openVariablesFromPhoneMore(page);
 
   const variablesInputSize = await page.locator('.variables-input').first().evaluate((el) => {
     return Number.parseFloat(window.getComputedStyle(el).fontSize || '0');
@@ -543,7 +492,7 @@ test('phone markdown and variables inputs keep zoom-safe font size', async ({ pa
 });
 
 test('phone wide landscape remains phone layout', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -557,7 +506,7 @@ test('phone wide landscape remains phone layout', async ({ page }, testInfo) => 
 });
 
 test('swipe down on phone scene sheet header closes sheet', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -595,7 +544,7 @@ test('swipe down on phone scene sheet header closes sheet', async ({ page }, tes
 });
 
 test('rapid phone sheet switching then backdrop tap leaves no sheet open', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -604,8 +553,7 @@ test('rapid phone sheet switching then backdrop tap leaves no sheet open', async
 
   await page.locator('#phone-nav-add-btn').tap();
   await page.locator('#phone-nav-scene-btn').tap();
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
 
   const appBox = await page.locator('#app').boundingBox();
   expect(appBox).not.toBeNull();
@@ -618,15 +566,14 @@ test('rapid phone sheet switching then backdrop tap leaves no sheet open', async
 });
 
 test('orientation switch while sheet open clears stale sheet state and keeps nav usable', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only orientation race check');
   }
 
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByTestId('phone-scene-sheet')).toBeHidden();
@@ -634,12 +581,11 @@ test('orientation switch while sheet open clears stale sheet state and keeps nav
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
 });
 
 test('phone density toggle changes property panel row density', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -649,8 +595,7 @@ test('phone density toggle changes property panel row density', async ({ page },
   const phoneNav = page.locator('#phone-bottom-nav');
   await expect(phoneNav).toBeVisible();
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
   const moreSaveBefore = await page.locator('#secondary-save-btn').evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
@@ -690,8 +635,7 @@ test('phone density toggle changes property panel row density', async ({ page },
   await page.locator('#close-panel-btn').tap();
   await expect(page.locator('#property-panel')).toBeHidden();
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
   const moreSaveAfter = await page.locator('#secondary-save-btn').evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
@@ -706,7 +650,7 @@ test('phone density toggle changes property panel row density', async ({ page },
 });
 
 test('property panel keeps phone play control reachable and tappable', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -733,7 +677,7 @@ test('property panel keeps phone play control reachable and tappable', async ({ 
 });
 
 test('closing property panel clears stale tap chain before next single tap', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -746,10 +690,7 @@ test('closing property panel clears stale tap chain before next single tap', asy
   const centerX = box!.x + box!.width / 2;
   const centerY = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await addParticleFromPhoneSheet(page);
 
   await page.touchscreen.tap(centerX, centerY);
   await expect(page.getByTestId('object-action-bar')).toBeVisible();
@@ -768,7 +709,7 @@ test('closing property panel clears stale tap chain before next single tap', asy
 });
 
 test('object action bar stays above safe-area-aware phone nav', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -785,10 +726,7 @@ test('object action bar stays above safe-area-aware phone nav', async ({ page },
   const centerX = box!.x + box!.width / 2;
   const centerY = box!.y + box!.height / 2;
 
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  await addParticleFromPhoneSheet(page);
 
   await page.touchscreen.tap(centerX, centerY);
   const actionBar = page.getByTestId('object-action-bar');
@@ -806,7 +744,7 @@ test('object action bar stays above safe-area-aware phone nav', async ({ page },
 });
 
 test('phone landscape keeps nav and header controls inside safe-area insets', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -852,7 +790,7 @@ test('phone landscape keeps nav and header controls inside safe-area insets', as
 });
 
 test('phone sheet header actions stay inside landscape safe-area insets', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -883,7 +821,7 @@ test('phone sheet header actions stay inside landscape safe-area insets', async 
 });
 
 test('phone sheet body controls stay inside landscape safe-area insets', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -914,7 +852,7 @@ test('phone sheet body controls stay inside landscape safe-area insets', async (
 });
 
 test('phone property panel controls stay inside landscape safe-area insets', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -967,7 +905,7 @@ test('phone property panel controls stay inside landscape safe-area insets', asy
 });
 
 test('phone markdown and variables sheet controls stay inside landscape safe-area insets', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -984,10 +922,8 @@ test('phone markdown and variables sheet controls stay inside landscape safe-are
   const safeInset = 44;
   const rightSafeBound = 844 - safeInset;
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-markdown-btn').tap();
-  await expect(page.getByTestId('markdown-board')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openMarkdownFromPhoneMore(page);
 
   const markdownClose = page.getByLabel('关闭题板');
   const markdownInput = page.locator('.markdown-font-input');
@@ -1008,11 +944,9 @@ test('phone markdown and variables sheet controls stay inside landscape safe-are
 
   await markdownClose.tap();
   await expect(page.getByTestId('markdown-board')).toBeHidden();
-
-  await page.locator('#phone-nav-more-btn').tap();
   await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+
+  await openVariablesFromPhoneMore(page);
 
   const variablesClose = page.getByLabel('关闭变量表');
   const variablesInput = page.locator('.variables-input').first();
@@ -1033,7 +967,7 @@ test('phone markdown and variables sheet controls stay inside landscape safe-are
 });
 
 test('phone variables sheet footer stays above bottom safe-area inset', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1046,10 +980,8 @@ test('phone variables sheet footer stays above bottom safe-area inset', async ({
     app.style.setProperty('--phone-safe-bottom-inset', '34px');
   });
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openVariablesFromPhoneMore(page);
 
   const applyButton = page.locator('[data-testid="apply-variables"]');
   await expect(applyButton).toBeVisible();
@@ -1062,7 +994,7 @@ test('phone variables sheet footer stays above bottom safe-area inset', async ({
 });
 
 test('phone markdown sheet uses bottom space tightly when nav is hidden', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1075,8 +1007,7 @@ test('phone markdown sheet uses bottom space tightly when nav is hidden', async 
     app.style.setProperty('--phone-safe-bottom-inset', '34px');
   });
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
   await page.locator('#secondary-markdown-btn').tap();
   const markdownBoard = page.getByTestId('markdown-board');
   await expect(markdownBoard).toBeVisible();
@@ -1089,7 +1020,7 @@ test('phone markdown sheet uses bottom space tightly when nav is hidden', async 
 });
 
 test('phone utility drawer backdrop closes and restores nav interactions', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1101,38 +1032,31 @@ test('phone utility drawer backdrop closes and restores nav interactions', async
   const backdropTapX = appBox!.x + appBox!.width / 2;
   const backdropTapY = appBox!.y + 80;
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-markdown-btn').tap();
-  await expect(page.getByTestId('markdown-board')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openMarkdownFromPhoneMore(page);
   await page.touchscreen.tap(backdropTapX, backdropTapY);
   await expect(page.getByTestId('markdown-board')).toBeHidden();
+  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await openVariablesFromPhoneMore(page);
   await page.touchscreen.tap(backdropTapX, backdropTapY);
   await expect(page.getByTestId('variables-panel')).toBeHidden();
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
 
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 });
 
 test('orientation switch with utility drawer open keeps state recoverable on phone', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only orientation recovery check for utility drawer');
   }
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openVariablesFromPhoneMore(page);
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByTestId('variables-panel')).toBeVisible();
@@ -1143,12 +1067,11 @@ test('orientation switch with utility drawer open keeps state recoverable on pho
   await expect(page.getByTestId('variables-panel')).toBeHidden();
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
 });
 
 test('phone landscape density toggle scales nav and sheet controls', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1163,8 +1086,7 @@ test('phone landscape density toggle scales nav and sheet controls', async ({ pa
     return el.getBoundingClientRect().height;
   });
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
   const moreSaveBefore = await page.locator('#secondary-save-btn').evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
@@ -1189,8 +1111,7 @@ test('phone landscape density toggle scales nav and sheet controls', async ({ pa
     return el.getBoundingClientRect().height;
   });
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
   const moreSaveAfter = await page.locator('#secondary-save-btn').evaluate((el) => {
     return el.getBoundingClientRect().height;
   });
@@ -1204,17 +1125,15 @@ test('phone landscape density toggle scales nav and sheet controls', async ({ pa
 });
 
 test('orientation switch with markdown board open keeps state recoverable on phone', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only orientation recovery check for markdown board');
   }
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-markdown-btn').tap();
-  await expect(page.getByTestId('markdown-board')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openMarkdownFromPhoneMore(page);
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByTestId('markdown-board')).toBeVisible();
@@ -1225,12 +1144,11 @@ test('orientation switch with markdown board open keeps state recoverable on pho
   await expect(page.getByTestId('markdown-board')).toBeHidden();
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
 
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 });
 
 test('property drawer backdrop keeps close interaction recoverable after orientation switch', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1259,22 +1177,19 @@ test('property drawer backdrop keeps close interaction recoverable after orienta
   await page.touchscreen.tap(appBox!.x + appBox!.width / 2, appBox!.y + 100);
 
   await expect(page.locator('#property-panel')).toBeHidden();
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 });
 
 test('orientation switch keeps markdown backdrop close recoverable on phone', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only backdrop recovery check for markdown after orientation');
   }
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-markdown-btn').tap();
-  await expect(page.getByTestId('markdown-board')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openMarkdownFromPhoneMore(page);
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByTestId('markdown-board')).toBeVisible();
@@ -1288,22 +1203,19 @@ test('orientation switch keeps markdown backdrop close recoverable on phone', as
 
   await expect(page.getByTestId('markdown-board')).toBeHidden();
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 });
 
 test('orientation switch keeps variables backdrop close recoverable on phone', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
     test.skip(true, 'phone-only backdrop recovery check for variables after orientation');
   }
 
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openVariablesFromPhoneMore(page);
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByTestId('variables-panel')).toBeVisible();
@@ -1317,12 +1229,11 @@ test('orientation switch keeps variables backdrop close recoverable on phone', a
 
   await expect(page.getByTestId('variables-panel')).toBeHidden();
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSceneSheet(page);
 });
 
 test('phone short landscape keeps scene sheet below header region', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1347,7 +1258,7 @@ test('phone short landscape keeps scene sheet below header region', async ({ pag
 });
 
 test('phone short landscape keeps property panel below header region', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1382,7 +1293,7 @@ test('phone short landscape keeps property panel below header region', async ({ 
 });
 
 test('phone short landscape keeps markdown board below header region', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1391,8 +1302,7 @@ test('phone short landscape keeps markdown board below header region', async ({ 
 
   await page.setViewportSize({ width: 744, height: 390 });
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
+  await openPhoneMoreSheet(page);
   await page.locator('#secondary-markdown-btn').tap();
   const markdownBoard = page.getByTestId('markdown-board');
   await expect(markdownBoard).toBeVisible();
@@ -1408,7 +1318,7 @@ test('phone short landscape keeps markdown board below header region', async ({ 
 });
 
 test('phone short landscape keeps variables panel below header region', async ({ page }, testInfo) => {
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
 
   if (testInfo.project.name !== 'phone-chromium') {
@@ -1417,10 +1327,8 @@ test('phone short landscape keeps variables panel below header region', async ({
 
   await page.setViewportSize({ width: 744, height: 390 });
   await expect(page.locator('#phone-bottom-nav')).toBeVisible();
-  await page.locator('#phone-nav-more-btn').tap();
-  await expect(page.getByTestId('phone-more-sheet')).toBeVisible();
-  await page.locator('#secondary-variables-btn').tap();
-  await expect(page.getByTestId('variables-panel')).toBeVisible();
+  await openPhoneMoreSheet(page);
+  await openVariablesFromPhoneMore(page);
   const variablesSheet = page.locator('.variables-modal.variables-sheet');
   await expect(variablesSheet).toBeVisible();
 

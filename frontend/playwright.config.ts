@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
+const e2ePort = Number.parseInt(process.env.PLAYWRIGHT_VITE_PORT ?? '4173', 10);
+const baseURL = `http://127.0.0.1:${e2ePort}`;
 
 export default defineConfig({
   testDir: path.join(__dirname, 'e2e'),
@@ -13,14 +15,14 @@ export default defineConfig({
     timeout: 5_000
   },
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL,
     trace: 'retain-on-failure'
   },
   webServer: {
-    command: 'npm run dev:frontend -- --host 127.0.0.1 --port 5173',
-    url: 'http://127.0.0.1:5173',
+    command: `npm run dev:frontend -- --host 127.0.0.1 --port ${e2ePort} --strictPort`,
+    url: baseURL,
     cwd: repoRoot,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000
   },
   projects: [

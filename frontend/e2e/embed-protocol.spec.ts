@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 test('embed sdk bridge supports ready event and host commands', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
 
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
@@ -53,7 +53,7 @@ test('embed sdk bridge supports ready event and host commands', async ({ page })
 });
 
 test('embed host can bootstrap viewer by material id', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html?materialId=mock-particle');
+  await page.goto('/embed-host-test.html?materialId=mock-particle');
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
     return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
@@ -65,7 +65,7 @@ test('embed host can bootstrap viewer by material id', async ({ page }) => {
 
 test('embed host smoke captures screenshot', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 820 });
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html?materialId=mock-particle');
+  await page.goto('/embed-host-test.html?materialId=mock-particle');
 
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
@@ -90,7 +90,7 @@ test('view mode right-click on object does not crash without context menu node',
     pageErrors.push(String(error));
   });
 
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
     return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
@@ -121,7 +121,7 @@ test('view mode right-click on object does not crash without context menu node',
 });
 
 test('view mode blocks pointer edits on canvas objects', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5173/embed-host-test.html');
+  await page.goto('/embed-host-test.html');
   await page.waitForFunction(() => {
     const harness = (window as unknown as { __embedHarness?: { readyEvents?: unknown[] } }).__embedHarness;
     return !!harness && Array.isArray(harness.readyEvents) && harness.readyEvents.length > 0;
