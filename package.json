@@ -14,7 +14,11 @@
     "lint:frontend": "eslint \"frontend/src/**/*.ts\" \"frontend/test/**/*.ts\"",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "test:e2e": "playwright test -c frontend/playwright.config.ts",
-    "quality:all": "npm run lint:frontend && npm run typecheck:frontend && npm test && npm run test:frontend && npm run test:e2e"
+    "quality:all": "npm run lint:frontend && npm run typecheck:frontend && npm test && npm run test:frontend && npm run test:e2e",
+    "profile:high-emission": "node scripts/profile-high-emission.mjs",
+    "profile:expressions": "node scripts/profile-expressions.mjs",
+    "profile:browser-render": "node scripts/profile-browser-render.mjs",
+    "profile:browser-expressions": "node scripts/profile-browser-expressions.mjs"
   },
   "dependencies": {
     "katex": "^0.16.33",

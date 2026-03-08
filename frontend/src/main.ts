@@ -8,6 +8,8 @@ import '../../styles/animations.css';
 import { useSimulatorStore } from './stores/simulatorStore';
 import { parseEmbedConfigFromSearch } from './embed/embedConfig';
 import { installHostCommandBridge } from './embed/hostBridge';
+import { installProfileHarness } from './embed/profileHarness';
+import { createProfileHarnessStore } from './embed/profileHarnessStore';
 
 function resolveParentOrigin(): string | null {
   if (typeof window === 'undefined') return null;
@@ -43,6 +45,9 @@ app.mount('#root');
 
 if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
   const store = useSimulatorStore(pinia);
+  if (import.meta.env.DEV) {
+    installProfileHarness(window, createProfileHarnessStore(store));
+  }
   installHostCommandBridge(
     {
       startRunning: () => store.startRunning(),
