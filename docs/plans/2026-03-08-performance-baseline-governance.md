@@ -62,6 +62,12 @@
 - 真实回归往往表现为“持续偏离”而不是一次性尖峰
 - 先建立可比较的结构化输出，比仓促设阈值更有价值
 
+**例外：构建产物体积从 2026-03-08 起纳入硬门禁。**
+
+- 使用 `npm run build:frontend && npm run verify:budgets` 执行当前 baseline guard
+- 使用 `npm run verify:budgets:target` 跟踪 500 KiB 目标 guard
+- 当前参考基线见 `docs/release/2026-03-08-optimization-baseline.md`
+
 ### 2. 比较必须同维度
 
 比较历史结果时，必须保证以下维度一致：
@@ -104,10 +110,13 @@ PROFILE_BROWSER_PORT=4796 npm --silent run profile:browser-expressions > output/
 
 发布前至少保留以下检查：
 
+- 构建与预算：`npm run build:frontend && npm run verify:budgets`
+- Profile 契约：`npm run verify:profiles:contracts`
 - Node profiling：`high-emission`、`expressions`
 - Browser profiling：`browser-render`、`browser-expressions`
 - 若只改动 G 区 / expression 路径，可优先执行对应两条 profile
 - 若改动影响 mobile drawer / property / variable 交互，必须同时跑 phone E2E
+- 若需要完整发布前门禁，可直接执行 `PLAYWRIGHT_VITE_PORT=4499 npm run quality:release`
 
 ## 结论
 
