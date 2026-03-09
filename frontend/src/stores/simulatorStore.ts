@@ -10,7 +10,15 @@ import {
 } from '../runtime/simulatorRuntime';
 import type { EmbedConfig, EmbedMode } from '../embed/embedConfig';
 import { resolveSceneSource } from '../embed/sceneSourceResolver';
-import { captureDemoAuthoringRestoreState, consumeDemoAuthoringRestoreState, createDemoAuthoringRestoreState } from './demoAuthoringSession';
+import {
+  activateAuthoringDrawer,
+  captureAuthoringDemoRestoreState,
+  clearAuthoringSessionDrawers,
+  closeAuthoringDrawer,
+  consumeAuthoringDemoRestoreState,
+  createAuthoringSessionState,
+  type AuthoringDrawer
+} from '../session/authoringSessionTransitions';
 
 type ToolbarEntry = {
   type: string;
@@ -25,7 +33,7 @@ type ToolbarGroup = {
 };
 
 export type LayoutMode = 'desktop' | 'tablet' | 'phone';
-type ActiveDrawer = 'property' | 'variables' | 'markdown' | null;
+type ActiveDrawer = AuthoringDrawer | null;
 type PhoneDensityMode = 'compact' | 'comfortable';
 type SceneLoadResult = SceneMutationResult;
 
@@ -82,6 +90,10 @@ function asNonNegativeNumber(value: unknown, fallback: number) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
   return parsed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function normalizeBoundaryMode(value: unknown) {
@@ -149,6 +161,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const selectedObjectId = ref<string | null>(null);
   const statusText = ref('就绪');
   const geometryInteraction = ref<GeometryInteractionSnapshot | null>(null);
+  const frameStats = ref<RuntimeSnapshot['frameStats']>(null);
 
   const showEnergyOverlay = ref(true);
   const pixelsPerMeter = ref(1);
@@ -157,10 +170,17 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const boundaryMargin = ref(200);
   const classroomMode = ref(false);
 
-  const activeDrawer = ref<ActiveDrawer>(null);
-  const drawerHistory = ref<Array<Exclude<ActiveDrawer, null>>>([]);
+  const authoringSession = ref(createAuthoringSessionState());
   const propertyDrawerSelectionId = ref<string | null>(null);
-  const pendingDemoAuthoringRestore = ref(createDemoAuthoringRestoreState());
+  const activeDrawer = computed<ActiveDrawer>({
+    get: () => authoringSession.value.activeDrawer,
+    set: (next) => {
+      authoringSession.value = {
+        ...authoringSession.value,
+        activeDrawer: next
+      };
+    }
+  });
   const propertyDrawerOpen = computed(() => activeDrawer.value === 'property');
   const propertyTitle = ref('属性面板');
   const propertySections = ref<PropertyPayload['sections']>([]);
@@ -193,6 +213,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     selectedObjectId.value = snapshot.selectedObjectId;
     statusText.value = snapshot.statusText;
     geometryInteraction.value = snapshot.geometryInteraction ?? null;
+    frameStats.value = snapshot.frameStats ?? null;
     if (!snapshot.selectedObjectId && propertyDrawerOpen.value) {
       closePropertyPanel();
       return;
@@ -344,44 +365,42 @@ export const useSimulatorStore = defineStore('simulator', () => {
     }
   }
 
-  function restorePreviousDrawer() {
-    while (drawerHistory.value.length > 0) {
-      const candidate = drawerHistory.value.pop() ?? null;
-      if (candidate === 'property') {
-        if (!selectedObjectId.value) continue;
-        if (propertyDrawerSelectionId.value !== selectedObjectId.value) {
-          const ok = refreshSelectedPropertyPayload();
-          if (!ok) continue;
-          propertyDrawerSelectionId.value = selectedObjectId.value;
-        }
-        activeDrawer.value = 'property';
-        dispatchTapChainResetEvent();
-        return true;
+  function restorePreviousDrawer(target: Exclude<ActiveDrawer, null>) {
+    const result = closeAuthoringDrawer(authoringSession.value, target, {
+      selectedObjectId: selectedObjectId.value,
+      propertyDrawerSelectionId: propertyDrawerSelectionId.value
+    });
+    authoringSession.value = result.nextState;
+    if (result.restoredDrawer === 'property' && result.requiresPropertyPayloadRefresh) {
+      const ok = refreshSelectedPropertyPayload();
+      if (!ok) {
+        authoringSession.value = clearAuthoringSessionDrawers(authoringSession.value);
+        return false;
       }
-      activeDrawer.value = candidate;
+      propertyDrawerSelectionId.value = selectedObjectId.value;
+    }
+    if (result.restoredDrawer) {
+      dispatchTapChainResetEvent();
       return true;
     }
     return false;
   }
 
   function openDrawer(target: Exclude<ActiveDrawer, null>) {
-    if (activeDrawer.value === target) return;
-    if (activeDrawer.value !== null) {
-      drawerHistory.value = drawerHistory.value.filter((item) => item !== activeDrawer.value && item !== target);
-      drawerHistory.value.push(activeDrawer.value);
-    }
-    activeDrawer.value = target;
+    authoringSession.value = activateAuthoringDrawer(authoringSession.value, target);
   }
 
   function closeDrawer(target: Exclude<ActiveDrawer, null>) {
     if (activeDrawer.value !== target) return;
-    activeDrawer.value = null;
-    if (restorePreviousDrawer()) return;
+    if (restorePreviousDrawer(target)) return;
+    authoringSession.value = {
+      ...authoringSession.value,
+      activeDrawer: null
+    };
   }
 
   function closeAllDrawers() {
-    activeDrawer.value = null;
-    drawerHistory.value = [];
+    authoringSession.value = clearAuthoringSessionDrawers(authoringSession.value);
   }
 
   function closePropertyPanel() {
@@ -631,17 +650,17 @@ export const useSimulatorStore = defineStore('simulator', () => {
   function toggleDemoMode() {
     const enteringDemo = !demoMode.value;
     if (enteringDemo) {
-      pendingDemoAuthoringRestore.value = captureDemoAuthoringRestoreState({
+      authoringSession.value = captureAuthoringDemoRestoreState(authoringSession.value, {
         propertyDrawerOpen: propertyDrawerOpen.value,
         selectedObjectId: selectedObjectId.value
       });
     }
     getRuntime().toggleDemoMode();
     if (demoMode.value) return;
-    const result = consumeDemoAuthoringRestoreState(pendingDemoAuthoringRestore.value, {
+    const result = consumeAuthoringDemoRestoreState(authoringSession.value, {
       selectedObjectId: selectedObjectId.value
     });
-    pendingDemoAuthoringRestore.value = result.nextState;
+    authoringSession.value = result.nextState;
     if (result.shouldReopenPropertyDrawer) {
       openPropertyPanel();
     }
@@ -657,6 +676,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     const current = getRuntime();
     showEnergyOverlay.value = !!next;
     current.scene.settings.showEnergy = !!next;
+    current.persistDemoSceneSettings({ showEnergy: current.scene.settings.showEnergy });
     current.requestRender({ updateUI: true, trackBaseline: false });
   }
 
@@ -680,6 +700,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     const current = getRuntime();
     boundaryMode.value = next;
     current.scene.settings.boundaryMode = next;
+    current.persistDemoSceneSettings({ boundaryMode: current.scene.settings.boundaryMode });
     current.requestRender({ updateUI: true });
   }
 
@@ -688,6 +709,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     const current = getRuntime();
     boundaryMargin.value = next;
     current.scene.settings.boundaryMargin = next;
+    current.persistDemoSceneSettings({ boundaryMargin: current.scene.settings.boundaryMargin });
     current.requestRender({ updateUI: true });
   }
 
@@ -770,12 +792,22 @@ export const useSimulatorStore = defineStore('simulator', () => {
     const preset = Presets.get(name);
     if (!preset) return false;
     const current = getRuntime();
+    const rawData = isRecord(preset.data) ? preset.data : { objects: [] };
+    const normalizedSceneData: Record<string, unknown> = {
+      ...rawData,
+      version: typeof rawData.version === 'string' && rawData.version.trim().length > 0 ? rawData.version : '1.0',
+      settings: isRecord(rawData.settings) ? rawData.settings : {},
+      objects: Array.isArray(rawData.objects) ? rawData.objects : []
+    };
+
     current.stop();
-    current.scene.clear();
-    current.scene.loadFromData(preset.data);
+    const result = current.loadSceneData(normalizedSceneData);
+    if (!result.ok) {
+      setStatusText(result.error);
+      return false;
+    }
     syncVariableDraftFromScene(current);
     closePropertyPanel();
-    current.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
     setStatusText(`已加载预设场景: ${preset.name}`);
     return true;
   }
@@ -819,6 +851,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     selectedObjectId,
     statusText,
     geometryInteraction,
+    frameStats,
     showEnergyOverlay,
     pixelsPerMeter,
     gravity,

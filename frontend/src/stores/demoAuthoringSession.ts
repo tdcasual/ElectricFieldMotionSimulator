@@ -1,40 +1,49 @@
-export type DemoAuthoringRestoreState = {
-  restorePropertyDrawer: boolean;
-};
+import {
+  captureAuthoringDemoRestoreState,
+  consumeAuthoringDemoRestoreState,
+  createDemoRestoreState,
+  type DemoRestoreState
+} from '../session/authoringSessionTransitions';
 
-type CaptureDemoAuthoringRestoreOptions = {
-  propertyDrawerOpen: boolean;
-  selectedObjectId: string | null;
-};
-
-type ConsumeDemoAuthoringRestoreOptions = {
-  selectedObjectId: string | null;
-};
+export type DemoAuthoringRestoreState = DemoRestoreState;
 
 export function createDemoAuthoringRestoreState(): DemoAuthoringRestoreState {
-  return {
-    restorePropertyDrawer: false
-  };
+  return createDemoRestoreState();
 }
 
-export function captureDemoAuthoringRestoreState(
-  options: CaptureDemoAuthoringRestoreOptions
-): DemoAuthoringRestoreState {
-  return {
-    restorePropertyDrawer: !!options.propertyDrawerOpen && !!options.selectedObjectId
-  };
+export function captureDemoAuthoringRestoreState(options: {
+  propertyDrawerOpen: boolean;
+  selectedObjectId: string | null;
+}): DemoAuthoringRestoreState {
+  return captureAuthoringDemoRestoreState(
+    {
+      activeDrawer: null,
+      drawerHistory: [],
+      pendingDemoRestore: createDemoRestoreState()
+    },
+    options
+  ).pendingDemoRestore;
 }
 
 export function consumeDemoAuthoringRestoreState(
   state: DemoAuthoringRestoreState,
-  options: ConsumeDemoAuthoringRestoreOptions
+  options: {
+    selectedObjectId: string | null;
+  }
 ): {
   nextState: DemoAuthoringRestoreState;
   shouldReopenPropertyDrawer: boolean;
 } {
-  const shouldReopenPropertyDrawer = !!state.restorePropertyDrawer && !!options.selectedObjectId;
+  const result = consumeAuthoringDemoRestoreState(
+    {
+      activeDrawer: null,
+      drawerHistory: [],
+      pendingDemoRestore: state
+    },
+    options
+  );
   return {
-    nextState: createDemoAuthoringRestoreState(),
-    shouldReopenPropertyDrawer
+    nextState: result.nextState.pendingDemoRestore,
+    shouldReopenPropertyDrawer: result.shouldReopenPropertyDrawer
   };
 }

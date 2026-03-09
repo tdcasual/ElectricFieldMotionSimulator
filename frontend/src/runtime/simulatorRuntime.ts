@@ -24,6 +24,10 @@ import {
   setObjectRealDimension,
   syncObjectDisplayGeometry
 } from '../engine/legacyBridge';
+import { mountRuntimeBindings, unmountRuntimeBindings } from './runtimeLifecycle';
+import { captureRuntimeDemoSession, clearRuntimeDemoSessionSnapshot, replaceRuntimeDemoSessionSnapshot, restoreRuntimeDemoSession, type RuntimeDemoSession } from './runtimeDemoSession';
+import { buildPersistableSceneData, loadValidatedSceneData, type SceneMutationResult as RuntimeSceneMutationResult } from './runtimeSceneIo';
+import { buildRuntimeSnapshot, type RuntimeSnapshot as RuntimeSnapshotData } from './runtimeSnapshotSync';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -63,15 +67,7 @@ type RuntimeCallbacks = {
   onPropertyHide?: () => void;
 };
 
-export type RuntimeSnapshot = {
-  running: boolean;
-  mode: 'normal' | 'demo';
-  timeStep: number;
-  fps: number;
-  objectCount: number;
-  particleCount: number;
-  selectedObjectId: string | null;
-  statusText: string;
+export type RuntimeSnapshot = RuntimeSnapshotData & {
   geometryInteraction: GeometryInteractionSnapshot | null;
 };
 
@@ -89,18 +85,14 @@ export type PropertyPayload = {
   values: AnyRecord;
 };
 
-export type SceneMutationResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: string;
-    };
+export type SceneMutationResult = RuntimeSceneMutationResult;
 
 type RenderRequest = {
   invalidateFields?: boolean;
   forceRender?: boolean;
   updateUI?: boolean;
   trackBaseline?: boolean;
+  syncDemoSession?: boolean;
 };
 
 type RuntimeMode = 'normal' | 'demo';
@@ -161,7 +153,7 @@ export class SimulatorRuntime {
   private dragDropManager: DragDropManager | null = null;
   private mode: RuntimeMode = 'normal';
   private hostMode: HostMode = 'edit';
-  private demoSession: { snapshot: AnyRecord; wasRunning: boolean; selectedObjectId: string | null } | null = null;
+  private demoSession: RuntimeDemoSession | null = null;
   private readonly demoState = {
     zoom: 1,
     basePixelsPerMeter: DEMO_BASE_PIXELS_PER_UNIT,
@@ -212,20 +204,15 @@ export class SimulatorRuntime {
     this.scene.settings.mode = this.mode;
     this.applyHostInteractionSettings();
 
-    this.renderer.init();
+    this.dragDropManager = mountRuntimeBindings({
+      renderer: this.renderer,
+      scene: this.scene,
+      appAdapter: this.appAdapter,
+      handleDemoWheel: this.handleDemoWheelBound,
+      handleShowProperties: this.handleShowPropertiesBound,
+      handleResize: this.handleResizeBound
+    });
     this.syncViewportFromRenderer();
-
-    const particleCanvas = document.getElementById('particle-canvas');
-    if (particleCanvas instanceof HTMLCanvasElement) {
-      this.dragDropManager = new DragDropManager(this.scene, this.renderer, {
-        canvas: particleCanvas,
-        appAdapter: this.appAdapter
-      });
-      particleCanvas.addEventListener('wheel', this.handleDemoWheelBound, { passive: false });
-    }
-
-    document.addEventListener('show-properties', this.handleShowPropertiesBound);
-    window.addEventListener('resize', this.handleResizeBound);
 
     this.setRunning(false);
     this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
@@ -236,30 +223,28 @@ export class SimulatorRuntime {
     if (!this.mounted) return;
     this.stop();
     this.mounted = false;
-    this.dragDropManager?.dispose?.();
+    unmountRuntimeBindings({
+      dragDropManager: this.dragDropManager,
+      handleDemoWheel: this.handleDemoWheelBound,
+      handleShowProperties: this.handleShowPropertiesBound,
+      handleResize: this.handleResizeBound
+    });
     this.dragDropManager = null;
-    const particleCanvas = document.getElementById('particle-canvas');
-    if (particleCanvas instanceof HTMLCanvasElement) {
-      particleCanvas.removeEventListener('wheel', this.handleDemoWheelBound);
-    }
-    window.removeEventListener('resize', this.handleResizeBound);
-    document.removeEventListener('show-properties', this.handleShowPropertiesBound);
   }
 
   getSnapshot(): RuntimeSnapshot {
-    return {
+    return buildRuntimeSnapshot({
       running: this.running,
       mode: this.mode,
       timeStep: this.timeStep,
       fps: this.performanceMonitor.getFPS(),
       objectCount: this.scene.getAllObjects().length,
       particleCount: this.scene.particles.length,
-      selectedObjectId: (this.scene.selectedObject as { id?: unknown } | null)?.id
-        ? String((this.scene.selectedObject as { id?: unknown }).id)
-        : null,
+      selectedObject: this.scene.selectedObject as { id?: unknown } | null,
       statusText: this.statusText,
-      geometryInteraction: this.readGeometryInteractionSnapshot()
-    };
+      geometryInteraction: this.readGeometryInteractionSnapshot(),
+      frameStats: this.performanceMonitor.getFrameStats()
+    });
   }
 
   setStatusText(text: string) {
@@ -310,13 +295,13 @@ export class SimulatorRuntime {
     const snapshot = this.scene.serialize();
     if (!isRecord(snapshot)) return false;
 
-    this.demoSession = {
-      snapshot: JSON.parse(JSON.stringify(snapshot)) as AnyRecord,
+    this.demoSession = captureRuntimeDemoSession({
+      snapshot,
       wasRunning: this.running,
       selectedObjectId: (this.scene.selectedObject as { id?: unknown } | null)?.id
         ? String((this.scene.selectedObject as { id?: unknown }).id)
         : null
-    };
+    });
 
     this.stop();
     this.mode = 'demo';
@@ -324,6 +309,7 @@ export class SimulatorRuntime {
     this.scene.clear();
     this.scene.settings.boundaryMargin = this.demoState.basePixelsPerMeter;
     this.applyModeSettings();
+    this.performanceMonitor.reset();
     this.callbacks.onPropertyHide?.();
     this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: false });
     this.setStatusText('已进入演示模式：数值默认 1、角度默认 0，滚轮可按鼠标位置缩放');
@@ -338,14 +324,15 @@ export class SimulatorRuntime {
     this.mode = 'normal';
     this.demoState.zoom = 1;
 
-    if (isRecord(session?.snapshot)) {
-      this.scene.clear();
-      this.scene.loadFromData(session.snapshot);
-      this.restoreSelectedObjectById(session.selectedObjectId ?? null);
-    }
+    restoreRuntimeDemoSession({
+      scene: this.scene,
+      session,
+      restoreSelectedObjectById: (selectedObjectId) => this.restoreSelectedObjectById(selectedObjectId)
+    });
 
     this.scene.settings.mode = 'normal';
     this.demoSession = null;
+    this.performanceMonitor.reset();
     this.callbacks.onPropertyHide?.();
     this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
     this.setRunning(!!session?.wasRunning);
@@ -367,6 +354,7 @@ export class SimulatorRuntime {
 
   setRunning(next: boolean) {
     const running = !!next;
+    if (this.running === running) return;
     this.running = running;
     this.scene.isPaused = !running;
     if (running) {
@@ -383,7 +371,8 @@ export class SimulatorRuntime {
       invalidateFields = false,
       forceRender = false,
       updateUI = true,
-      trackBaseline = true
+      trackBaseline = true,
+      syncDemoSession = trackBaseline
     } = options;
 
     this.refreshDynamicExpressionBindings();
@@ -396,6 +385,9 @@ export class SimulatorRuntime {
     }
     if (updateUI) {
       this.emitSnapshot();
+    }
+    if (syncDemoSession) {
+      this.persistCurrentDemoSceneSnapshot();
     }
     if (trackBaseline) {
       this.recordResetBaseline();
@@ -449,8 +441,12 @@ export class SimulatorRuntime {
   clearScene() {
     this.scene.clear();
     this.applyModeSettings();
+    if (this.isDemoMode()) {
+      this.demoSession = clearRuntimeDemoSessionSnapshot(this.demoSession);
+    }
+    this.performanceMonitor.reset();
     this.callbacks.onPropertyHide?.();
-    this.requestRender({ invalidateFields: true, updateUI: true });
+    this.requestRender({ invalidateFields: true, updateUI: true, syncDemoSession: false });
   }
 
   resetScene() {
@@ -462,8 +458,15 @@ export class SimulatorRuntime {
       this.scene.clear();
       this.scene.loadFromData(snapshot);
       this.applyModeSettings();
+      this.performanceMonitor.reset();
       this.callbacks.onPropertyHide?.();
-      this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: false });
+      this.requestRender({
+        invalidateFields: true,
+        forceRender: true,
+        updateUI: true,
+        trackBaseline: false,
+        syncDemoSession: true
+      });
       this.resetBaseline.setBaseline(snapshot);
       return true;
     } finally {
@@ -471,15 +474,58 @@ export class SimulatorRuntime {
     }
   }
 
+  persistDemoSceneSettings(settingsPatch: AnyRecord) {
+    if (!this.isDemoMode() || !this.demoSession || !isRecord(settingsPatch)) return;
+    const snapshot = this.demoSession.snapshot;
+    const snapshotSettings = isRecord(snapshot.settings) ? snapshot.settings : {};
+    this.demoSession = replaceRuntimeDemoSessionSnapshot({
+      session: this.demoSession,
+      snapshot: {
+        ...snapshot,
+        settings: {
+          ...snapshotSettings,
+          ...settingsPatch
+        }
+      },
+      selectedObjectId: this.demoSession.selectedObjectId
+    });
+  }
+
+  private persistCurrentDemoSceneSnapshot() {
+    if (!this.isDemoMode() || !this.demoSession) return;
+    const snapshot = this.scene.serialize();
+    if (!isRecord(snapshot)) return;
+
+    const persistedSnapshot = this.demoSession.snapshot;
+    const persistedSettings = isRecord(persistedSnapshot.settings) ? persistedSnapshot.settings : {};
+    const liveSettings = isRecord(snapshot.settings) ? snapshot.settings : {};
+
+    this.demoSession = replaceRuntimeDemoSessionSnapshot({
+      session: this.demoSession,
+      snapshot: {
+        ...snapshot,
+        settings: {
+          ...liveSettings,
+          mode: persistedSettings.mode ?? liveSettings.mode,
+          hostMode: persistedSettings.hostMode ?? liveSettings.hostMode,
+          interactionLocked: persistedSettings.interactionLocked ?? liveSettings.interactionLocked,
+          pixelsPerMeter: persistedSettings.pixelsPerMeter ?? liveSettings.pixelsPerMeter,
+          gravity: persistedSettings.gravity ?? liveSettings.gravity
+        }
+      },
+      selectedObjectId: (this.scene.selectedObject as { id?: unknown } | null)?.id
+        ? String((this.scene.selectedObject as { id?: unknown }).id)
+        : null
+    });
+  }
+
   private buildPersistableSceneData():
     | { ok: true; data: AnyRecord }
     | { ok: false; error: string } {
-    const data = this.scene.serialize();
-    const validation = Serializer.validateSceneData(data);
-    if (!validation.valid) {
-      return { ok: false, error: validation.error || '场景数据无效' };
-    }
-    return { ok: true, data };
+    return buildPersistableSceneData({
+      serializeScene: () => this.scene.serialize(),
+      validateSceneData: (data) => Serializer.validateSceneData(data)
+    });
   }
 
   saveScene(name: string): SceneMutationResult {
@@ -515,19 +561,36 @@ export class SimulatorRuntime {
   }
 
   loadSceneData(data: unknown): SceneMutationResult {
-    if (!isRecord(data)) {
-      return { ok: false, error: '数据格式无效' };
+    const result = loadValidatedSceneData({
+      data,
+      validateSceneData: (sceneData) => Serializer.validateSceneData(sceneData),
+      clearScene: () => this.scene.clear(),
+      loadSceneData: (sceneData) => this.scene.loadFromData(sceneData),
+      applyModeSettings: () => this.applyModeSettings(),
+      onPropertyHide: () => this.callbacks.onPropertyHide?.(),
+      requestRender: () => {
+        this.performanceMonitor.reset();
+        this.requestRender({
+          invalidateFields: true,
+          forceRender: true,
+          updateUI: true,
+          trackBaseline: true,
+          syncDemoSession: false
+        });
+      }
+    });
+
+    if (result.ok && this.isDemoMode() && isRecord(data)) {
+      this.demoSession = replaceRuntimeDemoSessionSnapshot({
+        session: this.demoSession,
+        snapshot: data,
+        selectedObjectId: (this.scene.selectedObject as { id?: unknown } | null)?.id
+          ? String((this.scene.selectedObject as { id?: unknown }).id)
+          : null
+      });
     }
-    const validation = Serializer.validateSceneData(data);
-    if (!validation.valid) {
-      return { ok: false, error: validation.error || '场景数据无效' };
-    }
-    this.scene.clear();
-    this.scene.loadFromData(data);
-    this.applyModeSettings();
-    this.callbacks.onPropertyHide?.();
-    this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
-    return { ok: true };
+
+    return result;
   }
 
   exportScene(): SceneMutationResult {
@@ -554,17 +617,7 @@ export class SimulatorRuntime {
           resolve({ ok: false, error: '导入文件不是有效场景对象' });
           return;
         }
-        const validation = Serializer.validateSceneData(data);
-        if (!validation.valid) {
-          resolve({ ok: false, error: validation.error || '场景数据无效' });
-          return;
-        }
-        this.scene.clear();
-        this.scene.loadFromData(data);
-        this.applyModeSettings();
-        this.callbacks.onPropertyHide?.();
-        this.requestRender({ invalidateFields: true, forceRender: true, updateUI: true, trackBaseline: true });
-        resolve({ ok: true });
+        resolve(this.loadSceneData(data));
       });
     });
   }

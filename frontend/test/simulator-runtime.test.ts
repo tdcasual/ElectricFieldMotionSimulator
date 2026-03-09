@@ -106,6 +106,64 @@ describe('SimulatorRuntime demo mode', () => {
     expect(runtime.scene.selectedObject).toBeTruthy();
   });
 
+  it('start is idempotent while already running', () => {
+    const runtime = new SimulatorRuntime();
+    const runtimeWithLoop = runtime as unknown as {
+      start: () => void;
+      loop: () => void;
+    };
+
+    const loopSpy = vi.spyOn(runtimeWithLoop, 'loop').mockImplementation(() => {});
+
+    runtimeWithLoop.start();
+    runtimeWithLoop.start();
+
+    expect(loopSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets frame stats across scene mutations and demo transitions', () => {
+    const runtime = new SimulatorRuntime() as SimulatorRuntime & {
+      performanceMonitor: { frameTimes: number[] };
+    };
+
+    runtime.performanceMonitor.frameTimes = [16, 17, 18];
+    runtime.clearScene();
+    expect(runtime.getSnapshot().frameStats).toEqual({
+      avgMs: 0,
+      p95Ms: 0,
+      maxMs: 0,
+      sampleCount: 0
+    });
+
+    runtime.performanceMonitor.frameTimes = [20, 21, 22];
+    runtime.loadSceneData({ version: '1.0', settings: {}, objects: [] });
+    expect(runtime.getSnapshot().frameStats).toEqual({
+      avgMs: 0,
+      p95Ms: 0,
+      maxMs: 0,
+      sampleCount: 0
+    });
+
+    runtime.performanceMonitor.frameTimes = [24, 25, 26];
+    runtime.enterDemoMode();
+    expect(runtime.getSnapshot().frameStats).toEqual({
+      avgMs: 0,
+      p95Ms: 0,
+      maxMs: 0,
+      sampleCount: 0
+    });
+
+    runtime.performanceMonitor.frameTimes = [28, 29, 30];
+    runtime.exitDemoMode();
+    expect(runtime.getSnapshot().frameStats).toEqual({
+      avgMs: 0,
+      p95Ms: 0,
+      maxMs: 0,
+      sampleCount: 0
+    });
+  });
+
+
   it('builds geometry real/display fields for property payload', () => {
     const runtime = new SimulatorRuntime();
     runtime.scene.settings.pixelsPerMeter = 50;

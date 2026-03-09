@@ -131,6 +131,13 @@ declare module '*js/utils/PerformanceMonitor.js' {
   export class PerformanceMonitor {
     startFrame(): void;
     endFrame(): void;
+    reset(): void;
+    getFrameStats(): {
+      avgMs: number;
+      p95Ms: number;
+      maxMs: number;
+      sampleCount: number;
+    };
     getFPS(): number;
   }
 }

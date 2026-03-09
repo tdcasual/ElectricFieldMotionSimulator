@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Presets, Serializer } from '../src/engine/legacyBridge';
+import { PerformanceMonitor, Presets, Serializer } from '../src/engine/legacyBridge';
 import { SimulatorRuntime } from '../src/runtime/simulatorRuntime';
 import { useSimulatorStore } from '../src/stores/simulatorStore';
 
@@ -114,6 +114,121 @@ describe('simulatorStore demo mode', () => {
     const ok = store.loadPreset('uniform-acceleration');
     expect(ok).toBe(true);
     expect(store.objectCount).toBeGreaterThan(0);
+  });
+
+  it('resets frame stats when loading preset scenes', () => {
+    const store = useSimulatorStore();
+    const resetSpy = vi.spyOn(PerformanceMonitor.prototype, 'reset');
+
+    const ok = store.loadPreset('uniform-acceleration');
+
+    expect(ok).toBe(true);
+    expect(resetSpy).toHaveBeenCalled();
+  });
+
+
+  it('keeps a preset scene after exiting demo mode', () => {
+    const store = useSimulatorStore();
+    store.createObjectAtCenter('particle');
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(true);
+
+    const ok = store.loadPreset('uniform-acceleration');
+
+    expect(ok).toBe(true);
+    const presetObjectCount = store.objectCount;
+    expect(presetObjectCount).toBeGreaterThan(0);
+
+    store.toggleDemoMode();
+
+    expect(store.demoMode).toBe(false);
+    expect(store.objectCount).toBe(presetObjectCount);
+  });
+
+
+  it('keeps an empty scene after clearing in demo mode', () => {
+    const store = useSimulatorStore();
+    store.createObjectAtCenter('particle');
+    expect(store.objectCount).toBe(1);
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(true);
+
+    store.clearScene();
+    expect(store.objectCount).toBe(0);
+
+    store.toggleDemoMode();
+
+    expect(store.demoMode).toBe(false);
+    expect(store.objectCount).toBe(0);
+  });
+
+
+  it('keeps boundary mode edits after exiting demo mode', () => {
+    const store = useSimulatorStore();
+    expect(store.boundaryMode).toBe('margin');
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(true);
+
+    store.setBoundaryMode('remove');
+    expect(store.boundaryMode).toBe('remove');
+
+    store.toggleDemoMode();
+
+    expect(store.demoMode).toBe(false);
+    expect(store.boundaryMode).toBe('remove');
+  });
+
+
+  it('keeps newly created objects after exiting demo mode', () => {
+    const store = useSimulatorStore();
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(true);
+
+    store.createObjectAtCenter('particle');
+    expect(store.objectCount).toBe(1);
+
+    store.toggleDemoMode();
+
+    expect(store.demoMode).toBe(false);
+    expect(store.objectCount).toBe(1);
+  });
+
+  it('keeps energy overlay edits after exiting demo mode', () => {
+    const store = useSimulatorStore();
+    expect(store.showEnergyOverlay).toBe(true);
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(true);
+
+    store.setShowEnergyOverlay(false);
+    expect(store.showEnergyOverlay).toBe(false);
+
+    store.toggleDemoMode();
+
+    expect(store.demoMode).toBe(false);
+    expect(store.showEnergyOverlay).toBe(false);
+  });
+
+
+  it('keeps variable edits after exiting demo mode', () => {
+    const store = useSimulatorStore();
+
+    store.toggleDemoMode();
+    expect(store.demoMode).toBe(true);
+
+    const ok = store.applyVariables({ speedScale: 2 });
+
+    expect(ok).toBe(true);
+    expect(store.variableDraft).toEqual({ speedScale: 2 });
+
+    store.toggleDemoMode();
+
+    expect(store.demoMode).toBe(false);
+    expect(store.variableDraft).toEqual({ speedScale: 2 });
   });
 
   it('updates boundary margin visibility when boundary mode changes', () => {
@@ -326,7 +441,8 @@ describe('simulatorStore demo mode', () => {
       particleCount: 0,
       selectedObjectId: null,
       statusText: '就绪',
-      geometryInteraction: null
+      geometryInteraction: null,
+      frameStats: null
     });
 
     (store as unknown as { activeDrawer: string | null }).activeDrawer = 'property';
@@ -352,7 +468,8 @@ describe('simulatorStore demo mode', () => {
       particleCount: 0,
       selectedObjectId: 'obj-2',
       statusText: '就绪',
-      geometryInteraction: null
+      geometryInteraction: null,
+      frameStats: null
     });
     vi.spyOn(SimulatorRuntime.prototype, 'buildPropertyPayload').mockReturnValue({
       title: '对象 2',
@@ -479,7 +596,8 @@ describe('simulatorStore demo mode', () => {
           realValue: 1.2,
           displayValue: 72,
           objectScale: 1.5
-        }
+        },
+        frameStats: null
       })
       .mockReturnValueOnce({
         running: false,
@@ -490,7 +608,8 @@ describe('simulatorStore demo mode', () => {
         particleCount: 0,
         selectedObjectId: 'obj-geo-1',
         statusText: '就绪',
-        geometryInteraction: null
+        geometryInteraction: null,
+        frameStats: null
       });
 
     store.mountRuntime();
