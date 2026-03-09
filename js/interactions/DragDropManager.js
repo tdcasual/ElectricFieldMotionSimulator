@@ -18,6 +18,9 @@ import {
     setObjectDisplayDimension
 } from '../modes/GeometryScaling.js';
 import { computePointTangencyMatch, computeTangencyMatch } from './TangencyEngine.js';
+import { ContextMenuController } from './ContextMenuController.js';
+import { LongPressController } from './LongPressController.js';
+import { createTapChainState, isDoubleTapCandidate, resetTapChainState, updateTapChainState } from './PointerGestureState.js';
 
 const TOOL_ALIASES = {
     'electric-field-semicircle': { type: 'semicircle-electric-field' },
@@ -262,8 +265,7 @@ export class DragDropManager {
         this.renderer = renderer;
         this.appAdapter = options.appAdapter || null;
         this.cleanupListeners = [];
-        this.contextMenuCloseHandler = null;
-        this.contextMenuCloseTimer = null;
+        this.contextMenuController = new ContextMenuController();
 
         this.draggingObject = null;
         this.dragOffset = { x: 0, y: 0 };
@@ -272,9 +274,10 @@ export class DragDropManager {
         this.activePointerId = null;
         this.pointerDownPos = null;
         this.pointerDownObject = null;
+        this.longPressController = new LongPressController();
         this.longPressTimer = null;
         this.longPressTriggered = false;
-        this.lastTap = { time: 0, objectId: null };
+        this.lastTap = createTapChainState();
 
         this.armedToolType = null;
         this.armedToolElement = null;
@@ -333,24 +336,15 @@ export class DragDropManager {
     }
 
     clearContextMenuCloseHandler() {
-        if (!this.contextMenuCloseHandler) return;
-        document.removeEventListener('click', this.contextMenuCloseHandler);
-        this.contextMenuCloseHandler = null;
+        this.contextMenuController.clearCloseHandler();
     }
 
     clearContextMenuCloseTimer() {
-        if (this.contextMenuCloseTimer == null) return;
-        clearTimeout(this.contextMenuCloseTimer);
-        this.contextMenuCloseTimer = null;
+        this.contextMenuController.clearCloseTimer();
     }
 
     hideContextMenu() {
-        const contextMenu = document.getElementById('context-menu');
-        if (contextMenu) {
-            contextMenu.style.display = 'none';
-        }
-        this.clearContextMenuCloseTimer();
-        this.clearContextMenuCloseHandler();
+        this.contextMenuController.hide();
     }
 
     dispose() {
@@ -531,14 +525,12 @@ export class DragDropManager {
     }
 
     clearLongPressTimer() {
-        if (this.longPressTimer) {
-            clearTimeout(this.longPressTimer);
-            this.longPressTimer = null;
-        }
+        this.longPressController.clear();
+        this.longPressTimer = null;
     }
 
     resetTapChain() {
-        this.lastTap = { time: 0, objectId: null };
+        this.lastTap = resetTapChainState();
     }
 
     openProperties(object) {
@@ -875,7 +867,7 @@ export class DragDropManager {
             this.scene.settings.gravity = 0;
         }
         if (!changed) return true;
-        this.requestSceneRender({ invalidateFields: true, updateUI: true });
+        this.requestSceneRender({ invalidateFields: true, updateUI: true, trackBaseline: false, syncDemoSession: false });
         return true;
     }
 
@@ -987,7 +979,8 @@ export class DragDropManager {
             // 触屏长按打开属性面板
             if (this.isTouchPointerEvent(e)) {
                 this.clearLongPressTimer();
-                this.longPressTimer = setTimeout(() => {
+                this.longPressTimer = this.longPressController.start(() => {
+                    this.longPressTimer = null;
                     if (this.pointerDownObject === clickedObject && !this.isDragging) {
                         this.longPressTriggered = true;
                         this.openProperties(clickedObject);
@@ -1130,11 +1123,11 @@ export class DragDropManager {
 
         if (shouldHandleTap) {
             const now = performance.now();
-            if (this.lastTap.objectId === tappedObject.id && (now - this.lastTap.time) < 350) {
+            if (isDoubleTapCandidate(this.lastTap, tappedObject.id, now)) {
                 this.openProperties(tappedObject);
                 this.resetTapChain();
             } else {
-                this.lastTap = { time: now, objectId: tappedObject.id };
+                this.lastTap = updateTapChainState(this.lastTap, tappedObject.id, now);
             }
         } else if (!tappedObject || wasDragging || this.longPressTriggered) {
             this.resetTapChain();
@@ -1693,24 +1686,7 @@ export class DragDropManager {
             }
 
             // 显示右键菜单
-            const contextMenu = document.getElementById('context-menu');
-            if (!contextMenu) return;
-            contextMenu.style.left = e.clientX + 'px';
-            contextMenu.style.top = e.clientY + 'px';
-            contextMenu.style.display = 'block';
-            this.clearContextMenuCloseTimer();
-            this.clearContextMenuCloseHandler();
-
-            // 点击外部关闭菜单
-            this.contextMenuCloseTimer = setTimeout(() => {
-                const closeMenu = () => {
-                    contextMenu.style.display = 'none';
-                    this.clearContextMenuCloseHandler();
-                };
-                this.contextMenuCloseTimer = null;
-                this.contextMenuCloseHandler = closeMenu;
-                document.addEventListener('click', closeMenu);
-            }, 0);
+            this.contextMenuController.show({ clientX: e.clientX, clientY: e.clientY });
         }
     }
 }

@@ -73,3 +73,24 @@ test('ProgrammableEmitter emitParticle stops at runtime particle budget', () => 
   assert.equal(scene.particles.length, 5000 - 1);
   assert.equal(scene.objects.length, 5000);
 });
+
+
+test('ElectronGun emitted particles inherit display flags from emitter config', () => {
+  const scene = new Scene();
+  const gun = new ElectronGun({
+    x: 50,
+    y: 60,
+    emissionSpeed: 0,
+    showVelocity: false,
+    showEnergy: false,
+    velocityDisplayMode: 'speed'
+  });
+
+  gun.emitParticle(scene);
+
+  assert.equal(scene.particles.length, 1);
+  const particle = scene.particles[0];
+  assert.equal(particle.showVelocity, false);
+  assert.equal(particle.showEnergy, false);
+  assert.equal(particle.velocityDisplayMode, 'speed');
+});

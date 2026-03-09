@@ -1,5 +1,21 @@
 import { expect, type Page } from '@playwright/test';
-import { expectPhoneMoreSheetVisible, expectUtilityDrawerClosedAndMoreRestored } from './assertions';
+import {
+  expectPhoneMoreSheetVisible,
+  expectPhoneSelectionUiVisible,
+  expectUtilityDrawerClosedAndMoreRestored,
+  readPhoneSelectionUiState
+} from './assertions';
+
+async function openPhoneSheet(page: Page, navButtonSelector: string, sheetTestId: string) {
+  const sheet = page.getByTestId(sheetTestId);
+  if (await sheet.isVisible().catch(() => false)) {
+    return sheet;
+  }
+
+  await page.locator(navButtonSelector).tap();
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
 
 export async function dismissPhoneSelectedSheetIfOpen(page: Page) {
   const selectedSheet = page.getByTestId('phone-selected-sheet');
@@ -9,10 +25,9 @@ export async function dismissPhoneSelectedSheetIfOpen(page: Page) {
 }
 
 export async function addParticleFromPhoneSheet(page: Page, options: { preserveSelectionUi?: boolean } = {}) {
-  await page.locator('#phone-nav-add-btn').tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeVisible();
-  await page.locator('[data-testid="phone-add-sheet"] .tool-item[data-type="particle"]').first().tap();
-  await expect(page.getByTestId('phone-add-sheet')).toBeHidden();
+  const addSheet = await openPhoneSheet(page, '#phone-nav-add-btn', 'phone-add-sheet');
+  await addSheet.locator('.tool-item[data-type="particle"]').first().tap();
+  await expect(addSheet).toBeHidden();
   await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
   if (!options.preserveSelectionUi) {
     await dismissPhoneSelectedSheetIfOpen(page);
@@ -20,23 +35,16 @@ export async function addParticleFromPhoneSheet(page: Page, options: { preserveS
 }
 
 export async function selectCenterObject(page: Page, x: number, y: number) {
-  const selectedSheet = page.getByTestId('phone-selected-sheet');
-  const actionBar = page.getByTestId('object-action-bar');
-  if ((await selectedSheet.isVisible().catch(() => false)) || (await actionBar.isVisible().catch(() => false))) {
+  if ((await readPhoneSelectionUiState(page)) !== 'none') {
     return;
   }
 
   await page.touchscreen.tap(x, y);
-  await expect
-    .poll(async () => {
-      if (await selectedSheet.isVisible().catch(() => false)) return 'selected';
-      if (await actionBar.isVisible().catch(() => false)) return 'action';
-      return 'none';
-    })
-    .not.toBe('none');
+  await expectPhoneSelectionUiVisible(page);
 }
 
 export async function openPropertyPanelFromActionBar(page: Page) {
+  await expectPhoneSelectionUiVisible(page);
   const selectedSheetButton = page.locator('#phone-selected-properties-btn');
   if (await selectedSheetButton.isVisible().catch(() => false)) {
     await selectedSheetButton.tap();
@@ -47,12 +55,7 @@ export async function openPropertyPanelFromActionBar(page: Page) {
 }
 
 export async function openPhoneMoreSheet(page: Page) {
-  const moreSheet = page.getByTestId('phone-more-sheet');
-  if (await moreSheet.isVisible().catch(() => false)) {
-    return;
-  }
-
-  await page.locator('#phone-nav-more-btn').tap();
+  await openPhoneSheet(page, '#phone-nav-more-btn', 'phone-more-sheet');
   await expectPhoneMoreSheetVisible(page);
 }
 
@@ -79,6 +82,5 @@ export async function closeVariablesPanelAndExpectMoreRestored(page: Page) {
 }
 
 export async function openPhoneSceneSheet(page: Page) {
-  await page.locator('#phone-nav-scene-btn').tap();
-  await expect(page.getByTestId('phone-scene-sheet')).toBeVisible();
+  await openPhoneSheet(page, '#phone-nav-scene-btn', 'phone-scene-sheet');
 }

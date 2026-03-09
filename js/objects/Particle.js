@@ -171,6 +171,7 @@ export class Particle extends BaseObject {
             ? Infinity
             : (Number.isFinite(maxLen) && maxLen > 0 ? maxLen : Infinity);
         this._trajectoryHardLimit = 20000;
+        this._trajectoryMinDistanceSq = 0.25;
         
         // 状态
         this.active = true;
@@ -184,6 +185,19 @@ export class Particle extends BaseObject {
         const t = Number.isFinite(time)
             ? time
             : (Number.isFinite(this.scene?.time) ? this.scene.time : 0);
+        const lastPoint = this.trajectory.length > 0 ? this.trajectory[this.trajectory.length - 1] : null;
+        const minDistanceSq = Number.isFinite(this._trajectoryMinDistanceSq) ? this._trajectoryMinDistanceSq : 0;
+        if (lastPoint) {
+            const dx = x - (Number.isFinite(lastPoint.x) ? lastPoint.x : 0);
+            const dy = y - (Number.isFinite(lastPoint.y) ? lastPoint.y : 0);
+            if ((dx * dx + dy * dy) <= minDistanceSq) {
+                lastPoint.x = x;
+                lastPoint.y = y;
+                lastPoint.t = t;
+                this.pruneTrajectory(t);
+                return;
+            }
+        }
         this.trajectory.push({ x, y, t });
         this.pruneTrajectory(t);
     }

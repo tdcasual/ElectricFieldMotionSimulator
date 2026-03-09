@@ -214,7 +214,10 @@ export class ElectronGun extends BaseObject {
             mass,
             charge,
             radius,
-            ignoreGravity: this.ignoreGravity
+            ignoreGravity: this.ignoreGravity,
+            showVelocity: this.showVelocity,
+            velocityDisplayMode: this.velocityDisplayMode,
+            showEnergy: this.showEnergy
         });
 
         scene.addObject(particle);

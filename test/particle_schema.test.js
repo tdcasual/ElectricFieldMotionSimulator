@@ -26,3 +26,15 @@ test('Integrator stops recording trajectory when scene trajectories are globally
 
   assert.equal(particle.trajectory.length, 1);
 });
+
+
+test('Particle collapses duplicate stationary trajectory samples into a single point', () => {
+  const particle = new Particle({ x: 0, y: 0, vx: 0, vy: 0, showTrajectory: true });
+
+  particle.addTrajectoryPoint(12, 24, 0);
+  particle.addTrajectoryPoint(12, 24, 0.016);
+  particle.addTrajectoryPoint(12, 24, 0.032);
+
+  assert.equal(particle.trajectory.length, 1);
+  assert.deepEqual(particle.trajectory[0], { x: 12, y: 24, t: 0.032 });
+});

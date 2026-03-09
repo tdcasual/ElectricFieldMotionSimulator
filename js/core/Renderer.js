@@ -9,6 +9,7 @@ import { computeResponsiveParticleMetrics } from '../rendering/ResponsiveSizing.
 import { ForceCalculator } from '../physics/ForceCalculator.js';
 import { registry } from './registerObjects.js';
 import { getObjectRenderer } from '../rendering/ObjectRenderers.js';
+import { drawTextBadge, formatMetricNumber } from '../rendering/LabelFormatting.js';
 
 export class Renderer {
     constructor() {
@@ -234,7 +235,7 @@ export class Renderer {
         const label = hint.suppressed ? `${baseLabel} Alt仅提示` : baseLabel;
         const labelX = hasCircle ? (circle.x + circle.radius + 10) : (point.x + 12);
         const labelY = hasCircle ? (circle.y - circle.radius - 8) : (point.y - 10);
-        this.drawTextBadge(
+        drawTextBadge(
             this.fieldCtx,
             labelX,
             labelY,
@@ -402,7 +403,7 @@ export class Renderer {
                 labelX = field.x - r + 8;
                 labelY = field.y - r + 18;
             }
-            this.drawTextBadge(this.fieldCtx, labelX, labelY, `E: ${this.formatNumber(strength)} N/C`);
+            drawTextBadge(this.fieldCtx, labelX, labelY, `E: ${formatMetricNumber(strength)} N/C`);
         }
 
         // 绘制选中高亮
@@ -669,7 +670,7 @@ export class Renderer {
 
         // 显示场强（便于查看）
         const bVal = Number.isFinite(field.strength) ? field.strength : 0;
-        this.drawTextBadge(this.fieldCtx, bounds.minX + 8, bounds.minY + 18, `B: ${this.formatNumber(bVal)} T`);
+        drawTextBadge(this.fieldCtx, bounds.minX + 8, bounds.minY + 18, `B: ${formatMetricNumber(bVal)} T`);
 
         this.fieldCtx.restore();
     }
@@ -755,11 +756,11 @@ export class Renderer {
             if (emitter.showVelocity) {
                 if (emitter.velocityDisplayMode === 'speed') {
                     const speed = (Number.isFinite(emitter.emissionSpeed) ? emitter.emissionSpeed : 0) / pixelsPerMeter;
-                    this.drawTextBadge(
+                    drawTextBadge(
                         this.fieldCtx,
                         emitter.x + 18,
                         emitter.y - 18,
-                        `v0: ${this.formatNumber(speed)} m/s`
+                        `v0: ${formatMetricNumber(speed)} m/s`
                     );
                 } else {
                     const vScale = 0.08;
@@ -786,11 +787,11 @@ export class Renderer {
                 const speed = (Number.isFinite(emitter.emissionSpeed) ? emitter.emissionSpeed : 0) / pixelsPerMeter;
                 const mass = Number.isFinite(emitter.particleMass) ? emitter.particleMass : 0;
                 const Ek = 0.5 * mass * speed * speed;
-                this.drawTextBadge(
+                drawTextBadge(
                     this.fieldCtx,
                     emitter.x + 18,
                     emitter.y - 2,
-                    `Ek0: ${this.formatNumber(Ek * 1e9)} nJ`
+                    `Ek0: ${formatMetricNumber(Ek * 1e9)} nJ`
                 );
             }
         }
@@ -1040,7 +1041,7 @@ export class Renderer {
         const speed = particle.velocity.magnitude() / pixelsPerMeter;
         const x = particle.position.x + 15;
         const y = particle.position.y + 20;
-        this.drawTextBadge(this.particleCtx, x, y, `v: ${this.formatNumber(speed)} m/s`);
+        drawTextBadge(this.particleCtx, x, y, `v: ${formatMetricNumber(speed)} m/s`);
     }
 
     drawEnergyInfo(particle) {
@@ -1048,7 +1049,7 @@ export class Renderer {
         const x = particle.position.x + 15;
         const y = particle.position.y - 15;
 
-        this.drawTextBadge(this.particleCtx, x, y, `Ek: ${this.formatNumber(Ek * 1e9)} nJ`);
+        drawTextBadge(this.particleCtx, x, y, `Ek: ${formatMetricNumber(Ek * 1e9)} nJ`);
     }
 
     forceVectorToArrow(force) {
@@ -1095,19 +1096,19 @@ export class Renderer {
             const arrow = this.forceVectorToArrow(item.force);
             if (arrow) {
                 this.drawArrow(this.particleCtx, originX, originY, arrow.dx, arrow.dy, item.color, 2);
-                this.drawTextBadge(
+                drawTextBadge(
                     this.particleCtx,
                     textX,
                     textY,
-                    `${item.key}: ${this.formatNumber(arrow.mag)} N`
+                    `${item.key}: ${formatMetricNumber(arrow.mag)} N`
                 );
             } else {
                 const mag = Math.hypot(item.force?.x ?? 0, item.force?.y ?? 0);
-                this.drawTextBadge(
+                drawTextBadge(
                     this.particleCtx,
                     textX,
                     textY,
-                    `${item.key}: ${this.formatNumber(mag)} N`
+                    `${item.key}: ${formatMetricNumber(mag)} N`
                 );
             }
             textY += 18;
