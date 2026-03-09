@@ -27,12 +27,16 @@ export default defineConfig({
   },
   projects: [
     {
+      // Desktop owns the default desktop/embed/responsive specs.
+      // Touch-specific contracts live in touch-core-path and are routed away from this project.
       name: 'desktop-chromium',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /.*\.spec\.ts/,
       testIgnore: /touch-core-path\.spec\.ts/
     },
     {
+      // Tablet reuses touch-core-path to cover touch layout parity without running phone-only gestures.
+      // Any skip inside the spec is an intentional routing decision, not an unknown flaky gap.
       name: 'tablet-chromium',
       use: {
         ...devices['iPad (gen 7)'],
@@ -41,6 +45,7 @@ export default defineConfig({
       testMatch: /touch-core-path\.spec\.ts/
     },
     {
+      // Phone is the full touch regression project, including long-press, pinch and bottom-sheet behavior.
       name: 'phone-chromium',
       use: {
         ...devices['iPhone 13'],

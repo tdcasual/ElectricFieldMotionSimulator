@@ -1,4 +1,4 @@
-import type { SceneMutationResult } from '../runtime/simulatorRuntime';
+import type { RuntimeSnapshot, SceneMutationResult } from '../runtime/simulatorRuntime';
 
 type ProfileHarnessStoreSource = {
   loadSceneData: (data: Record<string, unknown>) => SceneMutationResult;
@@ -11,6 +11,7 @@ type ProfileHarnessStoreSource = {
   particleCount: number;
   objectCount: number;
   running: boolean;
+  frameStats: RuntimeSnapshot['frameStats'];
 };
 
 export function createProfileHarnessStore(store: ProfileHarnessStoreSource) {
@@ -32,6 +33,9 @@ export function createProfileHarnessStore(store: ProfileHarnessStoreSource) {
     },
     get running() {
       return store.running;
+    },
+    get frameStats() {
+      return store.frameStats;
     }
   };
 }

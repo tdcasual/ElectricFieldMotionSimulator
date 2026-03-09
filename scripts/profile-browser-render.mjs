@@ -9,6 +9,7 @@ import {
   summarizeBrowserRenderRun
 } from './lib/browserRenderProfile.mjs';
 import { buildBrowserRenderReport, emitProfileReport } from './lib/profileReport.mjs';
+import { evaluateBrowserRenderBudgets, formatBudgetEvaluation } from './lib/perfBudget.mjs';
 
 function parsePositiveInt(value, fallback) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -99,12 +100,21 @@ async function collectScenarioProfile(page, scenario, options) {
 
       const pushSnapshot = (t) => {
         const snapshot = handle.getSnapshot();
+        const frameStats = snapshot?.frameStats && typeof snapshot.frameStats === 'object'
+          ? {
+              avgMs: Number(snapshot.frameStats.avgMs ?? 0),
+              p95Ms: Number(snapshot.frameStats.p95Ms ?? 0),
+              maxMs: Number(snapshot.frameStats.maxMs ?? 0),
+              sampleCount: Number(snapshot.frameStats.sampleCount ?? 0)
+            }
+          : null;
         snapshots.push({
           t: Math.round(t),
           fps: Number(snapshot?.fps ?? 0),
           particleCount: Number(snapshot?.particleCount ?? 0),
           objectCount: Number(snapshot?.objectCount ?? 0),
-          running: Boolean(snapshot?.running)
+          running: Boolean(snapshot?.running),
+          frameStats
         });
       };
 
@@ -204,8 +214,16 @@ try {
     profiles,
     summaryRows
   });
+  report.budgetEvaluation = evaluateBrowserRenderBudgets(summaryRows);
 
   emitProfileReport(report);
+  process.stderr.write(`
+Budget Evaluation:
+${formatBudgetEvaluation(report.budgetEvaluation)}
+`);
+  if (process.env.PROFILE_ENFORCE_BUDGETS === '1' && !report.budgetEvaluation.ok) {
+    process.exitCode = 1;
+  }
 } finally {
   await context?.close().catch(() => undefined);
   await browser?.close().catch(() => undefined);

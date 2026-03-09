@@ -1,5 +1,6 @@
 import { runHighEmissionRetentionProfiles } from '../test/helpers/perfRunner.js';
 import { buildHighEmissionReport, emitProfileReport } from './lib/profileReport.mjs';
+import { evaluateHighEmissionBudgets, formatBudgetEvaluation } from './lib/perfBudget.mjs';
 
 const steps = Number.isFinite(Number(process.env.PROFILE_STEPS)) ? Number(process.env.PROFILE_STEPS) : 180;
 const dt = Number.isFinite(Number(process.env.PROFILE_DT)) ? Number(process.env.PROFILE_DT) : 0.016;
@@ -28,5 +29,13 @@ const report = buildHighEmissionReport({
   profiles,
   summaryRows: table
 });
+report.budgetEvaluation = evaluateHighEmissionBudgets(table);
 
 emitProfileReport(report);
+process.stderr.write(`
+Budget Evaluation:
+${formatBudgetEvaluation(report.budgetEvaluation)}
+`);
+if (process.env.PROFILE_ENFORCE_BUDGETS === '1' && !report.budgetEvaluation.ok) {
+  process.exitCode = 1;
+}

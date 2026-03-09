@@ -5,6 +5,7 @@ import {
   buildHighEmissionBrowserScenarios,
   summarizeBrowserRenderRun
 } from '../scripts/lib/browserRenderProfile.mjs';
+import { evaluateBrowserRenderBudgets } from '../scripts/lib/perfBudget.mjs';
 
 test('browser render summary derives fps, long-task and peak counts from raw samples', () => {
   const summary = summarizeBrowserRenderRun({
@@ -34,6 +35,12 @@ test('browser render summary derives fps, long-task and peak counts from raw sam
   assert.equal(Array.isArray(table), true);
   assert.equal(table[0].scenario, 'high-emission-trajectories-off');
   assert.equal(table[0].longTasks, 2);
+
+  const evaluation = evaluateBrowserRenderBudgets([
+    { scenario: 'high-emission-trajectories-off', avgFps: 33.11, p95FrameMs: 48.05, longTasks: 0, finalFps: 35 },
+    { scenario: 'high-emission-trajectories-on', avgFps: 32.82, p95FrameMs: 45.94, longTasks: 0, finalFps: 35 }
+  ]);
+  assert.equal(evaluation.ok, true);
 });
 
 test('browser render scenarios cover trajectory-off and trajectory-on baselines', () => {

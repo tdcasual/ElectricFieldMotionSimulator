@@ -1,6 +1,7 @@
-import type { SceneMutationResult } from '../runtime/simulatorRuntime';
+import type { RuntimeSnapshot, SceneMutationResult } from '../runtime/simulatorRuntime';
 
 type ProfileSceneLoadResult = boolean | SceneMutationResult;
+type ProfileFrameStats = RuntimeSnapshot['frameStats'];
 
 type ProfileHarnessStore = {
   loadSceneData: (data: Record<string, unknown>) => ProfileSceneLoadResult;
@@ -13,6 +14,7 @@ type ProfileHarnessStore = {
   particleCount: number;
   objectCount: number;
   running: boolean;
+  frameStats: ProfileFrameStats;
 };
 
 export type ProfileSnapshot = {
@@ -20,6 +22,7 @@ export type ProfileSnapshot = {
   particleCount: number;
   objectCount: number;
   running: boolean;
+  frameStats: ProfileFrameStats;
 };
 
 export type BrowserProfileHarness = {
@@ -34,6 +37,16 @@ export type BrowserProfileHarness = {
 
 function asFiniteNumber(value: unknown) {
   return Number.isFinite(value) ? Number(value) : 0;
+}
+
+function normalizeFrameStats(frameStats: ProfileFrameStats): ProfileFrameStats {
+  if (!frameStats) return null;
+  return {
+    avgMs: asFiniteNumber(frameStats.avgMs),
+    p95Ms: asFiniteNumber(frameStats.p95Ms),
+    maxMs: asFiniteNumber(frameStats.maxMs),
+    sampleCount: Math.max(0, Math.round(asFiniteNumber(frameStats.sampleCount)))
+  };
 }
 
 function normalizeSceneLoadResult(result: ProfileSceneLoadResult): SceneMutationResult {
@@ -82,7 +95,8 @@ export function installProfileHarness(targetWindow: Window, store: ProfileHarnes
         fps: asFiniteNumber(store.fps),
         particleCount: asFiniteNumber(store.particleCount),
         objectCount: asFiniteNumber(store.objectCount),
-        running: Boolean(store.running)
+        running: Boolean(store.running),
+        frameStats: normalizeFrameStats(store.frameStats)
       };
     }
   };

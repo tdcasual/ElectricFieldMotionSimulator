@@ -15,7 +15,13 @@ describe('profile harness', () => {
       fps: 10,
       particleCount: 11,
       objectCount: 12,
-      running: false
+      running: false,
+      frameStats: {
+        avgMs: 18,
+        p95Ms: 24,
+        maxMs: 30,
+        sampleCount: 8
+      }
     };
 
     const mapped = createProfileHarnessStore(source);
@@ -23,16 +29,34 @@ describe('profile harness', () => {
     expect(mapped.particleCount).toBe(11);
     expect(mapped.objectCount).toBe(12);
     expect(mapped.running).toBe(false);
+    expect(mapped.frameStats).toEqual({
+      avgMs: 18,
+      p95Ms: 24,
+      maxMs: 30,
+      sampleCount: 8
+    });
 
     source.fps = 40;
     source.particleCount = 41;
     source.objectCount = 42;
     source.running = true;
+    source.frameStats = {
+      avgMs: 16,
+      p95Ms: 20,
+      maxMs: 22,
+      sampleCount: 12
+    };
 
     expect(mapped.fps).toBe(40);
     expect(mapped.particleCount).toBe(41);
     expect(mapped.objectCount).toBe(42);
     expect(mapped.running).toBe(true);
+    expect(mapped.frameStats).toEqual({
+      avgMs: 16,
+      p95Ms: 20,
+      maxMs: 22,
+      sampleCount: 12
+    });
   });
   it('installs limited browser profile api and removes it on dispose', () => {
     const calls: string[] = [];
@@ -51,7 +75,13 @@ describe('profile harness', () => {
       fps: 58,
       particleCount: 120,
       objectCount: 121,
-      running: true
+      running: true,
+      frameStats: {
+        avgMs: 17.2,
+        p95Ms: 25.1,
+        maxMs: 30.3,
+        sampleCount: 60
+      }
     };
 
     const dispose = installProfileHarness(profileWindow, store);
@@ -62,7 +92,13 @@ describe('profile harness', () => {
       selectObjectByIndex: (index: number) => { ok: boolean; id?: string; error?: string };
       openPropertyPanel: () => boolean;
       openVariablesPanel: () => boolean;
-      getSnapshot: () => { fps: number; particleCount: number; objectCount: number; running: boolean };
+      getSnapshot: () => {
+        fps: number;
+        particleCount: number;
+        objectCount: number;
+        running: boolean;
+        frameStats: { avgMs: number; p95Ms: number; maxMs: number; sampleCount: number } | null;
+      };
     } | undefined;
 
     expect(harness).toBeTruthy();
@@ -79,7 +115,13 @@ describe('profile harness', () => {
       fps: 58,
       particleCount: 120,
       objectCount: 121,
-      running: true
+      running: true,
+      frameStats: {
+        avgMs: 17.2,
+        p95Ms: 25.1,
+        maxMs: 30.3,
+        sampleCount: 60
+      }
     });
     expect(harness?.loadSceneData({ version: '1.0', settings: {}, objects: [] })).toEqual({ ok: true });
 
@@ -111,7 +153,8 @@ describe('profile harness', () => {
       fps: 0,
       particleCount: 0,
       objectCount: 0,
-      running: false
+      running: false,
+      frameStats: null
     });
 
     const result = (profileWindow.__ELECTRIC_FIELD_PROFILE__ as { loadSceneData: (data: Record<string, unknown>) => unknown })
