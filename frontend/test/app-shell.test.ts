@@ -81,6 +81,12 @@ describe('App shell', () => {
   });
 
   it('creates object from toolbar double click and updates footer count', async () => {
+    Object.defineProperty(window, 'innerWidth', {
+      value: 1366,
+      configurable: true,
+      writable: true
+    });
+
     const wrapper = mount(App, {
       global: {
         plugins: [createPinia()]
@@ -92,6 +98,7 @@ describe('App shell', () => {
     await nextTick();
 
     expect(wrapper.get('#object-count').text()).toContain('对象: 1');
+    expect(wrapper.find('[data-testid="desktop-teaching-rail"]').exists()).toBe(true);
   });
 
   it('opens markdown board from header button', async () => {

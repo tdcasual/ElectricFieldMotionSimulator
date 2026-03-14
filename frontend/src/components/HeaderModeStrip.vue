@@ -34,6 +34,14 @@ const conciseStatus = computed(() => {
   }
   return text;
 });
+
+const teachingGuidance = computed(() => {
+  if (!props.showAuthoringControls) return '课堂提示：先观察现象，再回到参数解释原因';
+  if (props.demoMode) return '课堂提示：先请学生预测，再播放验证轨迹变化';
+  if (props.classroomMode) return '课堂提示：按 放场 -> 加粒子 -> 播放 的顺序讲解';
+  if (props.running) return '课堂提示：暂停时追问方向变化，播放时观察轨迹';
+  return '课堂提示：先放场，再放粒子，最后播放观察';
+});
 </script>
 
 <template>
@@ -46,6 +54,7 @@ const conciseStatus = computed(() => {
     <span class="header-mode-badge" :data-tone="modeTone">{{ modeLabel }}</span>
     <span class="header-mode-state">{{ props.running ? '运行中' : '已暂停' }}</span>
     <span v-if="!props.compact" class="header-mode-copy">{{ conciseStatus }}</span>
+    <span v-if="!props.compact" class="header-mode-guidance" data-testid="header-mode-guidance">{{ teachingGuidance }}</span>
     <span class="header-mode-metric">对象 {{ props.objectCount }}</span>
     <span class="header-mode-metric">粒子 {{ props.particleCount }}</span>
   </div>

@@ -228,6 +228,19 @@
     white-space: nowrap;
 }
 
+.header-mode-guidance {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0 12px;
+    border: 1px dashed color-mix(in srgb, var(--teaching-accent) 42%, var(--shell-border));
+    background: color-mix(in srgb, var(--teaching-accent) 10%, transparent);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .desktop-scene-settings {
     justify-content: flex-end;
     width: 100%;
@@ -447,6 +460,25 @@
     background: color-mix(in srgb, var(--toolbar-panel-bg) 86%, #fff 14%);
 }
 
+.desktop-teaching-sequence {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.desktop-teaching-step {
+    min-height: 26px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px dashed color-mix(in srgb, var(--teaching-accent) 46%, var(--toolbar-group-divider));
+    background: color-mix(in srgb, var(--toolbar-panel-bg) 84%, #fff 16%);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
 .tool-item {
     display: flex;
     align-items: center;
@@ -638,6 +670,11 @@ body.light-theme #toolbar .preset-section h3 {
     padding: 4px 6px;
 }
 
+body.light-theme .desktop-teaching-step {
+    background: color-mix(in srgb, var(--toolbar-panel-bg) 70%, #fff 30%);
+    color: #536578;
+}
+
 body.light-theme .preset-btn {
     background: #f8fbff;
     border-color: #cbd9e8;
@@ -771,6 +808,15 @@ body.light-theme .canvas-empty-card {
     box-shadow: 0 24px 56px rgba(35, 55, 79, 0.14);
 }
 
+body.light-theme .canvas-empty-playbook {
+    background: color-mix(in srgb, var(--shell-field-bg) 62%, #fff 38%);
+}
+
+body.light-theme .desktop-teaching-rail {
+    background: color-mix(in srgb, var(--shell-panel) 88%, #fff 12%);
+    box-shadow: 0 16px 30px rgba(35, 55, 79, 0.14);
+}
+
 .canvas-empty-badge {
     display: inline-flex;
     align-items: center;
@@ -802,6 +848,58 @@ body.light-theme .canvas-empty-card {
     line-height: 1.6;
 }
 
+.canvas-empty-playbook {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--shell-border) 84%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--shell-field-bg) 72%, transparent);
+}
+
+.canvas-empty-playbook-title {
+    margin: 0 0 10px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.canvas-empty-playbook-list {
+    list-style: none;
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    counter-reset: playbook-step;
+}
+
+.canvas-empty-playbook-item {
+    counter-increment: playbook-step;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.canvas-empty-playbook-item::before {
+    content: counter(playbook-step);
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--teaching-accent) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--teaching-accent) 38%, var(--shell-border));
+    color: var(--teaching-accent);
+    font-size: 11px;
+    font-weight: 700;
+}
+
 .canvas-empty-tips {
     display: flex;
     flex-wrap: wrap;
@@ -819,6 +917,72 @@ body.light-theme .canvas-empty-card {
     background: color-mix(in srgb, var(--shell-field-bg) 90%, #fff 10%);
     color: var(--text-secondary);
     font-size: 12px;
+}
+
+.desktop-teaching-rail {
+    position: absolute;
+    left: 18px;
+    right: auto;
+    bottom: 18px;
+    z-index: 9;
+    max-width: min(560px, calc(100% - 36px));
+    display: grid;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--shell-border) 86%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--status-strip-bg) 90%, transparent);
+    box-shadow: 0 18px 34px rgba(10, 15, 25, 0.18);
+    backdrop-filter: blur(10px);
+}
+
+.desktop-teaching-rail-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.desktop-teaching-rail-kicker {
+    color: var(--teaching-accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.desktop-teaching-rail-text {
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.desktop-teaching-rail-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.desktop-teaching-rail-step {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--shell-border);
+    background: color-mix(in srgb, var(--shell-field-bg) 86%, #fff 14%);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.desktop-teaching-rail-step[data-state="done"] {
+    border-color: color-mix(in srgb, var(--success-green) 42%, var(--shell-border));
+    color: var(--success-green);
+}
+
+.desktop-teaching-rail-step[data-state="active"] {
+    border-color: color-mix(in srgb, var(--teaching-accent) 46%, var(--shell-border));
+    background: color-mix(in srgb, var(--teaching-accent) 14%, transparent);
+    color: var(--text-primary);
 }
 
 .geometry-overlay-badge {

@@ -20,6 +20,8 @@ describe('CanvasViewport', () => {
     });
 
     expect(wrapper.get('[data-testid="canvas-empty-state"]').text()).toContain('从左侧组件库');
+    expect(wrapper.get('[data-testid="canvas-empty-state"]').text()).toContain('一轮标准演示');
+    expect(wrapper.get('[data-testid="canvas-empty-state"]').text()).toContain('先放场');
   });
 
   it('switches empty-state copy while running with no objects', () => {
@@ -40,6 +42,7 @@ describe('CanvasViewport', () => {
     const wrapper = mount(CanvasViewport, {
       props: {
         objectCount: 1,
+        particleCount: 0,
         running: false,
         isPhoneLayout: false,
         showAuthoringControls: true,
@@ -48,5 +51,6 @@ describe('CanvasViewport', () => {
     });
 
     expect(wrapper.find('[data-testid="canvas-empty-state"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="desktop-teaching-rail"]').exists()).toBe(true);
   });
 });

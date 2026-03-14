@@ -24,6 +24,8 @@ const supportingCopy = computed(() => {
   }
   return '可以直接双击创建对象，或者先载入预设场景，快速进入课堂演示。';
 });
+
+const desktopPlaybook = ['先放场', '再放粒子', '最后播放观察'];
 </script>
 
 <template>
@@ -32,6 +34,12 @@ const supportingCopy = computed(() => {
       <span class="canvas-empty-badge">{{ modeLabel }}</span>
       <h2 class="canvas-empty-title">{{ headline }}</h2>
       <p class="canvas-empty-copy">{{ supportingCopy }}</p>
+      <div v-if="!props.isPhoneLayout" class="canvas-empty-playbook" data-testid="canvas-empty-playbook">
+        <p class="canvas-empty-playbook-title">一轮标准演示</p>
+        <ol class="canvas-empty-playbook-list">
+          <li v-for="step in desktopPlaybook" :key="step" class="canvas-empty-playbook-item">{{ step }}</li>
+        </ol>
+      </div>
       <div class="canvas-empty-tips">
         <span class="canvas-empty-tip">{{ props.isPhoneLayout ? '添加' : '组件库' }}</span>
         <span class="canvas-empty-tip">{{ props.isPhoneLayout ? '场景参数' : '预设场景' }}</span>

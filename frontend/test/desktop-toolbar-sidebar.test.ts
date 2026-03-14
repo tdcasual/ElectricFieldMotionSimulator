@@ -31,6 +31,8 @@ describe('DesktopToolbarSidebar', () => {
 
     expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('从空白画布开始搭建演示');
     expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('预设场景');
+    expect(wrapper.get('[data-testid="desktop-teaching-sequence"]').text()).toContain('先放场');
+    expect(wrapper.get('[data-testid="desktop-teaching-sequence"]').text()).toContain('再放粒子');
     expect(wrapper.find('[data-testid="desktop-preset-section"]').exists()).toBe(true);
   });
 
@@ -45,6 +47,7 @@ describe('DesktopToolbarSidebar', () => {
     expect(wrapper.get('#toolbar').attributes('data-compact')).toBe('true');
     expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('双击组件可居中创建');
     expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).not.toContain('从空白画布开始搭建演示');
+    expect(wrapper.find('[data-testid="desktop-teaching-sequence"]').exists()).toBe(false);
   });
 
   it('forwards create event from toolbar panel', async () => {

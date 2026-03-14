@@ -29,6 +29,8 @@ const hintCopy = computed(() =>
     ? '双击组件可居中创建，预设可快速进入讲解。'
     : '从空白画布开始搭建演示，也可以直接从预设场景进入经典教学起点。单击后点击画布放置，双击可直接居中创建。'
 );
+
+const teachingSteps = ['先放场', '再放粒子', '最后播放'];
 </script>
 
 <template>
@@ -37,6 +39,9 @@ const hintCopy = computed(() =>
       <p class="toolbar-kicker">搭建实验</p>
       <h2>组件库</h2>
       <p class="toolbar-hint" data-testid="desktop-toolbar-hint">{{ hintCopy }}</p>
+      <div v-if="!props.compact" class="desktop-teaching-sequence" data-testid="desktop-teaching-sequence" aria-label="课堂步骤">
+        <span v-for="step in teachingSteps" :key="step" class="desktop-teaching-step">{{ step }}</span>
+      </div>
     </div>
     <ToolbarPanel :groups="props.groups" @create="(type) => emit('create', type)" />
     <div class="tool-section preset-section" data-testid="desktop-preset-section">

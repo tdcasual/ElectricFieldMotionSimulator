@@ -19,6 +19,7 @@ describe('HeaderModeStrip', () => {
 
     expect(wrapper.get('[data-testid="header-mode-strip"]').attributes('data-compact')).toBe('false');
     expect(wrapper.find('.header-mode-copy').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="header-mode-guidance"]').text()).toContain('课堂提示');
   });
 
   it('hides the long status copy in compact tablet mode while keeping mode metrics', () => {
@@ -37,6 +38,7 @@ describe('HeaderModeStrip', () => {
 
     expect(wrapper.get('[data-testid="header-mode-strip"]').attributes('data-compact')).toBe('true');
     expect(wrapper.find('.header-mode-copy').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="header-mode-guidance"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('对象 3');
     expect(wrapper.text()).toContain('粒子 9');
   });

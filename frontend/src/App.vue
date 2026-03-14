@@ -196,11 +196,14 @@ onBeforeUnmount(() => {
     <CanvasViewport
       :fps="simulatorStore.fps"
       :object-count="simulatorStore.objectCount"
+      :particle-count="simulatorStore.particleCount"
       :running="simulatorStore.running"
       :is-phone-layout="isPhoneLayout"
       :show-authoring-controls="showAuthoringControls"
       :demo-mode="simulatorStore.demoMode"
+      :classroom-mode="simulatorStore.classroomMode"
       :suppress-empty-state="isPhoneLayout && phoneAnySheetOpen"
+      :show-teaching-rail="!isTabletLayout"
     />
     <GeometryOverlayBadge
       v-if="isPhoneLayout && simulatorStore.geometryInteraction"
