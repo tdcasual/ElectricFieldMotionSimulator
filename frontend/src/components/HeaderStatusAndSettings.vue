@@ -39,11 +39,14 @@ const emit = defineEmits<{
 
 <template>
   <div v-if="props.isPhoneLayout" class="phone-status-strip" data-testid="phone-status-strip">
+    <span class="phone-status-badge">{{ props.demoMode ? '演示' : '场景' }}</span>
     <span class="phone-status-text">{{ phoneStatusText }}</span>
     <span class="phone-status-metrics">对象 {{ props.objectCount }} · 粒子 {{ props.particleCount }}</span>
   </div>
   <div v-if="props.showAuthoringControls && !props.isPhoneLayout" id="header-settings-panel" class="header-settings">
+    <div class="desktop-scene-settings" data-testid="desktop-scene-settings">
     <SceneSettingsControls
+      compact
       :show-energy-overlay="props.showEnergyOverlay"
       :pixels-per-meter="props.pixelsPerMeter"
       :gravity="props.gravity"
@@ -60,5 +63,6 @@ const emit = defineEmits<{
       @set-boundary-margin="(event) => emit('set-boundary-margin', event)"
       @set-time-step="(event) => emit('set-time-step', event)"
     />
+    </div>
   </div>
 </template>

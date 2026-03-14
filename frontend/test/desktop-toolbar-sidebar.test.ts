@@ -29,8 +29,22 @@ describe('DesktopToolbarSidebar', () => {
       }
     });
 
-    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('单击后点击画布放置');
-    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('双击可直接居中创建');
+    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('从空白画布开始搭建演示');
+    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('预设场景');
+    expect(wrapper.find('[data-testid="desktop-preset-section"]').exists()).toBe(true);
+  });
+
+  it('switches to a concise hint in compact tablet mode', () => {
+    const wrapper = mount(DesktopToolbarSidebar, {
+      props: {
+        groups: [],
+        compact: true
+      }
+    });
+
+    expect(wrapper.get('#toolbar').attributes('data-compact')).toBe('true');
+    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('双击组件可居中创建');
+    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).not.toContain('从空白画布开始搭建演示');
   });
 
   it('forwards create event from toolbar panel', async () => {

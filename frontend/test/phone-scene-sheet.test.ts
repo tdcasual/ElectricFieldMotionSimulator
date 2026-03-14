@@ -27,6 +27,11 @@ function dispatchPointerEvent(target: Element, type: string, options: { x: numbe
 }
 
 describe('PhoneSceneSheet', () => {
+  it('renders a compact subtitle for the scene sheet', () => {
+    const wrapper = mountSceneSheet();
+    expect(wrapper.get('[data-testid="phone-sheet-subtitle"]').text()).toContain('比例尺');
+  });
+
   it('forwards scene settings control events', async () => {
     const wrapper = mountSceneSheet();
 

@@ -44,7 +44,10 @@ onBeforeUnmount(() => {
       @pointerup="swipeGesture.onPointerUp"
       @pointercancel="swipeGesture.onPointerCancel"
     >
-      <h3>场景参数</h3>
+      <div class="phone-sheet-header-main">
+        <h3>场景参数</h3>
+        <p class="phone-sheet-subtitle" data-testid="phone-sheet-subtitle">比例尺、边界与时间步长</p>
+      </div>
       <button type="button" class="btn-icon" aria-label="关闭场景参数面板" @click="emit('close')">✖</button>
     </div>
     <div class="phone-sheet-body phone-scene-body">

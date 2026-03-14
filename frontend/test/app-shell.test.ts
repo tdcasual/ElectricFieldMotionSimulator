@@ -31,6 +31,20 @@ describe('App shell', () => {
     expect(wrapper.find('#property-panel').exists()).toBe(true);
   });
 
+  it('renders grouped desktop header regions with mode strip', () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [createPinia()]
+      }
+    });
+
+    expect(wrapper.find('[data-testid="header-brand-block"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-mode-strip"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-primary-actions"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-scene-actions"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-teaching-actions"]').exists()).toBe(true);
+  });
+
   it('toggles demo mode button state on click', async () => {
     const wrapper = mount(App, {
       global: {
@@ -147,6 +161,28 @@ describe('App shell', () => {
     expect(wrapper.get('#app').classes()).toContain('layout-phone');
   });
 
+  it('shows a compact phone shell with status strip and bottom nav', async () => {
+    const pinia = createPinia();
+    const store = useSimulatorStore(pinia);
+    Object.defineProperty(window, 'innerWidth', {
+      value: 640,
+      configurable: true,
+      writable: true
+    });
+    (store as unknown as { setLayoutMode?: (mode: string) => void }).setLayoutMode?.('phone');
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia]
+      }
+    });
+
+    await nextTick();
+    expect(wrapper.find('[data-testid="phone-status-strip"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="phone-bottom-nav"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-mode-strip"]').exists()).toBe(false);
+  });
+
   it('applies phone density class from store', async () => {
     const pinia = createPinia();
     const store = useSimulatorStore(pinia);
@@ -248,12 +284,15 @@ describe('App shell', () => {
     await nextTick();
     expect(store.layoutMode).toBe('tablet');
     expect(wrapper.get('#app').classes()).toContain('layout-tablet');
+    expect(wrapper.get('[data-testid="header-mode-strip"]').attributes('data-compact')).toBe('true');
+    expect(wrapper.get('[data-testid="desktop-toolbar-hint"]').text()).toContain('双击组件可居中创建');
 
     window.innerWidth = 1366;
     window.dispatchEvent(new Event('resize'));
     await nextTick();
     expect(store.layoutMode).toBe('desktop');
     expect(wrapper.get('#app').classes()).toContain('layout-desktop');
+    expect(wrapper.get('[data-testid="header-mode-strip"]').attributes('data-compact')).toBe('false');
   });
 
   it('shows object action bar in phone mode when an object is selected', async () => {

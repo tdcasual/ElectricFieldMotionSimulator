@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import AuthoringPanels from './components/AuthoringPanels.vue';
 import AppStatusFooter from './components/AppStatusFooter.vue';
 import CanvasViewport from './components/CanvasViewport.vue';
 import DesktopToolbarSidebar from './components/DesktopToolbarSidebar.vue';
 import GeometryOverlayBadge from './components/GeometryOverlayBadge.vue';
 import HeaderActionButtons from './components/HeaderActionButtons.vue';
+import HeaderModeStrip from './components/HeaderModeStrip.vue';
 import HeaderStatusAndSettings from './components/HeaderStatusAndSettings.vue';
 import ObjectActionBar from './components/ObjectActionBar.vue';
 import PhoneAuthoringSheets from './components/PhoneAuthoringSheets.vue';
@@ -46,6 +47,7 @@ const { appShellClass } = useAppShellClass({
   phoneSelectedSheetOpen,
   phoneDensityClass
 });
+const isTabletLayout = computed(() => simulatorStore.layoutMode === 'tablet');
 
 onMounted(async () => {
   mountViewportLayout();
@@ -66,7 +68,22 @@ onBeforeUnmount(() => {
 <template>
   <div id="app" data-testid="app-shell" :class="appShellClass">
     <header id="header">
-      <h1>⚡ 电磁场粒子运动模拟器</h1>
+      <div v-if="!isPhoneLayout" class="header-brand-block" data-testid="header-brand-block">
+        <div class="header-title-stack">
+          <span class="header-kicker">Field Lab</span>
+          <h1>⚡ 电磁场粒子运动模拟器</h1>
+        </div>
+        <HeaderModeStrip
+          :running="simulatorStore.running"
+          :classroom-mode="simulatorStore.classroomMode"
+          :demo-mode="simulatorStore.demoMode"
+          :show-authoring-controls="showAuthoringControls"
+          :status-text="simulatorStore.statusText"
+          :object-count="simulatorStore.objectCount"
+          :particle-count="simulatorStore.particleCount"
+          :compact="isTabletLayout"
+        />
+      </div>
       <div class="header-controls">
         <HeaderActionButtons
           :is-phone-layout="isPhoneLayout"
@@ -127,6 +144,7 @@ onBeforeUnmount(() => {
     <DesktopToolbarSidebar
       v-if="showAuthoringControls && !isPhoneLayout"
       :groups="simulatorStore.toolbarGroups"
+      :compact="isTabletLayout"
       @create="appActions.createObjectFromToolbar"
       @load-preset="appActions.loadPresetAndClose"
     />
@@ -175,7 +193,15 @@ onBeforeUnmount(() => {
       @toggle-markdown="appActions.toggleMarkdownBoardFromPhoneMore"
     />
 
-    <CanvasViewport :fps="simulatorStore.fps" />
+    <CanvasViewport
+      :fps="simulatorStore.fps"
+      :object-count="simulatorStore.objectCount"
+      :running="simulatorStore.running"
+      :is-phone-layout="isPhoneLayout"
+      :show-authoring-controls="showAuthoringControls"
+      :demo-mode="simulatorStore.demoMode"
+      :suppress-empty-state="isPhoneLayout && phoneAnySheetOpen"
+    />
     <GeometryOverlayBadge
       v-if="isPhoneLayout && simulatorStore.geometryInteraction"
       :source-key="simulatorStore.geometryInteraction.sourceKey"

@@ -42,7 +42,10 @@ onBeforeUnmount(() => {
       @pointerup="sheetSwipeGesture.onPointerUp"
       @pointercancel="sheetSwipeGesture.onPointerCancel"
     >
-      <h3>添加对象</h3>
+      <div class="phone-sheet-header-main">
+        <h3>添加对象</h3>
+        <p class="phone-sheet-subtitle">从组件或预设开始搭建</p>
+      </div>
       <button type="button" class="btn-icon" aria-label="关闭添加对象面板" @click="emit('close')">✖</button>
     </div>
     <div class="phone-sheet-body">

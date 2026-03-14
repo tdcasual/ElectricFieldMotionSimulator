@@ -71,7 +71,10 @@ function emitNumberChange(key: string, event: Event) {
       @pointerup="sheetSwipeGesture.onPointerUp"
       @pointercancel="sheetSwipeGesture.onPointerCancel"
     >
-      <h3>{{ props.title }}</h3>
+      <div class="phone-sheet-header-main">
+        <h3>{{ props.title }}</h3>
+        <p class="phone-sheet-subtitle">几何快捷编辑与对象操作</p>
+      </div>
       <button type="button" class="btn-icon" aria-label="关闭选中对象面板" @click="emit('close')">✖</button>
     </div>
     <div class="phone-sheet-body">

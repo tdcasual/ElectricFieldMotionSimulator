@@ -4,6 +4,7 @@ import { expectDemoModeState } from './helpers/assertions';
 test('core path create/edit/play/io/demo', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
+  await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
 
   await expectDemoModeState(page, {
     pressed: true,
@@ -24,6 +25,7 @@ test('core path create/edit/play/io/demo', async ({ page }) => {
 
   await page.locator('#toolbar .tool-item[data-type="particle"]').first().dblclick();
   await expect(page.locator('#object-count')).toHaveText(/对象:\s*1/);
+  await expect(page.getByTestId('canvas-empty-state')).toBeHidden();
 
   await expect(page.locator('#play-label')).toHaveText('播放');
   await page.locator('#play-pause-btn').click();

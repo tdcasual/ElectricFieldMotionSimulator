@@ -56,6 +56,11 @@ describe('HeaderStatusAndSettings', () => {
     const wrapper = mountHeader({ isPhoneLayout: false, showAuthoringControls: true });
 
     expect(wrapper.find('#header-settings-panel').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="desktop-scene-settings"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="desktop-settings-primary"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="scene-advanced-toggle"]').trigger('click');
+    expect(wrapper.get('[data-testid="desktop-settings-advanced"]').attributes('data-open')).toBe('true');
 
     await wrapper.get('#toggle-energy-overlay').trigger('change');
     await wrapper.get('#scale-px-per-meter').trigger('change');

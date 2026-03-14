@@ -20,6 +20,17 @@ function mountButtons(overrides: Record<string, unknown> = {}) {
 }
 
 describe('HeaderActionButtons', () => {
+  it('renders actions in clear desktop groups', () => {
+    const wrapper = mountButtons();
+
+    expect(wrapper.find('[data-testid="header-primary-actions"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-scene-actions"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-teaching-actions"]').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="header-primary-label"]').text()).toContain('主控');
+    expect(wrapper.get('[data-testid="header-scene-label"]').text()).toContain('场景');
+    expect(wrapper.get('[data-testid="header-teaching-label"]').text()).toContain('教学');
+  });
+
   it('emits events for desktop controls', async () => {
     const wrapper = mountButtons();
 

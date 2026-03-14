@@ -1,6 +1,6 @@
 # 测试指南（Vue3 主线）
 
-更新时间：2026-03-08
+更新时间：2026-03-14
 
 ## 环境要求
 
@@ -16,6 +16,26 @@
 | frontend regression | `npm run test:frontend:regression` | 回归 Vue 组件、store、runtime/embed 桥接 |
 | phone regression | `PLAYWRIGHT_VITE_PORT=4499 npm run test:e2e:phone` | 只看手机触控、长按、pinch、底部抽屉链路 |
 | release gate | `PLAYWRIGHT_VITE_PORT=4499 npm run release:gate` | 发布前统一门禁；`npm run quality:release` 是兼容别名 |
+
+## UI Refresh Verification
+
+2026-03-14 的壳层与视觉刷新建议至少执行下面这组检查：
+
+- `npm run lint:frontend`
+- `npm run typecheck:frontend`
+- `npm run test:frontend`
+- `PLAYWRIGHT_VITE_PORT=4499 npm run test:e2e -- frontend/e2e/core-path.spec.ts frontend/e2e/touch-core-path.spec.ts frontend/e2e/responsive-visual.spec.ts`
+
+如果本次改动本来就会改变视觉基线，需要先人工确认桌面浅色、桌面深色、手机竖屏、手机横屏、平板五组截图都是“预期变化”，再执行：
+
+```bash
+PLAYWRIGHT_VITE_PORT=4499 npm run test:e2e -- frontend/e2e/responsive-visual.spec.ts --update-snapshots
+```
+
+补充检查点：
+
+- 对照 `docs/release/2026-03-14-ui-baseline.md` 确认桌面头部、画布空状态和手机 sheet 层级是否仍符合刷新后的设计契约。
+- 如果改动涉及手机壳层或 safe-area，优先关注 `touch-core-path.spec.ts` 是否仍通过底部导航、sheet 和属性面板相关断言。
 
 ## 日常质量门禁
 

@@ -66,6 +66,8 @@ export class ThemeManager {
         const html = document.documentElement;
         const body = document.body;
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        const themeToggleIcon = themeToggleBtn?.querySelector?.('[data-theme-icon]');
+        const themeToggleLabel = themeToggleBtn?.querySelector?.('[data-theme-label]');
         
         if (theme === 'auto') {
             // 自动根据系统设置
@@ -77,12 +79,22 @@ export class ThemeManager {
             body.classList.remove('light-theme');
             body.classList.add('dark-theme');
             html.setAttribute('data-theme', 'dark');
-            if (themeToggleBtn) themeToggleBtn.textContent = '☀️';
+            if (themeToggleIcon) themeToggleIcon.textContent = '☀️';
+            if (themeToggleLabel) themeToggleLabel.textContent = '浅色';
+            if (themeToggleBtn) {
+                themeToggleBtn.setAttribute('title', '切换到浅色主题');
+                themeToggleBtn.setAttribute('aria-label', '切换到浅色主题');
+            }
         } else {
             body.classList.remove('dark-theme');
             body.classList.add('light-theme');
             html.setAttribute('data-theme', 'light');
-            if (themeToggleBtn) themeToggleBtn.textContent = '🌙';
+            if (themeToggleIcon) themeToggleIcon.textContent = '🌙';
+            if (themeToggleLabel) themeToggleLabel.textContent = '主题';
+            if (themeToggleBtn) {
+                themeToggleBtn.setAttribute('title', '切换主题');
+                themeToggleBtn.setAttribute('aria-label', '切换主题');
+            }
         }
         
         this.currentTheme = theme;

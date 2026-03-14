@@ -1,30 +1,34 @@
 /* 深色主题颜色变量 */
 :root {
+    --font-display: "Avenir Next Condensed", "DIN Condensed", "Bahnschrift Condensed", "PingFang SC", sans-serif;
+    --font-body: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", sans-serif;
+    --font-mono: "SF Mono", "Cascadia Code", "Source Code Pro", Consolas, monospace;
+
     /* 背景色 */
-    --bg-primary: #1e1e1e;
-    --bg-secondary: #252526;
-    --bg-tertiary: #2d2d30;
-    --bg-hover: #3e3e42;
+    --bg-primary: #171c24;
+    --bg-secondary: #1f2734;
+    --bg-tertiary: #263243;
+    --bg-hover: #314258;
     
     /* 边框色 */
-    --border-color: #3e3e42;
-    --border-focus: #007acc;
+    --border-color: #40526c;
+    --border-focus: #78aef8;
     
     /* 文字色 */
-    --text-primary: #cccccc;
-    --text-secondary: #9d9d9d;
-    --text-muted: #6e6e6e;
+    --text-primary: #edf3fb;
+    --text-secondary: #a9bad0;
+    --text-muted: #7b8ba0;
     
     /* 强调色 */
-    --accent-blue: #0e639c;
-    --accent-blue-hover: #1177bb;
-    --accent-blue-active: #005a9e;
+    --accent-blue: #2f83d8;
+    --accent-blue-hover: #4a96e2;
+    --accent-blue-active: #1f6dbd;
     
     /* 状态色 */
-    --success-green: #4ec9b0;
-    --warning-yellow: #dcdcaa;
-    --error-red: #f48771;
-    --info-blue: #569cd6;
+    --success-green: #78d0a3;
+    --warning-yellow: #dfc376;
+    --error-red: #eb8d7d;
+    --info-blue: #7eb8ef;
     
     /* 场颜色 */
     --electric-field-color: rgba(255, 200, 0, 0.3);
@@ -54,55 +58,68 @@
     --transition-normal: 0.2s ease;
     --transition-slow: 0.3s ease;
 
+    /* 壳层语义 */
+    --shell-bg: #101721;
+    --shell-surface: #1a2433;
+    --shell-panel: #162131;
+    --shell-border: #34465d;
+    --shell-field-bg: #202b3a;
+    --canvas-stage-bg: #111821;
+    --canvas-grid-major: rgba(138, 168, 214, 0.48);
+    --canvas-grid-minor: rgba(138, 168, 214, 0.22);
+    --status-strip-bg: #131d2a;
+    --teaching-accent: #e1b760;
+    --action-primary-bg: #2f83d8;
+
     /* 工具栏主题（深色：专业仪器感） */
-    --toolbar-panel-bg: #0f1722;
-    --toolbar-panel-border: #243447;
-    --toolbar-title-color: #d9e5f2;
-    --toolbar-group-label: #9ab0c6;
-    --toolbar-group-divider: #1e2d3f;
-    --toolbar-card-bg: #152131;
-    --toolbar-card-bg-hover: #1a2a3f;
-    --toolbar-card-bg-active: #1c304a;
-    --toolbar-card-border: #2a3d54;
-    --toolbar-card-border-hover: #3b5878;
-    --toolbar-card-border-active: #4d7ea6;
+    --toolbar-panel-bg: #121b28;
+    --toolbar-panel-border: #2a3d54;
+    --toolbar-title-color: #edf3fb;
+    --toolbar-group-label: #a7bad2;
+    --toolbar-group-divider: #223245;
+    --toolbar-card-bg: #182536;
+    --toolbar-card-bg-hover: #203043;
+    --toolbar-card-bg-active: #233a53;
+    --toolbar-card-border: #314660;
+    --toolbar-card-border-hover: #4a678c;
+    --toolbar-card-border-active: #74a7dd;
     --toolbar-card-shadow-hover: 0 4px 12px rgba(4, 9, 16, 0.45);
     --toolbar-card-shadow-active: 0 6px 16px rgba(5, 12, 20, 0.55);
-    --toolbar-icon-color: #8fd6ff;
-    --toolbar-icon-bg: #112133;
-    --toolbar-icon-border: #2d4b66;
-    --toolbar-armed-accent: #59b7ff;
-    --toolbar-preset-bg: #131f2f;
-    --toolbar-preset-border: #2d425a;
+    --toolbar-icon-color: #a7d2f7;
+    --toolbar-icon-bg: #132032;
+    --toolbar-icon-border: #33506c;
+    --toolbar-armed-accent: #8fc8ff;
+    --toolbar-preset-bg: #172334;
+    --toolbar-preset-border: #324861;
 }
 
 /* 浅色模式 */
 body.light-theme {
     /* 背景色 */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f5f5f5;
-    --bg-tertiary: #eeeeee;
-    --bg-hover: #e0e0e0;
+    --bg-primary: #ebf1f8;
+    --bg-secondary: #f4f7fb;
+    --bg-tertiary: #fcfdff;
+    --bg-hover: #e1ebf5;
     
     /* 边框色 */
-    --border-color: #d0d0d0;
-    --border-focus: #0078d4;
+    --border-color: #c4d3e3;
+    --border-focus: #2f7fd7;
     
     /* 文字色 */
-    --text-primary: #333333;
-    --text-secondary: #666666;
-    --text-muted: #999999;
+    --text-primary: #1f3042;
+    --text-secondary: #4f6379;
+    --text-muted: #76899e;
     
     /* 强调色 */
-    --accent-blue: #0078d4;
-    --accent-blue-hover: #106ebe;
-    --accent-blue-active: #005a9e;
+    --accent-blue: #1f78d2;
+    --accent-blue-hover: #3d8adf;
+    --accent-blue-active: #1665b3;
     
     /* 状态色 */
-    --success-green: #107c10;
-    --warning-yellow: #ffb900;
-    --error-red: #f7630c;
-    --info-blue: #0078d4;
+    --success-green: #2d8a57;
+    --warning-yellow: #b98a2c;
+    --error-red: #d86d47;
+    --info-blue: #2f7fd7;
     
     /* 场颜色 */
     --electric-field-color: rgba(255, 200, 0, 0.15);
@@ -113,26 +130,39 @@ body.light-theme {
     --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
     --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
 
+    /* 壳层语义 */
+    --shell-bg: #e8eff6;
+    --shell-surface: #f5f9fd;
+    --shell-panel: #fbfdff;
+    --shell-border: #cad8e7;
+    --shell-field-bg: #edf4fb;
+    --canvas-stage-bg: #f7fbff;
+    --canvas-grid-major: rgba(81, 114, 160, 0.46);
+    --canvas-grid-minor: rgba(81, 114, 160, 0.18);
+    --status-strip-bg: #e7eff8;
+    --teaching-accent: #b88428;
+    --action-primary-bg: #1f78d2;
+
     /* 工具栏主题（浅色：工程白板） */
-    --toolbar-panel-bg: #f2f4f7;
-    --toolbar-panel-border: #d6dce4;
-    --toolbar-title-color: #2283d9;
-    --toolbar-group-label: #4f5e6d;
-    --toolbar-group-divider: #dce2ea;
-    --toolbar-card-bg: #f7f9fc;
-    --toolbar-card-bg-hover: #eef3f9;
-    --toolbar-card-bg-active: #e5eff9;
-    --toolbar-card-border: #d3dbe5;
-    --toolbar-card-border-hover: #b5c6d8;
-    --toolbar-card-border-active: #86add2;
-    --toolbar-card-shadow-hover: 0 2px 8px rgba(33, 52, 76, 0.1);
-    --toolbar-card-shadow-active: 0 3px 10px rgba(33, 52, 76, 0.14);
-    --toolbar-icon-color: #4b6780;
-    --toolbar-icon-bg: #e8eef5;
-    --toolbar-icon-border: #c7d2df;
-    --toolbar-armed-accent: #2a8fe2;
-    --toolbar-preset-bg: #f4f7fb;
-    --toolbar-preset-border: #ccd7e3;
+    --toolbar-panel-bg: #eef4fb;
+    --toolbar-panel-border: #cfdbeb;
+    --toolbar-title-color: #28466d;
+    --toolbar-group-label: #54677c;
+    --toolbar-group-divider: #d8e3ef;
+    --toolbar-card-bg: #f8fbff;
+    --toolbar-card-bg-hover: #edf4fb;
+    --toolbar-card-bg-active: #e4eef9;
+    --toolbar-card-border: #cfdae7;
+    --toolbar-card-border-hover: #aebfd4;
+    --toolbar-card-border-active: #7fa6d2;
+    --toolbar-card-shadow-hover: 0 6px 18px rgba(33, 52, 76, 0.08);
+    --toolbar-card-shadow-active: 0 8px 22px rgba(33, 52, 76, 0.12);
+    --toolbar-icon-color: #37536f;
+    --toolbar-icon-bg: #e7eff8;
+    --toolbar-icon-border: #c5d2e1;
+    --toolbar-armed-accent: #2f7bc8;
+    --toolbar-preset-bg: #f4f9fe;
+    --toolbar-preset-border: #cfdbe8;
 }
 
 /* 重置样式 */
@@ -143,8 +173,8 @@ body.light-theme {
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--bg-primary);
+    font-family: var(--font-body);
+    background: var(--shell-bg);
     color: var(--text-primary);
     overflow: hidden;
     transition: background-color var(--transition-normal), color var(--transition-normal);

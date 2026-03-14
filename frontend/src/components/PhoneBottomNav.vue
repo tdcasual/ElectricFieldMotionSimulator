@@ -40,7 +40,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       :disabled="props.sheetNavigationLocked"
       @click="toggleSheet('add')"
     >
-      添加
+      <span class="phone-nav-label">添加</span>
     </button>
     <button
       id="phone-nav-selected-btn"
@@ -51,7 +51,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       :disabled="!props.hasSelection || props.sheetNavigationLocked"
       @click="toggleSheet('selected')"
     >
-      选中
+      <span class="phone-nav-label">选中</span>
     </button>
     <button
       id="phone-nav-play-btn"
@@ -60,7 +60,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       :aria-pressed="props.running ? 'true' : 'false'"
       @click="emit('toggle-play')"
     >
-      {{ props.running ? '暂停' : '播放' }}
+      <span class="phone-nav-label">{{ props.running ? '暂停' : '播放' }}</span>
     </button>
     <button
       id="phone-nav-scene-btn"
@@ -71,7 +71,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       :disabled="props.sheetNavigationLocked"
       @click="toggleSheet('scene')"
     >
-      场景
+      <span class="phone-nav-label">场景</span>
     </button>
     <button
       id="phone-nav-more-btn"
@@ -82,7 +82,7 @@ function toggleSheet(target: Exclude<PhoneSheetKey, null>) {
       :disabled="props.sheetNavigationLocked"
       @click="toggleSheet('more')"
     >
-      更多
+      <span class="phone-nav-label">更多</span>
     </button>
   </nav>
 </template>

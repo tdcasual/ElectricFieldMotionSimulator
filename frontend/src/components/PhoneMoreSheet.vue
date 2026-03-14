@@ -31,7 +31,10 @@ onBeforeUnmount(() => {
       @pointerup="swipeGesture.onPointerUp"
       @pointercancel="swipeGesture.onPointerCancel"
     >
-      <h3>更多操作</h3>
+      <div class="phone-sheet-header-main">
+        <h3>更多操作</h3>
+        <p class="phone-sheet-subtitle" data-testid="phone-sheet-subtitle">文件、题板与变量的快捷入口</p>
+      </div>
       <button type="button" class="btn-icon" aria-label="关闭更多操作面板" @click="emit('close')">✖</button>
     </div>
     <div class="phone-sheet-body phone-more-body">

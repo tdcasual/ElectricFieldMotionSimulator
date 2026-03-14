@@ -11,6 +11,11 @@ function dispatchPointerEvent(target: Element, type: string, options: { x: numbe
 }
 
 describe('PhoneMoreSheet', () => {
+  it('renders a brief subtitle for the quick actions sheet', () => {
+    const wrapper = mount(PhoneMoreSheet);
+    expect(wrapper.get('[data-testid="phone-sheet-subtitle"]').text()).toContain('文件、题板与变量');
+  });
+
   it('emits command events for all quick action buttons', async () => {
     const wrapper = mount(PhoneMoreSheet);
 

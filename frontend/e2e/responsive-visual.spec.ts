@@ -88,4 +88,16 @@ test.describe('responsive visual baseline', () => {
       scale: 'css'
     });
   });
+
+  test('desktop dark 1920x1080', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('theme-preference', 'dark');
+    });
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await stabilizeForScreenshot(page);
+    await expect(page).toHaveScreenshot('responsive-desktop-dark-1920x1080.png', {
+      animations: 'disabled',
+      scale: 'css'
+    });
+  });
 });
