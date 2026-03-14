@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AuthoringPanels from './components/AuthoringPanels.vue';
 import AppStatusFooter from './components/AppStatusFooter.vue';
 import CanvasViewport from './components/CanvasViewport.vue';
@@ -48,6 +48,19 @@ const { appShellClass } = useAppShellClass({
   phoneDensityClass
 });
 const isTabletLayout = computed(() => simulatorStore.layoutMode === 'tablet');
+const useDesktopUtilityTrays = computed(() => !isPhoneLayout.value && !isTabletLayout.value && showAuthoringControls.value);
+const desktopUtilityTray = ref<'scene-files' | 'scene-settings' | null>(null);
+const showDesktopUtilityTray = computed(() => useDesktopUtilityTrays.value && desktopUtilityTray.value !== null);
+
+function toggleDesktopUtilityTray(kind: 'scene-files' | 'scene-settings') {
+  desktopUtilityTray.value = desktopUtilityTray.value === kind ? null : kind;
+}
+
+watch([isPhoneLayout, isTabletLayout, showAuthoringControls], ([phone, tablet, authoring]) => {
+  if (phone || tablet || !authoring) {
+    desktopUtilityTray.value = null;
+  }
+});
 
 onMounted(async () => {
   mountViewportLayout();
@@ -66,7 +79,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div id="app" data-testid="app-shell" :class="appShellClass">
+  <div id="app" data-testid="app-shell" :class="[appShellClass, { 'desktop-utility-tray-open': showDesktopUtilityTray }]">
     <header id="header">
       <div v-if="!isPhoneLayout" class="header-brand-block" data-testid="header-brand-block">
         <div class="header-title-stack">
@@ -95,6 +108,9 @@ onBeforeUnmount(() => {
           :demo-mode="simulatorStore.demoMode"
           :demo-button-title="simulatorStore.demoButtonTitle"
           :demo-button-label="simulatorStore.demoButtonLabel"
+          :use-utility-tray="useDesktopUtilityTrays"
+          :scene-tray-open="desktopUtilityTray === 'scene-files'"
+          :settings-tray-open="desktopUtilityTray === 'scene-settings'"
           @toggle-play="appActions.togglePlayPause"
           @toggle-classroom="simulatorStore.toggleClassroomMode"
           @reset-scene="appActions.resetScene"
@@ -107,6 +123,8 @@ onBeforeUnmount(() => {
           @open-variables="appActions.openVariablesPanel"
           @toggle-markdown="appActions.toggleMarkdownBoard"
           @toggle-demo="appActions.toggleDemoMode"
+          @toggle-scene-tray="toggleDesktopUtilityTray('scene-files')"
+          @toggle-settings-tray="toggleDesktopUtilityTray('scene-settings')"
         />
         <input
           id="import-file-input"
@@ -116,7 +134,21 @@ onBeforeUnmount(() => {
           style="display: none"
           @change="appActions.handleImportChange"
         />
+        <div
+          v-if="useDesktopUtilityTrays && desktopUtilityTray === 'scene-files'"
+          class="header-settings desktop-scene-file-tray"
+          data-testid="desktop-scene-file-tray"
+        >
+          <div class="desktop-scene-settings" data-testid="desktop-scene-file-actions">
+            <button id="save-btn" class="btn btn-subtle" title="保存场景" aria-label="保存场景" @click="appActions.saveScene">💾 保存</button>
+            <button id="load-btn" class="btn btn-subtle" title="加载场景" aria-label="加载场景" @click="appActions.loadScene">📂 读取</button>
+            <button id="export-btn" class="btn btn-subtle" title="导出场景" aria-label="导出场景" @click="appActions.exportScene">📤 导出</button>
+            <button id="import-btn" class="btn btn-subtle" title="导入场景" aria-label="导入场景" @click="appActions.openImportDialog">📥 导入</button>
+            <button id="clear-btn" class="btn btn-subtle" title="清空场景" aria-label="清空场景" @click="appActions.clearScene">🗑 清空</button>
+          </div>
+        </div>
         <HeaderStatusAndSettings
+          v-if="!useDesktopUtilityTrays || desktopUtilityTray === 'scene-settings'"
           :is-phone-layout="isPhoneLayout"
           :show-authoring-controls="showAuthoringControls"
           :status-text="simulatorStore.statusText"

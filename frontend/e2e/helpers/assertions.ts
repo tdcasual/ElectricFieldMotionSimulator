@@ -46,14 +46,27 @@ export async function expectDemoModeState(
   await expect(page.locator('#demo-mode-btn')).toHaveAttribute('aria-pressed', options.pressed ? 'true' : 'false');
   await expect(page.locator('#demo-mode-btn')).toContainText(options.buttonLabel);
   await expect(page.locator('#object-count')).toHaveText(new RegExp(`对象:\\s*${options.objectCount}`));
+  const scaleInput = page.locator('#scale-px-per-meter');
+  const gravityInput = page.locator('#gravity-input');
+  if (!(await scaleInput.isVisible().catch(() => false))) {
+    const settingsToggle = page.locator('#settings-tray-toggle-btn');
+    if (await settingsToggle.isVisible().catch(() => false)) {
+      const expanded = await settingsToggle.getAttribute('aria-expanded');
+      if (expanded !== 'true') {
+        await settingsToggle.click();
+      }
+      await expect(scaleInput).toBeVisible();
+      await expect(gravityInput).toBeVisible();
+    }
+  }
   if (options.scaleDisabled) {
-    await expect(page.locator('#scale-px-per-meter')).toBeDisabled();
+    await expect(scaleInput).toBeDisabled();
   } else {
-    await expect(page.locator('#scale-px-per-meter')).toBeEnabled();
+    await expect(scaleInput).toBeEnabled();
   }
   if (options.gravityDisabled) {
-    await expect(page.locator('#gravity-input')).toBeDisabled();
+    await expect(gravityInput).toBeDisabled();
   } else {
-    await expect(page.locator('#gravity-input')).toBeEnabled();
+    await expect(gravityInput).toBeEnabled();
   }
 }

@@ -20,28 +20,28 @@ function mountButtons(overrides: Record<string, unknown> = {}) {
 }
 
 describe('HeaderActionButtons', () => {
-  it('renders actions in clear desktop groups', () => {
+  it('renders compact desktop groups with utility tray toggles', () => {
     const wrapper = mountButtons();
 
     expect(wrapper.find('[data-testid="header-primary-actions"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="header-scene-actions"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-utility-actions"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="header-teaching-actions"]').exists()).toBe(true);
     expect(wrapper.get('[data-testid="header-primary-label"]').text()).toContain('主控');
-    expect(wrapper.get('[data-testid="header-scene-label"]').text()).toContain('场景');
+    expect(wrapper.get('[data-testid="header-utility-label"]').text()).toContain('扩展');
     expect(wrapper.get('[data-testid="header-teaching-label"]').text()).toContain('教学');
+    expect(wrapper.find('#save-btn').exists()).toBe(false);
+    expect(wrapper.find('#scene-tray-toggle-btn').exists()).toBe(true);
+    expect(wrapper.find('#settings-tray-toggle-btn').exists()).toBe(true);
   });
 
-  it('emits events for desktop controls', async () => {
+  it('emits events for compact desktop controls and tray toggles', async () => {
     const wrapper = mountButtons();
 
     await wrapper.get('#play-pause-btn').trigger('click');
     await wrapper.get('#classroom-mode-btn').trigger('click');
     await wrapper.get('#reset-btn').trigger('click');
-    await wrapper.get('#clear-btn').trigger('click');
-    await wrapper.get('#save-btn').trigger('click');
-    await wrapper.get('#load-btn').trigger('click');
-    await wrapper.get('#export-btn').trigger('click');
-    await wrapper.get('#import-btn').trigger('click');
+    await wrapper.get('#scene-tray-toggle-btn').trigger('click');
+    await wrapper.get('#settings-tray-toggle-btn').trigger('click');
     await wrapper.get('#theme-toggle-btn').trigger('click');
     await wrapper.get('#variables-btn').trigger('click');
     await wrapper.get('#markdown-toggle-btn').trigger('click');
@@ -50,11 +50,8 @@ describe('HeaderActionButtons', () => {
     expect(wrapper.emitted('toggle-play')).toHaveLength(1);
     expect(wrapper.emitted('toggle-classroom')).toHaveLength(1);
     expect(wrapper.emitted('reset-scene')).toHaveLength(1);
-    expect(wrapper.emitted('clear-scene')).toHaveLength(1);
-    expect(wrapper.emitted('save-scene')).toHaveLength(1);
-    expect(wrapper.emitted('load-scene')).toHaveLength(1);
-    expect(wrapper.emitted('export-scene')).toHaveLength(1);
-    expect(wrapper.emitted('open-import')).toHaveLength(1);
+    expect(wrapper.emitted('toggle-scene-tray')).toHaveLength(1);
+    expect(wrapper.emitted('toggle-settings-tray')).toHaveLength(1);
     expect(wrapper.emitted('toggle-theme')).toHaveLength(1);
     expect(wrapper.emitted('open-variables')).toHaveLength(1);
     expect(wrapper.emitted('toggle-markdown')).toHaveLength(1);
@@ -66,9 +63,8 @@ describe('HeaderActionButtons', () => {
 
     expect(wrapper.find('#play-pause-btn').exists()).toBe(false);
     expect(wrapper.find('#classroom-mode-btn').exists()).toBe(false);
-    expect(wrapper.find('#clear-btn').exists()).toBe(false);
-    expect(wrapper.find('#save-btn').exists()).toBe(false);
-    expect(wrapper.find('#import-btn').exists()).toBe(false);
+    expect(wrapper.find('#scene-tray-toggle-btn').exists()).toBe(false);
+    expect(wrapper.find('#settings-tray-toggle-btn').exists()).toBe(false);
     expect(wrapper.find('#demo-mode-btn').exists()).toBe(false);
     expect(wrapper.find('#reset-btn').exists()).toBe(true);
   });

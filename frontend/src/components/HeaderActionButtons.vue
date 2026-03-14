@@ -1,15 +1,25 @@
 <script setup lang="ts">
-const props = defineProps<{
-  isPhoneLayout: boolean;
-  showAuthoringControls: boolean;
-  running: boolean;
-  classroomMode: boolean;
-  variablesPanelOpen: boolean;
-  markdownBoardOpen: boolean;
-  demoMode: boolean;
-  demoButtonTitle: string;
-  demoButtonLabel: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    isPhoneLayout: boolean;
+    showAuthoringControls: boolean;
+    running: boolean;
+    classroomMode: boolean;
+    variablesPanelOpen: boolean;
+    markdownBoardOpen: boolean;
+    demoMode: boolean;
+    demoButtonTitle: string;
+    demoButtonLabel: string;
+    useUtilityTray?: boolean;
+    sceneTrayOpen?: boolean;
+    settingsTrayOpen?: boolean;
+  }>(),
+  {
+    useUtilityTray: true,
+    sceneTrayOpen: false,
+    settingsTrayOpen: false
+  }
+);
 
 const emit = defineEmits<{
   (event: 'toggle-play'): void;
@@ -24,6 +34,8 @@ const emit = defineEmits<{
   (event: 'open-variables'): void;
   (event: 'toggle-markdown'): void;
   (event: 'toggle-demo'): void;
+  (event: 'toggle-scene-tray'): void;
+  (event: 'toggle-settings-tray'): void;
 }>();
 </script>
 
@@ -57,7 +69,32 @@ const emit = defineEmits<{
       </button>
     </div>
     <template v-if="props.showAuthoringControls && !props.isPhoneLayout">
-      <div class="header-action-group header-action-group--scene" data-testid="header-scene-actions">
+      <div v-if="props.useUtilityTray" class="header-action-group header-action-group--utility" data-testid="header-utility-actions">
+        <span v-if="!props.isPhoneLayout" class="header-group-label" data-testid="header-utility-label">扩展</span>
+        <button
+          id="scene-tray-toggle-btn"
+          class="btn"
+          :class="props.sceneTrayOpen ? 'btn-primary' : 'btn-subtle'"
+          title="切换场景文件托盘"
+          aria-label="切换场景文件托盘"
+          :aria-expanded="props.sceneTrayOpen ? 'true' : 'false'"
+          @click="emit('toggle-scene-tray')"
+        >
+          场景文件
+        </button>
+        <button
+          id="settings-tray-toggle-btn"
+          class="btn"
+          :class="props.settingsTrayOpen ? 'btn-primary' : 'btn-subtle'"
+          title="切换场景参数托盘"
+          aria-label="切换场景参数托盘"
+          :aria-expanded="props.settingsTrayOpen ? 'true' : 'false'"
+          @click="emit('toggle-settings-tray')"
+        >
+          场景参数
+        </button>
+      </div>
+      <div v-else class="header-action-group header-action-group--scene" data-testid="header-scene-actions">
         <span v-if="!props.isPhoneLayout" class="header-group-label" data-testid="header-scene-label">场景</span>
         <button id="save-btn" class="btn btn-subtle" title="保存场景" aria-label="保存场景" @click="emit('save-scene')">💾 保存</button>
         <button id="load-btn" class="btn btn-subtle" title="加载场景" aria-label="加载场景" @click="emit('load-scene')">📂 读取</button>

@@ -31,7 +31,13 @@ describe('App shell', () => {
     expect(wrapper.find('#property-panel').exists()).toBe(true);
   });
 
-  it('renders grouped desktop header regions with mode strip', () => {
+  it('renders grouped desktop header regions with compact utility toggles', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      value: 1366,
+      configurable: true,
+      writable: true
+    });
+
     const wrapper = mount(App, {
       global: {
         plugins: [createPinia()]
@@ -41,8 +47,42 @@ describe('App shell', () => {
     expect(wrapper.find('[data-testid="header-brand-block"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="header-mode-strip"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="header-primary-actions"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="header-scene-actions"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="header-utility-actions"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="header-teaching-actions"]').exists()).toBe(true);
+    expect(wrapper.find('#save-btn').exists()).toBe(false);
+    expect(wrapper.find('#header-settings-panel').exists()).toBe(false);
+  });
+
+  it('opens desktop file and settings trays on demand', async () => {
+    Object.defineProperty(window, 'innerWidth', {
+      value: 1366,
+      configurable: true,
+      writable: true
+    });
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [createPinia()]
+      }
+    });
+
+    expect(wrapper.get('#app').classes()).not.toContain('desktop-utility-tray-open');
+    expect(wrapper.find('[data-testid="desktop-scene-file-tray"]').exists()).toBe(false);
+    expect(wrapper.find('#header-settings-panel').exists()).toBe(false);
+
+    await wrapper.get('#scene-tray-toggle-btn').trigger('click');
+    await nextTick();
+
+    expect(wrapper.get('#app').classes()).toContain('desktop-utility-tray-open');
+    expect(wrapper.find('[data-testid="desktop-scene-file-tray"]').exists()).toBe(true);
+    expect(wrapper.find('#save-btn').exists()).toBe(true);
+
+    await wrapper.get('#settings-tray-toggle-btn').trigger('click');
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="desktop-scene-file-tray"]').exists()).toBe(false);
+    expect(wrapper.find('#header-settings-panel').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="desktop-scene-settings"]').exists()).toBe(true);
   });
 
   it('toggles demo mode button state on click', async () => {
